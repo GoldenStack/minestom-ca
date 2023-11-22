@@ -24,7 +24,7 @@ repositories {
 dependencies {
     val minestom = "dev.hollowcube:minestom-ce:e146a9393e"
 
-    compileOnly(minestom)
+    implementation(minestom)
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
