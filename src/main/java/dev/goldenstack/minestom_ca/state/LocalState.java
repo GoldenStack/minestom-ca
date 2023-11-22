@@ -1,6 +1,5 @@
 package dev.goldenstack.minestom_ca.state;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Instance;
 import org.jetbrains.annotations.NotNull;
@@ -46,11 +45,5 @@ public interface LocalState {
      * @return the state at the given offset to the current origin
      */
     @NotNull State relative(int x, int y, int z);
-
-    /**
-     * Changes that are applied to a local state after a rule application.
-     * @param changes the map of changes
-     */
-    record Changes(@NotNull Object2ObjectMap<Point, State> changes) {}
 
 }

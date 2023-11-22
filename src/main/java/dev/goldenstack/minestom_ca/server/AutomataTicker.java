@@ -4,17 +4,13 @@ import dev.goldenstack.minestom_ca.Neighbors;
 import dev.goldenstack.minestom_ca.rule.Rule;
 import dev.goldenstack.minestom_ca.state.LocalState;
 import dev.goldenstack.minestom_ca.state.State;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Ticks a list of cellular automata rules within a given world.
@@ -43,7 +39,7 @@ public class AutomataTicker {
         tracked.addAll(nextTracked);
         nextTracked.clear();
 
-        Object2ObjectMap<Point, State> changes = new Object2ObjectOpenHashMap<>();
+        Map<Point, State> changes = new Object2ObjectOpenHashMap<>();
 
         for (var pos : tracked) {
             LocalState state = LocalState.at(instance, pos);
@@ -56,7 +52,7 @@ public class AutomataTicker {
 
                     var localChanges = rule.result().apply(state);
 
-                    for (var entry : localChanges.changes().entrySet()) {
+                    for (var entry : localChanges.entrySet()) {
                         changes.put(entry.getKey().add(pos), entry.getValue());
                     }
                 }
