@@ -1,10 +1,8 @@
 package dev.goldenstack.minestom_ca.state;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Instance;
-import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -18,15 +16,6 @@ public interface LocalState {
             public @NotNull State relative(int x, int y, int z) {
                 return state.relative(offset.blockX() + x, offset.blockY() + y, offset.blockZ() + z);
             }
-
-            @Override
-            public void apply(@NotNull Changes changes) {
-                Object2ObjectMap<Point, State> map = new Object2ObjectArrayMap<>();
-                for (var entry : changes.changes().entrySet()) {
-                    map.put(entry.getKey().add(offset), entry.getValue());
-                }
-                state.apply(new Changes(map));
-            }
         };
     }
 
@@ -36,13 +25,6 @@ public interface LocalState {
             public @NotNull State relative(int x, int y, int z) {
                 var block = instance.getBlock(pos.add(x, y, z));
                 return new State(block.name());
-            }
-
-            @Override
-            public void apply(@NotNull Changes changes) {
-                for (var change : changes.changes().entrySet()) {
-                    instance.setBlock(pos.add(change.getKey()), Block.fromNamespaceId(change.getValue().variant()));
-                }
             }
         };
     }
@@ -55,11 +37,6 @@ public interface LocalState {
         return relative(0, 0, 0);
     }
 
-    /**
-     * Applies the given changes.
-     * @param changes the changes to apply
-     */
-    void apply(@NotNull Changes changes);
 
     /**
      * Gets the state relative to the current origin, at the given offset.

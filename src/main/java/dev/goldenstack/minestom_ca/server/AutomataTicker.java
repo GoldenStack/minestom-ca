@@ -3,9 +3,12 @@ package dev.goldenstack.minestom_ca.server;
 import dev.goldenstack.minestom_ca.Neighbors;
 import dev.goldenstack.minestom_ca.rule.Rule;
 import dev.goldenstack.minestom_ca.state.LocalState;
-import it.unimi.dsi.fastutil.Pair;
+import dev.goldenstack.minestom_ca.state.State;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Instance;
+import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -40,7 +43,8 @@ public class AutomataTicker {
         tracked.addAll(nextTracked);
         nextTracked.clear();
 
-        List<Pair<LocalState, LocalState.Changes>> nextChanges = new ArrayList<>();
+        Object2ObjectMap<Point, State> changes = new Object2ObjectOpenHashMap<>();
+
         for (var pos : tracked) {
             LocalState state = LocalState.at(instance, pos);
 
@@ -50,8 +54,11 @@ public class AutomataTicker {
                 if (rule.condition().test(state)) {
                     hasOne = true;
 
-                    var changes = rule.result().apply(state);
-                    nextChanges.add(Pair.of(state, changes)); // This could be scheduled next tick instead, potentially
+                    var localChanges = rule.result().apply(state);
+
+                    for (var entry : localChanges.changes().entrySet()) {
+                        changes.put(entry.getKey().add(pos), entry.getValue());
+                    }
                 }
             }
 
@@ -60,8 +67,8 @@ public class AutomataTicker {
             }
         }
 
-        for (var changes : nextChanges) {
-            changes.first().apply(changes.second());
+        for (var change : changes.entrySet()) {
+            instance.setBlock(change.getKey(), Block.fromNamespaceId(change.getValue().variant()));
         }
 
     }
