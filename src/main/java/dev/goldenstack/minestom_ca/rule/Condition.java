@@ -1,7 +1,7 @@
 package dev.goldenstack.minestom_ca.rule;
 
-import dev.goldenstack.minestom_ca.state.LocalState;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -20,19 +20,22 @@ public interface Condition extends Predicate<@NotNull LocalState> {
 
         @Override
         public boolean test(@NotNull LocalState localState) {
-            for (var child : children) {
+            for (Condition child : children) {
                 if (!child.test(localState)) return false;
             }
             return true;
         }
     }
 
-    record NeighborCondition(@NotNull IntPredicate validCount, @NotNull List<Point> neighbors, @NotNull Condition condition) implements Condition {
+    record NeighborCondition(@NotNull IntPredicate validCount,
+                             @NotNull List<Point> neighbors,
+                             @NotNull Condition condition) implements Condition {
         @Override
         public boolean test(@NotNull LocalState localState) {
             int count = 0;
-            for (var point : neighbors) {
-                if (condition.test(LocalState.relative(localState, point))) {
+            for (Point point : neighbors) {
+                final LocalState relative = localState.relative(point);
+                if (condition.test(relative)) {
                     count++;
                 }
             }
@@ -40,21 +43,25 @@ public interface Condition extends Predicate<@NotNull LocalState> {
         }
     }
 
-    record SelfState(@NotNull String state) implements Condition {
+    record SelfState(int index, int value) implements Condition {
+        public SelfState(Block block) {
+            this(0, block.stateId());
+        }
+
         @Override
         public boolean test(@NotNull LocalState localState) {
-            return localState.self().variant().equals(state);
+            return localState.selfStateValue(index) == value;
         }
     }
 
-    record RelativeState(int x, int y, int z, @NotNull String state) implements Condition {
+    record RelativeState(int x, int y, int z, int index, int value) implements Condition {
+        public RelativeState(int x, int y, int z, Block block) {
+            this(x, y, z, 0, block.stateId());
+        }
+
         @Override
         public boolean test(@NotNull LocalState localState) {
-            return localState.relative(x, y, z).variant().equals(state);
+            return localState.relativeStateValue(index, x, y, z) == value;
         }
     }
-
-    @Override
-    boolean test(@NotNull LocalState localState);
-
 }
