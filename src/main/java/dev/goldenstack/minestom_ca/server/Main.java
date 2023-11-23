@@ -12,6 +12,7 @@ import net.minestom.server.event.instance.InstanceTickEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.player.PlayerLoginEvent;
 import net.minestom.server.instance.InstanceContainer;
+import net.minestom.server.instance.LightingChunk;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
@@ -34,6 +35,7 @@ public class Main {
 
         // Create an instance
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
+        instance.setChunkSupplier(LightingChunk::new);
         instance.setGenerator(unit -> unit.modifier().fillHeight(0, 10, Block.STONE));
         instance.enableAutoChunkLoad(false);
         instance.loadChunk(0, 0).join();

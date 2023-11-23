@@ -6,10 +6,7 @@ import dev.goldenstack.minestom_ca.rule.Result;
 import dev.goldenstack.minestom_ca.rule.Rule;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minestom.server.coordinate.Point;
-import net.minestom.server.instance.Chunk;
-import net.minestom.server.instance.DynamicChunk;
-import net.minestom.server.instance.Instance;
-import net.minestom.server.instance.Section;
+import net.minestom.server.instance.*;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.network.packet.server.CachedPacket;
@@ -67,7 +64,7 @@ public final class AutomataWorld {
         this.instance.getChunks().forEach(chunk -> {
             final long chunkIndex = ChunkUtils.getChunkIndex(chunk.getChunkX(), chunk.getChunkZ());
             final AChunk achunk = this.chunks.computeIfAbsent(chunkIndex, i -> new AChunk(chunk));
-            if (achunk.chunk != chunk) {
+            if (achunk.chunk != chunk) { // Chunk may have been unloaded and loaded back
                 this.chunks.put(chunkIndex, new AChunk(chunk));
             }
         });
@@ -153,10 +150,14 @@ public final class AutomataWorld {
             }
             // Invalidate packet cache
             try {
-                var field = DynamicChunk.class.getDeclaredField("chunkCache");
-                field.setAccessible(true);
-                var chunkCache = (CachedPacket) field.get(chunk);
-                chunkCache.invalidate();
+                var blockCacheField = DynamicChunk.class.getDeclaredField("chunkCache");
+                blockCacheField.setAccessible(true);
+
+                var lightCacheField = LightingChunk.class.getDeclaredField("lightCache");
+                lightCacheField.setAccessible(true);
+
+                ((CachedPacket) lightCacheField.get(chunk)).invalidate();
+                ((CachedPacket) blockCacheField.get(chunk)).invalidate();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
