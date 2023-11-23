@@ -1,5 +1,6 @@
 package dev.goldenstack.minestom_ca.server;
 
+import dev.goldenstack.minestom_ca.AutomataWorld;
 import dev.goldenstack.minestom_ca.server.commands.StartCommand;
 import dev.goldenstack.minestom_ca.server.commands.StopCommand;
 import net.minestom.server.MinecraftServer;
@@ -18,9 +19,10 @@ import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static dev.goldenstack.minestom_ca.server.ExampleRules.HAY_RAINBOW;
+import static dev.goldenstack.minestom_ca.server.ExampleRules.MOVING_OAK;
 
 public class Main {
 
@@ -39,8 +41,11 @@ public class Main {
         instance.setGenerator(unit -> unit.modifier().fillHeight(0, 10, Block.STONE));
         instance.enableAutoChunkLoad(false);
         instance.loadChunk(0, 0).join();
+        instance.loadChunk(1, 0).join();
+        instance.loadChunk(0, 1).join();
+        instance.loadChunk(1, 1).join();
 
-        AutomataWorld.create(instance, HAY_RAINBOW);
+        AutomataWorld.create(instance, List.of(MOVING_OAK));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(PlayerLoginEvent.class, event -> {
@@ -52,6 +57,7 @@ public class Main {
             inventory.addItemStack(ItemStack.of(Material.WHITE_WOOL));
             inventory.addItemStack(ItemStack.of(Material.RED_WOOL));
             inventory.addItemStack(ItemStack.of(Material.HAY_BLOCK));
+            inventory.addItemStack(ItemStack.of(Material.OAK_LOG));
 
             event.setSpawningInstance(instance);
             player.setRespawnPoint(new Pos(0, 13, 0));
