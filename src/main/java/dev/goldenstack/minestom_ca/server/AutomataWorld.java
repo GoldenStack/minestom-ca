@@ -79,15 +79,15 @@ public final class AutomataWorld {
 
             @Override
             public boolean relativeTest(int x2, int y2, int z2, Condition condition) {
-                final int _x = x;
-                final int _y = y;
-                final int _z = z;
+                x += x2;
+                y += y2;
+                z += z2;
 
                 final boolean result = condition.test(this);
 
-                x = _x;
-                y = _y;
-                z = _z;
+                x -= x2;
+                y -= y2;
+                z -= z2;
 
                 return result;
             }
