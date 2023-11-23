@@ -4,13 +4,13 @@ import dev.goldenstack.minestom_ca.rule.Condition;
 import dev.goldenstack.minestom_ca.rule.LocalState;
 import dev.goldenstack.minestom_ca.rule.Result;
 import dev.goldenstack.minestom_ca.rule.Rule;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.DynamicChunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
+import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.network.packet.server.CachedPacket;
 import net.minestom.server.utils.chunk.ChunkUtils;
@@ -25,8 +25,8 @@ public final class AutomataWorld {
     private static final Map<Instance, AutomataWorld> instances = new HashMap<>();
     private final Instance instance;
     private final List<Rule> rules;
-    private final int minSection;
-    private final Long2ObjectMap<AChunk> chunks = new Long2ObjectOpenHashMap<>();
+    private final int minSection, maxSection;
+    private final Long2ObjectOpenHashMap<AChunk> chunks = new Long2ObjectOpenHashMap<>();
     private boolean buffer = false;
 
     public static AutomataWorld create(Instance instance, List<Rule> rule) {
@@ -43,6 +43,7 @@ public final class AutomataWorld {
         this.instance = instance;
         this.rules = rules;
         this.minSection = instance.getDimensionType().getMinY() / 16;
+        this.maxSection = instance.getDimensionType().getMaxY() / 16;
     }
 
     public void tick() {
@@ -73,7 +74,6 @@ public final class AutomataWorld {
     }
 
     private void applyRules() {
-
         var localState = new LocalState() {
             int x, y, z;
 
@@ -103,11 +103,13 @@ public final class AutomataWorld {
             }
         };
 
-        for (Chunk chunk : instance.getChunks()) {
-            final int sectionStart = chunk.getMinSection() * 16;
+        final int sectionCount = maxSection - minSection;
+        for (AChunk achunk : chunks.values()) {
+            final Chunk chunk = achunk.chunk;
+            final int sectionStart = minSection * 16;
             final int chunkX = chunk.getChunkX();
             final int chunkZ = chunk.getChunkZ();
-            for (int i = 0; i < chunk.getSections().size(); i++) {
+            for (int i = 0; i < sectionCount; i++) {
                 for (int x = 0; x < 16; x++) {
                     for (int y = 0; y < 16; y++) {
                         for (int z = 0; z < 16; z++) {
@@ -122,12 +124,12 @@ public final class AutomataWorld {
                                     for (var entry : localChanges.entrySet()) {
                                         final Point changePointOffset = entry.getKey();
                                         final Map<Integer, Integer> changeValues = entry.getValue();
-
-                                        setState(
+                                        setState(achunk,
                                                 changePointOffset.blockX() + localState.x,
                                                 changePointOffset.blockY() + localState.y,
                                                 changePointOffset.blockZ() + localState.z,
                                                 changeValues);
+                                        achunk.updated = true;
                                     }
                                 }
                             }
@@ -140,6 +142,8 @@ public final class AutomataWorld {
 
     private void updateChunks() {
         for (AChunk aChunk : this.chunks.values()) {
+            if (!aChunk.updated) continue;
+            aChunk.updated = false;
             Chunk chunk = aChunk.chunk;
             for (int i = 0; i < aChunk.sections.length; i++) {
                 Section section = chunk.getSections().get(i);
@@ -179,13 +183,7 @@ public final class AutomataWorld {
         );
     }
 
-    public void setState(int x, int y, int z, Map<Integer, Integer> changes) {
-        final int chunkX = ChunkUtils.getChunkCoordinate(x);
-        final int chunkZ = ChunkUtils.getChunkCoordinate(z);
-        final long chunkIndex = ChunkUtils.getChunkIndex(chunkX, chunkZ);
-        AChunk chunk = this.chunks.get(chunkIndex);
-        if (chunk == null) return;
-
+    private void setState(AChunk chunk, int x, int y, int z, Map<Integer, Integer> changes) {
         final int sectionY = y / 16;
         final ASection section = chunk.sections[sectionY - minSection];
         final Palette[] palettes = section.writePalettes();
@@ -202,9 +200,22 @@ public final class AutomataWorld {
         }
     }
 
+    public void handlePlacement(Point point, Block block) {
+        final int x = point.blockX();
+        final int y = point.blockY();
+        final int z = point.blockZ();
+        final int chunkX = ChunkUtils.getChunkCoordinate(x);
+        final int chunkZ = ChunkUtils.getChunkCoordinate(z);
+        final long chunkIndex = ChunkUtils.getChunkIndex(chunkX, chunkZ);
+        AChunk chunk = this.chunks.get(chunkIndex);
+        if (chunk == null) return;
+        setState(chunk, x, y, z, Map.of(0, (int) block.stateId()));
+    }
+
     public final class AChunk {
         private final Chunk chunk;
         private final ASection[] sections;
+        private boolean updated = false;
 
         public AChunk(Chunk chunk) {
             this.chunk = chunk;

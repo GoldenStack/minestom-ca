@@ -17,7 +17,6 @@ import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static dev.goldenstack.minestom_ca.server.ExampleRules.HAY_RAINBOW;
@@ -60,8 +59,7 @@ public class Main {
             final Point point = event.getBlockPosition();
             final Block block = event.getBlock();
             AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
-            world.setState(point.blockX(), point.blockY(), point.blockZ(),
-                    Map.of(0, (int) block.stateId()));
+            world.handlePlacement(point, block);
         });
 
         globalEventHandler.addListener(InstanceTickEvent.class, event -> {
