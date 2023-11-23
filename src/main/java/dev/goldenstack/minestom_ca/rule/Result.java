@@ -11,7 +11,7 @@ import java.util.function.Function;
 /**
  * Determines a result of a rule application.
  */
-public interface Result extends Function<@NotNull LocalState, @NotNull Map<Point, Map<Integer, Integer>>> {
+public sealed interface Result extends Function<@NotNull LocalState, @NotNull Map<Point, Map<Integer, Integer>>> {
 
     record SetRelative(@NotNull Point point, int index, int value) implements Result {
         @Override

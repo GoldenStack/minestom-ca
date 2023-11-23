@@ -11,7 +11,7 @@ import java.util.function.Predicate;
 /**
  * A condition for a rule to be applied.
  */
-public interface Condition extends Predicate<@NotNull LocalState> {
+public sealed interface Condition extends Predicate<@NotNull LocalState> {
 
     record Joined(@NotNull List<Condition> children) implements Condition {
         public Joined(@NotNull Condition @NotNull ... children) {

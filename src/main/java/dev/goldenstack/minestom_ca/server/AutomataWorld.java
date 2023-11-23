@@ -119,18 +119,17 @@ public final class AutomataWorld {
                             for (Rule rule : rules) {
                                 final Condition condition = rule.condition();
                                 final Result result = rule.result();
-                                if (condition.test(localState)) {
-                                    final Map<Point, Map<Integer, Integer>> localChanges = result.apply(localState);
-                                    for (var entry : localChanges.entrySet()) {
-                                        final Point changePointOffset = entry.getKey();
-                                        final Map<Integer, Integer> changeValues = entry.getValue();
-                                        setState(achunk,
-                                                changePointOffset.blockX() + localState.x,
-                                                changePointOffset.blockY() + localState.y,
-                                                changePointOffset.blockZ() + localState.z,
-                                                changeValues);
-                                        achunk.updated = true;
-                                    }
+                                if (!condition.test(localState)) continue;
+                                final Map<Point, Map<Integer, Integer>> localChanges = result.apply(localState);
+                                for (var entry : localChanges.entrySet()) {
+                                    final Point changePointOffset = entry.getKey();
+                                    final Map<Integer, Integer> changeValues = entry.getValue();
+                                    setState(achunk,
+                                            changePointOffset.blockX() + localState.x,
+                                            changePointOffset.blockY() + localState.y,
+                                            changePointOffset.blockZ() + localState.z,
+                                            changeValues);
+                                    achunk.updated = true;
                                 }
                             }
                         }
