@@ -117,22 +117,32 @@ public final class AutomataWorld {
                                 final Condition condition = rule.condition();
                                 final Result result = rule.result();
                                 if (condition.applyAsInt(localState) == 0) continue;
-                                final Map<Point, Map<Integer, Integer>> localChanges = result.apply(localState);
-                                for (var entry : localChanges.entrySet()) {
-                                    final Point changePoint = entry.getKey().add(localState.x, localState.y, localState.z);
-
-                                    var ac = chunks.get(ChunkUtils.getChunkIndex(
-                                            ChunkUtils.getChunkCoordinate(changePoint.blockX()),
-                                            ChunkUtils.getChunkCoordinate(changePoint.blockZ())));
-                                    final Map<Integer, Integer> changeValues = entry.getValue();
-                                    setState(ac, changePoint.blockX(), changePoint.blockY(), changePoint.blockZ(),
-                                            changeValues);
-                                    ac.updated = true;
-                                }
+                                handleResult(localState.x, localState.y, localState.z, result);
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+
+    private void handleResult(int x, int y, int z, Result result) {
+        switch (result) {
+            case Result.And and -> {
+                for (Result r : and.others()) {
+                    handleResult(x, y, z, r);
+                }
+            }
+            case Result.Set set -> {
+                final Point offset = set.offset();
+                final Point changePoint = offset.add(x, y, z);
+
+                var ac = chunks.get(ChunkUtils.getChunkIndex(
+                        ChunkUtils.getChunkCoordinate(changePoint.blockX()),
+                        ChunkUtils.getChunkCoordinate(changePoint.blockZ())));
+                setState(ac, changePoint.blockX(), changePoint.blockY(), changePoint.blockZ(),
+                        Map.of(set.index(), set.value()));
+                ac.updated = true;
             }
         }
     }

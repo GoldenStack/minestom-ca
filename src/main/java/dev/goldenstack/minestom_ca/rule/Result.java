@@ -5,24 +5,16 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 
 /**
  * Determines the result of a rule application.
  */
-public sealed interface Result extends Function<@NotNull LocalState, @NotNull Map<Point, Map<Integer, Integer>>> {
+public sealed interface Result {
 
     record And(@NotNull List<Result> others) implements Result {
-        @Override
-        public @NotNull Map<Point, Map<Integer, Integer>> apply(@NotNull LocalState localState) {
-            Map<Point, Map<Integer, Integer>> map = new HashMap<>();
-            for (var result : others) {
-                map.putAll(result.apply(localState));
-            }
-            return map;
+        public And {
+            others = List.copyOf(others);
         }
     }
 
@@ -33,11 +25,6 @@ public sealed interface Result extends Function<@NotNull LocalState, @NotNull Ma
 
         public Set(Block block) {
             this(new Vec(0, 0, 0), block);
-        }
-
-        @Override
-        public @NotNull Map<Point, Map<Integer, Integer>> apply(@NotNull LocalState localState) {
-            return Map.of(offset, Map.of(index, value));
         }
     }
 }
