@@ -60,7 +60,8 @@ public class Main {
             final Point point = event.getBlockPosition();
             final Block block = event.getBlock();
             AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
-            world.setState(point, Map.of(0, (int) block.stateId()));
+            world.setState(point.blockX(), point.blockY(), point.blockZ(),
+                    Map.of(0, (int) block.stateId()));
         });
 
         globalEventHandler.addListener(InstanceTickEvent.class, event -> {

@@ -34,8 +34,7 @@ public interface Condition extends Predicate<@NotNull LocalState> {
         public boolean test(@NotNull LocalState localState) {
             int count = 0;
             for (Point point : neighbors) {
-                final LocalState relative = localState.relative(point);
-                if (condition.test(relative)) {
+                if (localState.relativeTest(point.blockX(), point.blockY(), point.blockZ(), condition)) {
                     count++;
                 }
             }
