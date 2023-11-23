@@ -80,7 +80,7 @@ public final class AutomataWorld {
                 y += y2;
                 z += z2;
 
-                final int result = condition.applyAsInt(this);
+                final int result = handleCondition(condition, this);
 
                 x -= x2;
                 y -= y2;
@@ -114,16 +114,44 @@ public final class AutomataWorld {
                             localState.y = i * 16 + y + sectionStart;
                             localState.z = chunkZ * 16 + z;
                             for (Rule rule : rules) {
-                                final Condition condition = rule.condition();
-                                final Result result = rule.result();
-                                if (condition.applyAsInt(localState) == 0) continue;
-                                handleResult(localState.x, localState.y, localState.z, result);
+                                if (handleCondition(rule.condition(), localState) == 0) continue;
+                                handleResult(localState.x, localState.y, localState.z, rule.result());
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    private int handleCondition(Condition condition, LocalState localState) {
+        return switch (condition) {
+            case Condition.Index index -> localState.selfStateValue(index.stateIndex());
+            case Condition.Neighbors neighbors -> {
+                int count = 0;
+                for (var offset : neighbors.offsets()) {
+                    if (localState.relativeTest(offset.blockX(), offset.blockY(), offset.blockZ(),
+                            neighbors.condition()) != 0) {
+                        count++;
+                    }
+                }
+                yield count;
+            }
+            case Condition.And and -> {
+                for (Condition c : and.conditions()) {
+                    if (handleCondition(c, localState) == 0) yield 0;
+                }
+                yield 1;
+            }
+            case Condition.Or or -> {
+                for (Condition c : or.conditions()) {
+                    if (handleCondition(c, localState) != 0) yield 1;
+                }
+                yield 0;
+            }
+            case Condition.Not not -> handleCondition(not.condition(), localState) == 0 ? 1 : 0;
+            case Condition.Equal equal -> handleCondition(equal.condition(), localState) == equal.expected() ? 1 : 0;
+        };
     }
 
     private void handleResult(int x, int y, int z, Result result) {
