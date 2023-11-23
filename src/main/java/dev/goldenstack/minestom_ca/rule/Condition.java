@@ -1,66 +1,81 @@
 package dev.goldenstack.minestom_ca.rule;
 
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.function.IntPredicate;
-import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
-/**
- * A condition for a rule to be applied.
- */
-public sealed interface Condition extends Predicate<@NotNull LocalState> {
+public sealed interface Condition extends ToIntFunction<@NotNull LocalState> {
 
-    record Joined(@NotNull List<Condition> children) implements Condition {
-        public Joined(@NotNull Condition @NotNull ... children) {
-            this(List.of(children));
+    record And(@NotNull List<Condition> conditions) implements Condition {
+        public And(@NotNull Condition ... conditions) {
+            this(List.of(conditions));
         }
 
         @Override
-        public boolean test(@NotNull LocalState localState) {
-            for (Condition child : children) {
-                if (!child.test(localState)) return false;
+        public int applyAsInt(@NotNull LocalState value) {
+            for (var condition : conditions) {
+                if (condition.applyAsInt(value) == 0) return 0;
             }
-            return true;
+            return 1;
         }
     }
 
-    record NeighborCondition(@NotNull IntPredicate validCount,
-                             @NotNull List<Point> neighbors,
-                             @NotNull Condition condition) implements Condition {
+    record Or(@NotNull List<Condition> conditions) implements Condition {
         @Override
-        public boolean test(@NotNull LocalState localState) {
+        public int applyAsInt(@NotNull LocalState value) {
+            for (var condition : conditions) {
+                if (condition.applyAsInt(value) != 0) return 1;
+            }
+            return 0;
+        }
+    }
+
+    record Not(@NotNull Condition condition) implements Condition {
+        @Override
+        public int applyAsInt(@NotNull LocalState value) {
+            return condition.applyAsInt(value) == 0 ? 1 : 0;
+        }
+    }
+
+    record Equal(@NotNull Condition condition, int expected) implements Condition {
+        public Equal(Block block) {
+            this(new Index(0), block.stateId());
+        }
+
+        @Override
+        public int applyAsInt(@NotNull LocalState value) {
+            if (condition.applyAsInt(value) == expected) return 1;
+            return 0;
+        }
+    }
+
+    record Index(int stateIndex) implements Condition {
+        @Override
+        public int applyAsInt(@NotNull LocalState value) {
+            return value.selfStateValue(stateIndex);
+        }
+    }
+
+    record Neighbors(@NotNull List<Point> offsets, @NotNull Condition condition) implements Condition {
+        public Neighbors(int x, int y, int z, @NotNull Condition condition) {
+            this(List.of(new Vec(x, y, z)), condition);
+        }
+
+        @Override
+        public int applyAsInt(@NotNull LocalState value) {
             int count = 0;
-            for (Point point : neighbors) {
-                if (localState.relativeTest(point.blockX(), point.blockY(), point.blockZ(), condition)) {
+            for (var offset : offsets) {
+                if (value.relativeTest(offset.blockX(), offset.blockY(), offset.blockZ(), condition) != 0) {
                     count++;
                 }
             }
-            return validCount.test(count);
+            return count;
         }
     }
 
-    record SelfState(int index, int value) implements Condition {
-        public SelfState(Block block) {
-            this(0, block.stateId());
-        }
 
-        @Override
-        public boolean test(@NotNull LocalState localState) {
-            return localState.selfStateValue(index) == value;
-        }
-    }
-
-    record RelativeState(int x, int y, int z, int index, int value) implements Condition {
-        public RelativeState(int x, int y, int z, Block block) {
-            this(x, y, z, 0, block.stateId());
-        }
-
-        @Override
-        public boolean test(@NotNull LocalState localState) {
-            return localState.relativeStateValue(index, x, y, z) == value;
-        }
-    }
 }

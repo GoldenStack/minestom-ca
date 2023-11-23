@@ -78,12 +78,12 @@ public final class AutomataWorld {
             int x, y, z;
 
             @Override
-            public boolean relativeTest(int x2, int y2, int z2, Condition condition) {
+            public int relativeTest(int x2, int y2, int z2, Condition condition) {
                 x += x2;
                 y += y2;
                 z += z2;
 
-                final boolean result = condition.test(this);
+                final int result = condition.applyAsInt(this);
 
                 x -= x2;
                 y -= y2;
@@ -119,7 +119,7 @@ public final class AutomataWorld {
                             for (Rule rule : rules) {
                                 final Condition condition = rule.condition();
                                 final Result result = rule.result();
-                                if (!condition.test(localState)) continue;
+                                if (condition.applyAsInt(localState) == 0) continue;
                                 final Map<Point, Map<Integer, Integer>> localChanges = result.apply(localState);
                                 for (var entry : localChanges.entrySet()) {
                                     final Point changePointOffset = entry.getKey();
