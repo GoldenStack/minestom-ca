@@ -119,14 +119,15 @@ public final class AutomataWorld {
                                 if (condition.applyAsInt(localState) == 0) continue;
                                 final Map<Point, Map<Integer, Integer>> localChanges = result.apply(localState);
                                 for (var entry : localChanges.entrySet()) {
-                                    final Point changePointOffset = entry.getKey();
+                                    final Point changePoint = entry.getKey().add(localState.x, localState.y, localState.z);
+
+                                    var ac = chunks.get(ChunkUtils.getChunkIndex(
+                                            ChunkUtils.getChunkCoordinate(changePoint.blockX()),
+                                            ChunkUtils.getChunkCoordinate(changePoint.blockZ())));
                                     final Map<Integer, Integer> changeValues = entry.getValue();
-                                    setState(achunk,
-                                            changePointOffset.blockX() + localState.x,
-                                            changePointOffset.blockY() + localState.y,
-                                            changePointOffset.blockZ() + localState.z,
+                                    setState(ac, changePoint.blockX(), changePoint.blockY(), changePoint.blockZ(),
                                             changeValues);
-                                    achunk.updated = true;
+                                    ac.updated = true;
                                 }
                             }
                         }
