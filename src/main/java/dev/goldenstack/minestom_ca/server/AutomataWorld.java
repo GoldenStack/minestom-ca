@@ -1,6 +1,5 @@
 package dev.goldenstack.minestom_ca.server;
 
-import dev.goldenstack.minestom_ca.LocalState;
 import dev.goldenstack.minestom_ca.Rule;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minestom.server.coordinate.Point;
@@ -72,35 +71,6 @@ public final class AutomataWorld {
     }
 
     private void applyRules() {
-        var localState = new LocalState() {
-            int x, y, z;
-
-            @Override
-            public int relativeTest(int x2, int y2, int z2, Condition condition) {
-                x += x2;
-                y += y2;
-                z += z2;
-
-                final int result = handleCondition(condition, this);
-
-                x -= x2;
-                y -= y2;
-                z -= z2;
-
-                return result;
-            }
-
-            @Override
-            public int selfStateValue(int state) {
-                return getState(x, y, z, state);
-            }
-
-            @Override
-            public int relativeStateValue(int state, int x2, int y2, int z2) {
-                return getState(x + x2, y + y2, z + z2, state);
-            }
-        };
-
         final int sectionCount = maxSection - minSection;
         for (AChunk achunk : chunks.values()) {
             final Chunk chunk = achunk.chunk;
@@ -111,12 +81,12 @@ public final class AutomataWorld {
                 for (int x = 0; x < 16; x++) {
                     for (int y = 0; y < 16; y++) {
                         for (int z = 0; z < 16; z++) {
-                            localState.x = chunkX * 16 + x;
-                            localState.y = i * 16 + y + sectionStart;
-                            localState.z = chunkZ * 16 + z;
+                            final int blockX = chunkX * 16 + x;
+                            final int blockY = i * 16 + y + sectionStart;
+                            final int blockZ = chunkZ * 16 + z;
                             for (Rule rule : rules) {
-                                if (handleCondition(rule.condition(), localState) == 0) continue;
-                                handleResult(localState.x, localState.y, localState.z, rule.result());
+                                if (handleConditionGlobal(rule.condition(), blockX, blockY, blockZ) == 0) continue;
+                                handleResult(blockX, blockY, blockZ, rule.result());
                             }
                         }
                     }
@@ -125,14 +95,17 @@ public final class AutomataWorld {
         }
     }
 
-    private int handleCondition(Condition condition, LocalState localState) {
+    private int handleConditionGlobal(Condition condition, int x, int y, int z) {
         return switch (condition) {
-            case Condition.Index index -> localState.selfStateValue(index.stateIndex());
+            case Condition.Index index -> getState(x, y, z, index.stateIndex());
             case Condition.Neighbors neighbors -> {
                 int count = 0;
                 for (var offset : neighbors.offsets()) {
-                    if (localState.relativeTest(offset.blockX(), offset.blockY(), offset.blockZ(),
-                            neighbors.condition()) != 0) {
+                    if (handleConditionGlobal(
+                            neighbors.condition(),
+                            x + offset.blockX(),
+                            y + offset.blockY(),
+                            z + offset.blockZ()) != 0) {
                         count++;
                     }
                 }
@@ -140,18 +113,18 @@ public final class AutomataWorld {
             }
             case Condition.And and -> {
                 for (Condition c : and.conditions()) {
-                    if (handleCondition(c, localState) == 0) yield 0;
+                    if (handleConditionGlobal(c, x, y, z) == 0) yield 0;
                 }
                 yield 1;
             }
             case Condition.Or or -> {
                 for (Condition c : or.conditions()) {
-                    if (handleCondition(c, localState) != 0) yield 1;
+                    if (handleConditionGlobal(c, x, y, z) != 0) yield 1;
                 }
                 yield 0;
             }
-            case Condition.Not not -> handleCondition(not.condition(), localState) == 0 ? 1 : 0;
-            case Condition.Equal equal -> handleCondition(equal.condition(), localState) == equal.expected() ? 1 : 0;
+            case Condition.Not not -> handleConditionGlobal(not.condition(), x, y, z) == 0 ? 1 : 0;
+            case Condition.Equal equal -> handleConditionGlobal(equal.condition(), x, y, z) == equal.expected() ? 1 : 0;
         };
     }
 
