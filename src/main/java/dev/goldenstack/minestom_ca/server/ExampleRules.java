@@ -1,12 +1,13 @@
 package dev.goldenstack.minestom_ca.server;
 
-import dev.goldenstack.minestom_ca.rule.Rule;
+import dev.goldenstack.minestom_ca.Rule;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 
 import java.util.List;
 
-import static dev.goldenstack.minestom_ca.rule.Rule.*;
+import static dev.goldenstack.minestom_ca.Rule.Condition;
+import static dev.goldenstack.minestom_ca.Rule.Result;
 
 /**
  * Example rules for simple behaviour.

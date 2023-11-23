@@ -1,4 +1,4 @@
-package dev.goldenstack.minestom_ca.rule;
+package dev.goldenstack.minestom_ca;
 
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
@@ -56,9 +56,6 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
         }
     }
 
-    /**
-     * Determines the result of a rule application.
-     */
     public sealed interface Result {
         record And(@NotNull List<Result> others) implements Result {
             public And {
@@ -76,5 +73,4 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
             }
         }
     }
-
 }

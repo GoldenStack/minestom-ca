@@ -9,7 +9,7 @@ import net.minestom.server.command.builder.CommandContext;
 /**
  * A command that starts running CA rules.
  */
-public class StartCommand extends Command {
+public final class StartCommand extends Command {
     public StartCommand() {
         super("start");
         setDefaultExecutor(this::execute);

@@ -9,7 +9,7 @@ import net.minestom.server.command.builder.CommandContext;
 /**
  * A command that stops running CA rules.
  */
-public class StopCommand extends Command {
+public final class StopCommand extends Command {
     public StopCommand() {
         super("stop");
         setDefaultExecutor(this::execute);

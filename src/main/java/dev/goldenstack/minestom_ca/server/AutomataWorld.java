@@ -1,7 +1,7 @@
 package dev.goldenstack.minestom_ca.server;
 
-import dev.goldenstack.minestom_ca.rule.LocalState;
-import dev.goldenstack.minestom_ca.rule.Rule;
+import dev.goldenstack.minestom_ca.LocalState;
+import dev.goldenstack.minestom_ca.Rule;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.*;
@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static dev.goldenstack.minestom_ca.rule.Rule.*;
+import static dev.goldenstack.minestom_ca.Rule.Condition;
+import static dev.goldenstack.minestom_ca.Rule.Result;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class AutomataWorld {

@@ -1,4 +1,4 @@
-package dev.goldenstack.minestom_ca.rule;
+package dev.goldenstack.minestom_ca;
 
 public interface LocalState {
     int relativeTest(int x, int y, int z, Rule.Condition condition);
