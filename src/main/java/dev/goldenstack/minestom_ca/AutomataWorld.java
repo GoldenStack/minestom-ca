@@ -25,6 +25,9 @@ public final class AutomataWorld {
     private final Long2ObjectOpenHashMap<AChunk> chunks = new Long2ObjectOpenHashMap<>();
     private boolean buffer = false;
 
+    // Analysis information
+    private final int analysisStateCount;
+
     public static AutomataWorld create(Instance instance, List<Rule> rule) {
         return instances.computeIfAbsent(instance, i -> new AutomataWorld(i, rule));
     }
@@ -40,6 +43,9 @@ public final class AutomataWorld {
         this.rules = rules;
         this.minSection = instance.getDimensionType().getMinY() / 16;
         this.maxSection = instance.getDimensionType().getMaxY() / 16;
+
+        // Analysis information
+        this.analysisStateCount = rules.stream().mapToInt(RuleAnalysis::stateCount).max().orElseThrow();
     }
 
     public void tick() {
@@ -242,11 +248,14 @@ public final class AutomataWorld {
                 if (section == null) continue;
                 final Palette palette = section.blockPalette();
 
-                // Only one palette for block state id, TODO: internal states
-                this.sections[i++] = new ASection(
-                        new Palette[]{palette.clone()},
-                        new Palette[]{palette.clone()}
-                );
+                // One palette for each state.
+                // 0 is the visual palette which is first copied from the section's palette.
+                // (To retrieve generation blocks)
+                Palette[] palettes = new Palette[analysisStateCount];
+                Palette[] palettes2 = new Palette[analysisStateCount];
+                palettes[0] = palette.clone();
+                palettes2[0] = palette.clone();
+                this.sections[i++] = new ASection(palettes, palettes2);
             }
         }
     }
