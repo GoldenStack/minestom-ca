@@ -31,7 +31,10 @@ public final class RuleAnalysis {
                 }
                 yield max;
             }
-            case Rule.Condition.Equal equal -> Math.max(current, conditionCount(equal.condition(), current));
+            case Rule.Condition.Equal equal -> Math.max(current, Math.max(
+                    conditionCount(equal.first(), current),
+                    conditionCount(equal.second(), current)
+            ));
             case Rule.Condition.Index index -> Math.max(current, index.stateIndex());
             case Rule.Condition.Neighbors neighbors -> {
                 int max = current;
@@ -48,6 +51,7 @@ public final class RuleAnalysis {
                 }
                 yield max;
             }
+            case Rule.Condition.Literal ignored -> current;
         };
     }
 }

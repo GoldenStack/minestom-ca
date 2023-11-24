@@ -78,15 +78,15 @@ public final class ExampleRules {
             new Rule(
                     new Condition.And(
                             new Condition.Equal(Block.WHITE_WOOL),
-                            new Condition.Not(new Condition.Equal(NUM_ALIVE_NEIGHBORS, 2)),
-                            new Condition.Not(new Condition.Equal(NUM_ALIVE_NEIGHBORS, 3))
+                            new Condition.Not(new Condition.Equal(NUM_ALIVE_NEIGHBORS, new Condition.Literal(2))),
+                            new Condition.Not(new Condition.Equal(NUM_ALIVE_NEIGHBORS, new Condition.Literal(3)))
                     ),
                     new Result.Set(Block.AIR)
             ),
             new Rule(
                     new Condition.And(
                             new Condition.Equal(Block.AIR),
-                            new Condition.Equal(NUM_ALIVE_NEIGHBORS, 3)
+                            new Condition.Equal(NUM_ALIVE_NEIGHBORS, new Condition.Literal(3))
                     ),
                     new Result.Set(Block.WHITE_WOOL)
             )

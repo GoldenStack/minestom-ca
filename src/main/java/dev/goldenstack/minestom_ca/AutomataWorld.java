@@ -98,6 +98,7 @@ public final class AutomataWorld {
 
     private int handleConditionGlobal(Condition condition, int x, int y, int z) {
         return switch (condition) {
+            case Condition.Literal literal -> literal.value();
             case Condition.Index index -> getState(x, y, z, index.stateIndex());
             case Condition.Neighbors neighbors -> {
                 int count = 0;
@@ -125,7 +126,9 @@ public final class AutomataWorld {
                 yield 0;
             }
             case Condition.Not not -> handleConditionGlobal(not.condition(), x, y, z) == 0 ? 1 : 0;
-            case Condition.Equal equal -> handleConditionGlobal(equal.condition(), x, y, z) == equal.expected() ? 1 : 0;
+            case Condition.Equal equal ->
+                    handleConditionGlobal(equal.first(), x, y, z) == handleConditionGlobal(equal.second(), x, y, z)
+                            ? 1 : 0;
         };
     }
 

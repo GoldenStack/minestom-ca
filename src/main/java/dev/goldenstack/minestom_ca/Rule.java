@@ -16,6 +16,8 @@ import java.util.List;
 public record Rule(@NotNull Condition condition, @NotNull Result result) {
 
     public sealed interface Condition {
+        record Literal(int value) implements Condition {}
+
         record And(@NotNull List<Condition> conditions) implements Condition {
             public And {
                 conditions = List.copyOf(conditions);
@@ -35,9 +37,9 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
         record Not(@NotNull Condition condition) implements Condition {
         }
 
-        record Equal(@NotNull Condition condition, int expected) implements Condition {
+        record Equal(@NotNull Condition first, @NotNull Condition second) implements Condition {
             public Equal(Block block) {
-                this(new Index(0), block.stateId());
+                this(new Index(0), new Literal(block.stateId()));
             }
         }
 
