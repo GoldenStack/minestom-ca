@@ -79,15 +79,28 @@ public final class AutomataWorld {
             final int chunkX = chunk.getChunkX();
             final int chunkZ = chunk.getChunkZ();
             for (int i = 0; i < sectionCount; i++) {
+                final APalette[] readPalettes = achunk.sections[i].readPalettes();
+                APalette[] writePalettes = achunk.sections[i].writePalettes();
                 for (int x = 0; x < 16; x++) {
                     for (int y = 0; y < 16; y++) {
                         for (int z = 0; z < 16; z++) {
-                            final int blockX = chunkX * 16 + x;
-                            final int blockY = i * 16 + y + sectionStart;
-                            final int blockZ = chunkZ * 16 + z;
-                            for (Rule rule : rules) {
-                                if (handleConditionGlobal(rule.condition(), blockX, blockY, blockZ) == 0) continue;
-                                handleResult(blockX, blockY, blockZ, rule.result());
+                            if (x > 0 && x < 15 && y > 0 && y < 15 && z > 0 && z < 15) {
+                                // Center handling
+                                for (Rule rule : rules) {
+                                    if (handleConditionCenter(rule.condition(), readPalettes, x, y, z) == 0)
+                                        continue;
+                                    handleResultCenter(x, y, z, writePalettes, rule.result());
+                                    achunk.updated = true;
+                                }
+                            } else {
+                                // Border handling
+                                final int blockX = chunkX * 16 + x;
+                                final int blockY = i * 16 + y + sectionStart;
+                                final int blockZ = chunkZ * 16 + z;
+                                for (Rule rule : rules) {
+                                    if (handleConditionBorder(rule.condition(), blockX, blockY, blockZ) == 0) continue;
+                                    handleResultBorder(blockX, blockY, blockZ, rule.result());
+                                }
                             }
                         }
                     }
@@ -96,14 +109,68 @@ public final class AutomataWorld {
         }
     }
 
-    private int handleConditionGlobal(Condition condition, int x, int y, int z) {
+    private int handleConditionCenter(Condition condition, APalette[] palettes, int x, int y, int z) {
+        return switch (condition) {
+            case Condition.Literal literal -> literal.value();
+            case Condition.Index index -> palettes[index.stateIndex()].get(x, y, z);
+            case Condition.Neighbors neighbors -> {
+                int count = 0;
+                for (var offset : neighbors.offsets()) {
+                    if (handleConditionCenter(
+                            neighbors.condition(), palettes,
+                            x + offset.blockX(),
+                            y + offset.blockY(),
+                            z + offset.blockZ()) != 0) {
+                        count++;
+                    }
+                }
+                yield count;
+            }
+            case Condition.And and -> {
+                for (Condition c : and.conditions()) {
+                    if (handleConditionCenter(c, palettes, x, y, z) == 0) yield 0;
+                }
+                yield 1;
+            }
+            case Condition.Or or -> {
+                for (Condition c : or.conditions()) {
+                    if (handleConditionCenter(c, palettes, x, y, z) != 0) yield 1;
+                }
+                yield 0;
+            }
+            case Condition.Not not -> handleConditionCenter(not.condition(), palettes, x, y, z) == 0 ? 1 : 0;
+            case Condition.Equal equal ->
+                    handleConditionCenter(equal.first(), palettes, x, y, z) == handleConditionCenter(equal.second(), palettes, x, y, z)
+                            ? 1 : 0;
+        };
+    }
+
+    private void handleResultCenter(int x, int y, int z, APalette[] palettes, Result result) {
+        switch (result) {
+            case Result.And and -> {
+                for (Result r : and.others()) {
+                    handleResultCenter(x, y, z, palettes, r);
+                }
+            }
+            case Result.Set set -> {
+                final Point offset = set.offset();
+                palettes[set.index()].set(
+                        x + offset.blockX(),
+                        y + offset.blockY(),
+                        z + offset.blockZ(),
+                        set.value());
+            }
+        }
+    }
+
+    private int handleConditionBorder(Condition condition, int x, int y, int z) {
         return switch (condition) {
             case Condition.Literal literal -> literal.value();
             case Condition.Index index -> getState(x, y, z, index.stateIndex());
             case Condition.Neighbors neighbors -> {
                 int count = 0;
                 for (var offset : neighbors.offsets()) {
-                    if (handleConditionGlobal(
+                    if (handleConditionBorder(
                             neighbors.condition(),
                             x + offset.blockX(),
                             y + offset.blockY(),
@@ -115,28 +182,28 @@ public final class AutomataWorld {
             }
             case Condition.And and -> {
                 for (Condition c : and.conditions()) {
-                    if (handleConditionGlobal(c, x, y, z) == 0) yield 0;
+                    if (handleConditionBorder(c, x, y, z) == 0) yield 0;
                 }
                 yield 1;
             }
             case Condition.Or or -> {
                 for (Condition c : or.conditions()) {
-                    if (handleConditionGlobal(c, x, y, z) != 0) yield 1;
+                    if (handleConditionBorder(c, x, y, z) != 0) yield 1;
                 }
                 yield 0;
             }
-            case Condition.Not not -> handleConditionGlobal(not.condition(), x, y, z) == 0 ? 1 : 0;
+            case Condition.Not not -> handleConditionBorder(not.condition(), x, y, z) == 0 ? 1 : 0;
             case Condition.Equal equal ->
-                    handleConditionGlobal(equal.first(), x, y, z) == handleConditionGlobal(equal.second(), x, y, z)
+                    handleConditionBorder(equal.first(), x, y, z) == handleConditionBorder(equal.second(), x, y, z)
                             ? 1 : 0;
         };
     }
 
-    private void handleResult(int x, int y, int z, Result result) {
+    private void handleResultBorder(int x, int y, int z, Result result) {
         switch (result) {
             case Result.And and -> {
                 for (Result r : and.others()) {
-                    handleResult(x, y, z, r);
+                    handleResultBorder(x, y, z, r);
                 }
             }
             case Result.Set set -> {
@@ -291,14 +358,10 @@ public final class AutomataWorld {
     }
 
     public final class APalette {
-        // 0 - filled value
-        // 1 - no conversion
-        private int mode;
         private long[] values;
         private byte bitsPerEntry;
 
         public APalette() {
-            this.mode = 1;
             this.bitsPerEntry = 16;
 
             final int valuesPerLong = 64 / bitsPerEntry;
@@ -338,7 +401,6 @@ public final class AutomataWorld {
         }
 
         private void copyFrom(APalette palette) {
-            this.mode = palette.mode;
             if (this.values.length == palette.values.length) {
                 System.arraycopy(palette.values, 0, this.values, 0, this.values.length);
             } else {
