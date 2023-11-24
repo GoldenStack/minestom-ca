@@ -6,11 +6,17 @@ import net.minestom.server.instance.*;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.network.packet.server.CachedPacket;
 import net.minestom.server.utils.chunk.ChunkUtils;
+import org.jocl.Pointer;
+import org.jocl.Sizeof;
+import org.jocl.cl_kernel;
+import org.jocl.cl_mem;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
-import static dev.goldenstack.minestom_ca.Rule.Condition;
-import static dev.goldenstack.minestom_ca.Rule.Result;
+import static org.jocl.CL.*;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class AutomataWorld {
@@ -19,7 +25,9 @@ public final class AutomataWorld {
     private final List<Rule> rules;
     private final int minSection, maxSection;
     private final Long2ObjectOpenHashMap<AChunk> chunks = new Long2ObjectOpenHashMap<>();
-    private boolean buffer = false;
+
+    private final ComputeCL computeCL;
+    private final String source;
 
     // Analysis information
     private final int analysisStateCount;
@@ -40,6 +48,10 @@ public final class AutomataWorld {
         this.minSection = instance.getDimensionType().getMinY() / 16;
         this.maxSection = instance.getDimensionType().getMaxY() / 16;
 
+        this.computeCL = new ComputeCL();
+        this.source = RuleCL.compileRules(rules);
+        System.out.println(source);
+
         // Analysis information
         this.analysisStateCount = rules.stream().mapToInt(RuleAnalysis::stateCount).max().orElseThrow();
     }
@@ -48,17 +60,6 @@ public final class AutomataWorld {
         loadChunks(); // Ensure that all chunks are loaded
         applyRules();
         updateChunks();
-        // Copy write buffer to read buffer
-        for (AChunk achunk : this.chunks.values()) {
-            for (ASection section : achunk.sections) {
-                final APalette[] palettes = section.writePalettes();
-                final APalette[] palettes2 = section.readPalettes();
-                for (int i = 0; i < palettes.length; i++) {
-                    palettes2[i].copyFrom(palettes[i]);
-                }
-            }
-        }
-        this.buffer = !buffer; // Flip buffer
     }
 
     private void loadChunks() {
@@ -72,165 +73,41 @@ public final class AutomataWorld {
     }
 
     private void applyRules() {
-        final int sectionCount = maxSection - minSection;
+        // Execute
         for (AChunk achunk : chunks.values()) {
-            final Chunk chunk = achunk.chunk;
-            final int sectionStart = minSection * 16;
-            final int chunkX = chunk.getChunkX();
-            final int chunkZ = chunk.getChunkZ();
-            for (int i = 0; i < sectionCount; i++) {
-                final APalette[] readPalettes = achunk.sections[i].readPalettes();
-                APalette[] writePalettes = achunk.sections[i].writePalettes();
-                for (int x = 0; x < 16; x++) {
-                    for (int y = 0; y < 16; y++) {
-                        for (int z = 0; z < 16; z++) {
-                            if (x > 0 && x < 15 && y > 0 && y < 15 && z > 0 && z < 15) {
-                                // Center handling
-                                for (Rule rule : rules) {
-                                    if (handleConditionCenter(rule.condition(), readPalettes, x, y, z) == 0)
-                                        continue;
-                                    handleResultCenter(x, y, z, writePalettes, rule.result());
-                                    achunk.updated = true;
-                                }
-                            } else {
-                                // Border handling
-                                final int blockX = chunkX * 16 + x;
-                                final int blockY = i * 16 + y + sectionStart;
-                                final int blockZ = chunkZ * 16 + z;
-                                for (Rule rule : rules) {
-                                    if (handleConditionBorder(rule.condition(), blockX, blockY, blockZ) == 0) continue;
-                                    handleResultBorder(blockX, blockY, blockZ, rule.result());
-                                }
-                            }
-                        }
-                    }
+            for (ASection section : achunk.sections) {
+                if (section.requireRefresh) {
+                    section.requireRefresh = false;
+                    clEnqueueWriteBuffer(computeCL.commandQueue, section.mem_in, CL_TRUE,
+                            0, section.byteSize(), Pointer.to(section.updated.values),
+                            0, null, null);
+                    clEnqueueCopyBuffer(computeCL.commandQueue, section.mem_in, section.mem_out,
+                            0, 0, section.byteSize(), 0, null, null);
                 }
+                clEnqueueNDRangeKernel(computeCL.commandQueue, section.kernel, 1, null,
+                        new long[]{1}, null, 0, null, null);
+                clEnqueueCopyBuffer(computeCL.commandQueue, section.mem_out, section.mem_in,
+                        0, 0, section.byteSize(), 0, null, null);
             }
         }
-    }
-
-    private int handleConditionCenter(Condition condition, APalette[] palettes, int x, int y, int z) {
-        return switch (condition) {
-            case Condition.Literal literal -> literal.value();
-            case Condition.Index index -> palettes[index.stateIndex()].get(x, y, z);
-            case Condition.Neighbors neighbors -> {
-                int count = 0;
-                for (var offset : neighbors.offsets()) {
-                    if (handleConditionCenter(
-                            neighbors.condition(), palettes,
-                            x + offset.blockX(),
-                            y + offset.blockY(),
-                            z + offset.blockZ()) != 0) {
-                        count++;
-                    }
-                }
-                yield count;
-            }
-            case Condition.And and -> {
-                for (Condition c : and.conditions()) {
-                    if (handleConditionCenter(c, palettes, x, y, z) == 0) yield 0;
-                }
-                yield 1;
-            }
-            case Condition.Or or -> {
-                for (Condition c : or.conditions()) {
-                    if (handleConditionCenter(c, palettes, x, y, z) != 0) yield 1;
-                }
-                yield 0;
-            }
-            case Condition.Not not -> handleConditionCenter(not.condition(), palettes, x, y, z) == 0 ? 1 : 0;
-            case Condition.Equal equal ->
-                    handleConditionCenter(equal.first(), palettes, x, y, z) == handleConditionCenter(equal.second(), palettes, x, y, z)
-                            ? 1 : 0;
-        };
-    }
-
-    private void handleResultCenter(int x, int y, int z, APalette[] palettes, Result result) {
-        switch (result) {
-            case Result.And and -> {
-                for (Result r : and.others()) {
-                    handleResultCenter(x, y, z, palettes, r);
-                }
-            }
-            case Result.Set set -> {
-                final Point offset = set.offset();
-                palettes[set.index()].set(
-                        x + offset.blockX(),
-                        y + offset.blockY(),
-                        z + offset.blockZ(),
-                        set.value());
-            }
-        }
-    }
-
-    private int handleConditionBorder(Condition condition, int x, int y, int z) {
-        return switch (condition) {
-            case Condition.Literal literal -> literal.value();
-            case Condition.Index index -> getState(x, y, z, index.stateIndex());
-            case Condition.Neighbors neighbors -> {
-                int count = 0;
-                for (var offset : neighbors.offsets()) {
-                    if (handleConditionBorder(
-                            neighbors.condition(),
-                            x + offset.blockX(),
-                            y + offset.blockY(),
-                            z + offset.blockZ()) != 0) {
-                        count++;
-                    }
-                }
-                yield count;
-            }
-            case Condition.And and -> {
-                for (Condition c : and.conditions()) {
-                    if (handleConditionBorder(c, x, y, z) == 0) yield 0;
-                }
-                yield 1;
-            }
-            case Condition.Or or -> {
-                for (Condition c : or.conditions()) {
-                    if (handleConditionBorder(c, x, y, z) != 0) yield 1;
-                }
-                yield 0;
-            }
-            case Condition.Not not -> handleConditionBorder(not.condition(), x, y, z) == 0 ? 1 : 0;
-            case Condition.Equal equal ->
-                    handleConditionBorder(equal.first(), x, y, z) == handleConditionBorder(equal.second(), x, y, z)
-                            ? 1 : 0;
-        };
-    }
-
-    private void handleResultBorder(int x, int y, int z, Result result) {
-        switch (result) {
-            case Result.And and -> {
-                for (Result r : and.others()) {
-                    handleResultBorder(x, y, z, r);
-                }
-            }
-            case Result.Set set -> {
-                final Point offset = set.offset();
-                final Point changePoint = offset.add(x, y, z);
-
-                var ac = chunks.get(ChunkUtils.getChunkIndex(
-                        ChunkUtils.getChunkCoordinate(changePoint.blockX()),
-                        ChunkUtils.getChunkCoordinate(changePoint.blockZ())));
-                setState(ac, changePoint.blockX(), changePoint.blockY(), changePoint.blockZ(),
-                        Map.of(set.index(), set.value()));
-                ac.updated = true;
+        // Retrieve
+        for (AChunk achunk : chunks.values()) {
+            for (ASection section : achunk.sections) {
+                clEnqueueReadBuffer(computeCL.commandQueue, section.mem_in, CL_TRUE,
+                        0, section.byteSize(), Pointer.to(section.updated.values),
+                        0, null, null);
             }
         }
     }
 
     private void updateChunks() {
         for (AChunk aChunk : this.chunks.values()) {
-            if (!aChunk.updated) continue;
-            aChunk.updated = false;
             Chunk chunk = aChunk.chunk;
             for (int i = 0; i < aChunk.sections.length; i++) {
                 Section section = chunk.getSections().get(i);
                 if (section == null) continue;
-                final APalette[] palettes = aChunk.sections[i].writePalettes();
-                final APalette visualPalette = palettes[0];
-                section.blockPalette().setAll(visualPalette::get);
+                final APalette palette = aChunk.sections[i].updated;
+                section.blockPalette().setAll(palette::get);
             }
             // Invalidate packet cache
             try {
@@ -250,40 +127,6 @@ public final class AutomataWorld {
         }
     }
 
-    public int getState(int x, int y, int z, int state) {
-        final int chunkX = ChunkUtils.getChunkCoordinate(x);
-        final int chunkZ = ChunkUtils.getChunkCoordinate(z);
-        final long chunkIndex = ChunkUtils.getChunkIndex(chunkX, chunkZ);
-        AChunk chunk = this.chunks.get(chunkIndex);
-        if (chunk == null) return 0;
-
-        final int sectionY = y / 16;
-        final ASection section = chunk.sections[sectionY - minSection];
-        final APalette palette = section.readPalettes()[state];
-        return palette.get(
-                ChunkUtils.toSectionRelativeCoordinate(x),
-                ChunkUtils.toSectionRelativeCoordinate(y),
-                ChunkUtils.toSectionRelativeCoordinate(z)
-        );
-    }
-
-    private void setState(AChunk chunk, int x, int y, int z, Map<Integer, Integer> changes) {
-        final int sectionY = y / 16;
-        final ASection section = chunk.sections[sectionY - minSection];
-        final APalette[] palettes = section.writePalettes();
-        for (var entry : changes.entrySet()) {
-            final int state = entry.getKey();
-            final int newState = entry.getValue();
-            final APalette palette = palettes[state];
-            palette.set(
-                    ChunkUtils.toSectionRelativeCoordinate(x),
-                    ChunkUtils.toSectionRelativeCoordinate(y),
-                    ChunkUtils.toSectionRelativeCoordinate(z),
-                    newState
-            );
-        }
-    }
-
     public void handlePlacement(Point point, Block block) {
         final long chunkIndex = ChunkUtils.getChunkIndex(point.chunkX(), point.chunkZ());
         AChunk chunk = this.chunks.get(chunkIndex);
@@ -293,24 +136,19 @@ public final class AutomataWorld {
         final int y = point.blockY();
         final int z = point.blockZ();
         final ASection section = chunk.sections[y / 16 - minSection];
-        final APalette[] palettes = section.writePalettes();
 
         final int localX = ChunkUtils.toSectionRelativeCoordinate(x);
         final int localY = ChunkUtils.toSectionRelativeCoordinate(y);
         final int localZ = ChunkUtils.toSectionRelativeCoordinate(z);
 
         // Set to block state for visual palette
-        palettes[0].set(localX, localY, localZ, block.stateId());
-        // Set to 0 for all other palettes (clear internal states)
-        for (int i = 1; i < palettes.length; i++) {
-            palettes[i].set(localX, localY, localZ, 0);
-        }
+        section.updated.set(localX, localY, localZ, block.stateId());
+        section.requireRefresh = true;
     }
 
     public final class AChunk {
         private final Chunk chunk;
         private final ASection[] sections;
-        private boolean updated = false;
 
         public AChunk(Chunk chunk) {
             this.chunk = chunk;
@@ -326,34 +164,37 @@ public final class AutomataWorld {
                 // One palette for each state.
                 // 0 is the visual palette which is first copied from the section's palette.
                 // (To retrieve generation blocks)
-                APalette[] palettes = new APalette[analysisStateCount];
-                APalette[] palettes2 = new APalette[analysisStateCount];
-                Arrays.setAll(palettes, j -> new APalette());
-                Arrays.setAll(palettes2, j -> new APalette());
-                section.blockPalette().getAll((x, y, z, value) -> {
-                    palettes[0].set(x, y, z, value);
-                    palettes2[0].set(x, y, z, value);
-                });
-                this.sections[i++] = new ASection(palettes, palettes2);
+                APalette tmp = new APalette();
+                section.blockPalette().getAll(tmp::set);
+                this.sections[i++] = new ASection(tmp);
             }
         }
     }
 
     public final class ASection {
-        private final APalette[] palettes;
-        private final APalette[] palettes2;
+        private final APalette updated;
+        private final cl_kernel kernel;
+        private final cl_mem mem_in;
+        private final cl_mem mem_out;
+        private boolean requireRefresh = false;
 
-        public ASection(APalette[] palettes, APalette[] palettes2) {
-            this.palettes = palettes;
-            this.palettes2 = palettes2;
+        public ASection(APalette palette) {
+            this.updated = palette;
+            final long[] blocks = updated.values;
+
+            this.kernel = computeCL.createKernel(source);
+            this.mem_in = clCreateBuffer(computeCL.context,
+                    CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                    byteSize(), Pointer.to(blocks), null);
+            this.mem_out = clCreateBuffer(computeCL.context,
+                    CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
+                    byteSize(), Pointer.to(blocks), null);
+            clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(mem_in));
+            clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(mem_out));
         }
 
-        APalette[] readPalettes() {
-            return buffer ? palettes2 : palettes;
-        }
-
-        APalette[] writePalettes() {
-            return buffer ? palettes : palettes2;
+        long byteSize() {
+            return (long) updated.values.length * Sizeof.cl_long;
         }
     }
 
@@ -398,15 +239,6 @@ public final class AutomataWorld {
             return (y & dimensionMask) << (dimensionBitCount << 1) |
                     (z & dimensionMask) << dimensionBitCount |
                     (x & dimensionMask);
-        }
-
-        private void copyFrom(APalette palette) {
-            if (this.values.length == palette.values.length) {
-                System.arraycopy(palette.values, 0, this.values, 0, this.values.length);
-            } else {
-                this.values = palette.values.clone();
-            }
-            this.bitsPerEntry = palette.bitsPerEntry;
         }
     }
 }
