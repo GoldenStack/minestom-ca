@@ -227,7 +227,20 @@ public final class AutomataWorld {
         final long chunkIndex = ChunkUtils.getChunkIndex(chunkX, chunkZ);
         AChunk chunk = this.chunks.get(chunkIndex);
         if (chunk == null) return;
-        setState(chunk, x, y, z, Map.of(0, (int) block.stateId()));
+
+        final ASection section = chunk.sections[y / 16 - minSection];
+        final Palette[] palettes = section.writePalettes();
+
+        final int localX = ChunkUtils.toSectionRelativeCoordinate(x);
+        final int localY = ChunkUtils.toSectionRelativeCoordinate(y);
+        final int localZ = ChunkUtils.toSectionRelativeCoordinate(z);
+
+        // Set to block state for visual palette
+        palettes[0].set(localX, localY, localZ, block.stateId());
+        // Set to 0 for all other palettes (clear internal states)
+        for (int i = 1; i < palettes.length; i++) {
+            palettes[i].set(localX, localY, localZ, 0);
+        }
     }
 
     public final class AChunk {
