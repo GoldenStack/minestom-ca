@@ -20,7 +20,6 @@ import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static dev.goldenstack.minestom_ca.server.ExampleRules.MOVING_OAK;
@@ -46,7 +45,7 @@ public class Main {
         instance.loadChunk(0, 1).join();
         instance.loadChunk(1, 1).join();
 
-        AutomataWorld.create(instance, List.of(MOVING_OAK));
+        AutomataWorld.create(instance, MOVING_OAK);
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(PlayerLoginEvent.class, event -> {

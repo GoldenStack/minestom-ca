@@ -14,12 +14,12 @@ import static dev.goldenstack.minestom_ca.Rule.Result;
  */
 public final class ExampleRules {
 
-    public static final Rule GROW_DIRT = new Rule(
+    public static final List<Rule> GROW_DIRT = List.of(new Rule(
             new Condition.Equal(Block.DIRT),
             new Result.Set(Block.GRASS_BLOCK)
-    );
+    ));
 
-    public static final Rule MOVING_OAK = new Rule(
+    public static final List<Rule> MOVING_OAK = List.of(new Rule(
             new Condition.And(
                     new Condition.Equal(Block.AIR),
                     new Condition.Neighbors(-1, 0, 0, new Condition.Equal(Block.OAK_LOG))
@@ -28,7 +28,7 @@ public final class ExampleRules {
                     new Result.Set(Block.OAK_LOG),
                     new Result.Set(new Vec(-1, 0, 0), Block.OAK_PLANKS)
             ))
-    );
+    ));
 
     public static final List<Rule> HAY_RAINBOW = List.of(
             new Rule(
