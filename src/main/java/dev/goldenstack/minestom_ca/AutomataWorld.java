@@ -4,21 +4,17 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.*;
 import net.minestom.server.instance.block.Block;
-import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.network.packet.server.CachedPacket;
 import net.minestom.server.utils.chunk.ChunkUtils;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static dev.goldenstack.minestom_ca.Rule.Condition;
 import static dev.goldenstack.minestom_ca.Rule.Result;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class AutomataWorld {
-    private static final Map<Instance, AutomataWorld> instances = new HashMap<>();
+    private static final Map<Instance, AutomataWorld> INSTANCES = new HashMap<>();
     private final Instance instance;
     private final List<Rule> rules;
     private final int minSection, maxSection;
@@ -28,12 +24,12 @@ public final class AutomataWorld {
     // Analysis information
     private final int analysisStateCount;
 
-    public static AutomataWorld create(Instance instance, List<Rule> rule) {
-        return instances.computeIfAbsent(instance, i -> new AutomataWorld(i, rule));
+    public static void create(Instance instance, List<Rule> rule) {
+        INSTANCES.computeIfAbsent(instance, i -> new AutomataWorld(i, rule));
     }
 
     public static AutomataWorld get(Instance instance) {
-        final AutomataWorld world = instances.get(instance);
+        final AutomataWorld world = INSTANCES.get(instance);
         Objects.requireNonNull(world, "Unregistered instance!");
         return world;
     }
@@ -55,10 +51,10 @@ public final class AutomataWorld {
         // Copy write buffer to read buffer
         for (AChunk achunk : this.chunks.values()) {
             for (ASection section : achunk.sections) {
-                final Palette[] palettes = section.writePalettes();
-                final Palette[] palettes2 = section.readPalettes();
+                final APalette[] palettes = section.writePalettes();
+                final APalette[] palettes2 = section.readPalettes();
                 for (int i = 0; i < palettes.length; i++) {
-                    palettes2[i] = palettes[i].clone();
+                    palettes2[i].copyFrom(palettes[i]);
                 }
             }
         }
@@ -162,8 +158,8 @@ public final class AutomataWorld {
             for (int i = 0; i < aChunk.sections.length; i++) {
                 Section section = chunk.getSections().get(i);
                 if (section == null) continue;
-                final Palette[] palettes = aChunk.sections[i].writePalettes();
-                final Palette visualPalette = palettes[0];
+                final APalette[] palettes = aChunk.sections[i].writePalettes();
+                final APalette visualPalette = palettes[0];
                 section.blockPalette().setAll(visualPalette::get);
             }
             // Invalidate packet cache
@@ -193,7 +189,7 @@ public final class AutomataWorld {
 
         final int sectionY = y / 16;
         final ASection section = chunk.sections[sectionY - minSection];
-        final Palette palette = section.readPalettes()[state];
+        final APalette palette = section.readPalettes()[state];
         return palette.get(
                 ChunkUtils.toSectionRelativeCoordinate(x),
                 ChunkUtils.toSectionRelativeCoordinate(y),
@@ -204,11 +200,11 @@ public final class AutomataWorld {
     private void setState(AChunk chunk, int x, int y, int z, Map<Integer, Integer> changes) {
         final int sectionY = y / 16;
         final ASection section = chunk.sections[sectionY - minSection];
-        final Palette[] palettes = section.writePalettes();
+        final APalette[] palettes = section.writePalettes();
         for (var entry : changes.entrySet()) {
             final int state = entry.getKey();
             final int newState = entry.getValue();
-            final Palette palette = palettes[state];
+            final APalette palette = palettes[state];
             palette.set(
                     ChunkUtils.toSectionRelativeCoordinate(x),
                     ChunkUtils.toSectionRelativeCoordinate(y),
@@ -219,17 +215,15 @@ public final class AutomataWorld {
     }
 
     public void handlePlacement(Point point, Block block) {
-        final int x = point.blockX();
-        final int y = point.blockY();
-        final int z = point.blockZ();
-        final int chunkX = ChunkUtils.getChunkCoordinate(x);
-        final int chunkZ = ChunkUtils.getChunkCoordinate(z);
-        final long chunkIndex = ChunkUtils.getChunkIndex(chunkX, chunkZ);
+        final long chunkIndex = ChunkUtils.getChunkIndex(point.chunkX(), point.chunkZ());
         AChunk chunk = this.chunks.get(chunkIndex);
         if (chunk == null) return;
 
+        final int x = point.blockX();
+        final int y = point.blockY();
+        final int z = point.blockZ();
         final ASection section = chunk.sections[y / 16 - minSection];
-        final Palette[] palettes = section.writePalettes();
+        final APalette[] palettes = section.writePalettes();
 
         final int localX = ChunkUtils.toSectionRelativeCoordinate(x);
         final int localY = ChunkUtils.toSectionRelativeCoordinate(y);
@@ -259,35 +253,95 @@ public final class AutomataWorld {
             int i = 0;
             for (Section section : chunk.getSections()) {
                 if (section == null) continue;
-                final Palette palette = section.blockPalette();
-
                 // One palette for each state.
                 // 0 is the visual palette which is first copied from the section's palette.
                 // (To retrieve generation blocks)
-                Palette[] palettes = new Palette[analysisStateCount];
-                Palette[] palettes2 = new Palette[analysisStateCount];
-                palettes[0] = palette.clone();
-                palettes2[0] = palette.clone();
+                APalette[] palettes = new APalette[analysisStateCount];
+                APalette[] palettes2 = new APalette[analysisStateCount];
+                Arrays.setAll(palettes, j -> new APalette());
+                Arrays.setAll(palettes2, j -> new APalette());
+                section.blockPalette().getAll((x, y, z, value) -> {
+                    palettes[0].set(x, y, z, value);
+                    palettes2[0].set(x, y, z, value);
+                });
                 this.sections[i++] = new ASection(palettes, palettes2);
             }
         }
     }
 
     public final class ASection {
-        private final Palette[] palettes;
-        private final Palette[] palettes2;
+        private final APalette[] palettes;
+        private final APalette[] palettes2;
 
-        public ASection(Palette[] palettes, Palette[] palettes2) {
+        public ASection(APalette[] palettes, APalette[] palettes2) {
             this.palettes = palettes;
             this.palettes2 = palettes2;
         }
 
-        Palette[] readPalettes() {
+        APalette[] readPalettes() {
             return buffer ? palettes2 : palettes;
         }
 
-        Palette[] writePalettes() {
+        APalette[] writePalettes() {
             return buffer ? palettes : palettes2;
+        }
+    }
+
+    public final class APalette {
+        // 0 - filled value
+        // 1 - no conversion
+        private int mode;
+        private long[] values;
+        private byte bitsPerEntry;
+
+        public APalette() {
+            this.mode = 1;
+            this.bitsPerEntry = 16;
+
+            final int valuesPerLong = 64 / bitsPerEntry;
+            final int maxSize = 16 * 16 * 16;
+            this.values = new long[(maxSize + valuesPerLong - 1) / valuesPerLong];
+        }
+
+        public int get(int x, int y, int z) {
+            final int bitsPerEntry = this.bitsPerEntry;
+            final int sectionIndex = getSectionIndex(x, y, z);
+            final int valuesPerLong = 64 / bitsPerEntry;
+            final int index = sectionIndex / valuesPerLong;
+            final int bitIndex = (sectionIndex - index * valuesPerLong) * bitsPerEntry;
+            return (int) (values[index] >> bitIndex) & ((1 << bitsPerEntry) - 1);
+        }
+
+        public void set(int x, int y, int z, int value) {
+            final int bitsPerEntry = this.bitsPerEntry;
+            final long[] values = this.values;
+            // Change to palette value
+            final int valuesPerLong = 64 / bitsPerEntry;
+            final int sectionIndex = getSectionIndex(x, y, z);
+            final int index = sectionIndex / valuesPerLong;
+            final int bitIndex = (sectionIndex - index * valuesPerLong) * bitsPerEntry;
+
+            final long block = values[index];
+            final long clear = (1L << bitsPerEntry) - 1L;
+            values[index] = block & ~(clear << bitIndex) | ((long) value << bitIndex);
+        }
+
+        static int getSectionIndex(int x, int y, int z) {
+            final int dimensionMask = 16 - 1;
+            final int dimensionBitCount = Integer.SIZE - Integer.numberOfLeadingZeros(dimensionMask);
+            return (y & dimensionMask) << (dimensionBitCount << 1) |
+                    (z & dimensionMask) << dimensionBitCount |
+                    (x & dimensionMask);
+        }
+
+        private void copyFrom(APalette palette) {
+            this.mode = palette.mode;
+            if (this.values.length == palette.values.length) {
+                System.arraycopy(palette.values, 0, this.values, 0, this.values.length);
+            } else {
+                this.values = palette.values.clone();
+            }
+            this.bitsPerEntry = palette.bitsPerEntry;
         }
     }
 }
