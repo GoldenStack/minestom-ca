@@ -6,10 +6,7 @@ import net.minestom.server.instance.*;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.network.packet.server.CachedPacket;
 import net.minestom.server.utils.chunk.ChunkUtils;
-import org.jocl.Pointer;
-import org.jocl.Sizeof;
-import org.jocl.cl_kernel;
-import org.jocl.cl_mem;
+import org.jocl.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +24,7 @@ public final class AutomataWorld {
     private final Long2ObjectOpenHashMap<AChunk> chunks = new Long2ObjectOpenHashMap<>();
 
     private final ComputeCL computeCL;
-    private final String source;
+    private final cl_program program;
 
     // Analysis information
     private final int analysisStateCount;
@@ -49,7 +46,8 @@ public final class AutomataWorld {
         this.maxSection = instance.getDimensionType().getMaxY() / 16;
 
         this.computeCL = new ComputeCL();
-        this.source = RuleCL.compileRules(rules);
+        final String source = RuleCL.compileRules(rules);
+        this.program = computeCL.createProgram(source);
         System.out.println(source);
 
         // Analysis information
@@ -182,7 +180,7 @@ public final class AutomataWorld {
             this.updated = palette;
             final long[] blocks = updated.values;
 
-            this.kernel = computeCL.createKernel(source);
+            this.kernel = computeCL.createKernel(program);
             this.mem_in = clCreateBuffer(computeCL.context,
                     CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
                     byteSize(), Pointer.to(blocks), null);

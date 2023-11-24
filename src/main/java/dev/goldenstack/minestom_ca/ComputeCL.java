@@ -7,7 +7,7 @@ import static org.jocl.CL.*;
 public final class ComputeCL {
     // The default platform, device type and device index
     private static final int defaultPlatformIndex = 0;
-    private static final long defaultDeviceType = CL_DEVICE_TYPE_CPU;
+    private static final long defaultDeviceType = CL_DEVICE_TYPE_GPU;
     private static final int defaultDeviceIndex = 0;
 
     protected cl_context context;
@@ -81,20 +81,18 @@ public final class ComputeCL {
         return true;
     }
 
-    public cl_kernel createKernel(String source) {
+    public cl_program createProgram(String source) {
         // Create the program from the source code
         cl_program program = clCreateProgramWithSource(context,
                 1, new String[]{source}, null, null);
-
         // Build the program
         clBuildProgram(program, 0, null, null, null, null);
+        return program;
+    }
 
-        // Create the kernel
-        cl_kernel kernel = clCreateKernel(program, "automata", null);
-
-        clReleaseProgram(program);
-
-        return kernel;
+    public cl_kernel createKernel(cl_program program) {
+        //clReleaseProgram(program);
+        return clCreateKernel(program, "automata", null);
     }
 
     /**

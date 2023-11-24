@@ -26,7 +26,7 @@ import static dev.goldenstack.minestom_ca.server.ExampleRules.MOVING_OAK;
 
 public class Main {
 
-    public static final AtomicBoolean RUNNING = new AtomicBoolean(false);
+    public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
 
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
@@ -40,10 +40,13 @@ public class Main {
         instance.setChunkSupplier(LightingChunk::new);
         instance.setGenerator(unit -> unit.modifier().fillHeight(0, 10, Block.STONE));
         instance.enableAutoChunkLoad(false);
-        instance.loadChunk(0, 0).join();
-        instance.loadChunk(1, 0).join();
-        instance.loadChunk(0, 1).join();
-        instance.loadChunk(1, 1).join();
+        int range = 1;
+        for (int x = -range; x < range; x++) {
+            for (int z = -range; z < range; z++) {
+                instance.loadChunk(x, z).join();
+            }
+        }
+        System.out.println("Chunks loaded: " + instance.getChunks().size());
 
         AutomataWorld.create(instance, MOVING_OAK);
 
