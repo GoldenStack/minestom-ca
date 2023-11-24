@@ -10,6 +10,7 @@ import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.instance.InstanceTickEvent;
+import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.player.PlayerLoginEvent;
 import net.minestom.server.instance.InstanceContainer;
@@ -68,6 +69,12 @@ public class Main {
             final Block block = event.getBlock();
             AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
             world.handlePlacement(point, block);
+        });
+
+        globalEventHandler.addListener(PlayerBlockBreakEvent.class, event -> {
+            final Point point = event.getBlockPosition();
+            AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
+            world.handlePlacement(point, Block.AIR);
         });
 
         globalEventHandler.addListener(InstanceTickEvent.class, event -> {
