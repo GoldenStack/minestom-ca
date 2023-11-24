@@ -8,6 +8,11 @@ Implementing vanilla Minecraft with cellular automata.
 Many vanilla features (redstone, water, grass, furnaces, etc.) can be implemented declaratively with cellular automata.
 This involves essentially 'describing' behaviour, and the server will implement the cellular automata described.
 
+The current goal is to:
+- Create a custom language for defining rules
+- Parse this language into an intermediate state (similar to an AST)
+- Interpret this state a number of ways: via the GPU, state tracking, etc.
+
 Benefits of this include:
 - Much simpler to implement features
 - Less code for each feature
@@ -19,10 +24,44 @@ Benefits of this include:
 --- 
 
 ## Table of Contents
+- [Introduction](#introduction)
 - [Install](#install)
 - [Usage](#usage)
 - [Contributing](#contributing)
 - [License](#license)
+
+
+## Introduction
+Minestom-ca rules are written in our custom language. Here's an example:
+```
+state=#dirt & up@state=#air -> state=#grass
+state=#grass & up@state!=#air -> state=#dirt
+```
+On the left, there are two rules, joined with an ampersand (`&`). Then, there's an arrow (`->`) that indicates the
+changes that should be made if the condition on the left is true.
+
+This means that, if there is a `dirt` block and the block in the `up` direction is `air`, change the block to `grass`.
+This can be read as a rule that grows all uncovered grass.
+
+### State
+Each block has a list of palette indices. When writing rules, you can just use the names.
+For example, all blocks have a `state` palette, because each block must have a state.
+
+However, you can also add other states: like `age`. A tree could have a rule that decreases the age value once per tick,
+and grows once the age is zero. This would look something like:
+```
+state=#sapling & age>0 -> age--
+state=#sapling & age=0 -> state=#log
+```
+This code turns the sapling into a log, but you could make it actually grow instead.
+
+### Rule range
+Each rule can only read the data of blocks bordering it. This means that changes can only propagate at 1 block / tick.
+
+This is an intentional limitation of this system.
+
+For example, redstone cannot be modeled with vanilla parity, as changes can only travel across redstone at the speed of
+light. However, you could simply tick each rule faster, and artificially slow down the other rules.
 
 ## Install
 
