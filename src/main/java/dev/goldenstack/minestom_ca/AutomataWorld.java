@@ -8,10 +8,13 @@ import net.minestom.server.network.packet.server.CachedPacket;
 import net.minestom.server.utils.chunk.ChunkUtils;
 import org.jocl.*;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import static org.jocl.CL.*;
 
@@ -76,26 +79,14 @@ public final class AutomataWorld {
             for (ASection section : achunk.sections) {
                 if (section.requireRefresh) {
                     section.requireRefresh = false;
-                    clEnqueueWriteBuffer(computeCL.commandQueue, section.mem_in, CL_TRUE,
-                            0, section.byteSize(), Pointer.to(section.updated.values),
-                            0, null, null);
                     clEnqueueCopyBuffer(computeCL.commandQueue, section.mem_in, section.mem_out,
                             0, 0, section.byteSize(), 0, null, null);
                 }
-                clEnqueueNDRangeKernel(computeCL.commandQueue, section.kernel, 1, null,
-                        new long[]{1}, null, 0, null, null);
-                clEnqueueCopyBuffer(computeCL.commandQueue, section.mem_out, section.mem_in,
-                        0, 0, section.byteSize(), 0, null, null);
+                clEnqueueNDRangeKernel(computeCL.commandQueue, section.kernel, 1, null, new long[]{1}, null, 0, null, null);
+                clEnqueueCopyBuffer(computeCL.commandQueue, section.mem_out, section.mem_in, 0, 0, section.byteSize(), 0, null, null);
             }
         }
-        // Retrieve
-        for (AChunk achunk : chunks.values()) {
-            for (ASection section : achunk.sections) {
-                clEnqueueReadBuffer(computeCL.commandQueue, section.mem_in, CL_TRUE,
-                        0, section.byteSize(), Pointer.to(section.updated.values),
-                        0, null, null);
-            }
-        }
+        clFinish(computeCL.commandQueue);
     }
 
     private void updateChunks() {
@@ -104,8 +95,7 @@ public final class AutomataWorld {
             for (int i = 0; i < aChunk.sections.length; i++) {
                 Section section = chunk.getSections().get(i);
                 if (section == null) continue;
-                final APalette palette = aChunk.sections[i].updated;
-                section.blockPalette().setAll(palette::get);
+                aChunk.sections[i].usePalette(aPalette -> section.blockPalette().setAll(aPalette::get), CL_MAP_READ);
             }
             // Invalidate packet cache
             try {
@@ -140,7 +130,7 @@ public final class AutomataWorld {
         final int localZ = ChunkUtils.toSectionRelativeCoordinate(z);
 
         // Set to block state for visual palette
-        section.updated.set(localX, localY, localZ, block.stateId());
+        section.usePalette(aPalette -> aPalette.set(localX, localY, localZ, block.stateId()), CL_MAP_WRITE);
         section.requireRefresh = true;
     }
 
@@ -170,42 +160,60 @@ public final class AutomataWorld {
     }
 
     public final class ASection {
-        private final APalette updated;
+        private final APalette tmpPalette;
+        private final int byteSize;
         private final cl_kernel kernel;
         private final cl_mem mem_in;
         private final cl_mem mem_out;
-        private boolean requireRefresh = false;
+        private boolean requireRefresh = true;
 
         public ASection(APalette palette) {
-            this.updated = palette;
-            final long[] blocks = updated.values;
-
+            this.tmpPalette = palette;
+            this.byteSize = palette.values.limit();
+            final var blocks = palette.values;
             this.kernel = computeCL.createKernel(program);
             this.mem_in = clCreateBuffer(computeCL.context,
-                    CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                    CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR,
                     byteSize(), Pointer.to(blocks), null);
             this.mem_out = clCreateBuffer(computeCL.context,
-                    CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
-                    byteSize(), Pointer.to(blocks), null);
+                    CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR,
+                    byteSize(), null, null);
+
             clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(mem_in));
             clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(mem_out));
         }
 
+        void usePalette(Consumer<APalette> consumer, long flags) {
+            var mappedBuffer = clEnqueueMapBuffer(computeCL.commandQueue, mem_in,
+                    CL_TRUE, flags, 0, byteSize(), 0, null, null, null)
+                    .order(ByteOrder.nativeOrder());
+            tmpPalette.values = mappedBuffer;
+            consumer.accept(tmpPalette);
+            clEnqueueUnmapMemObject(computeCL.commandQueue, mem_in, mappedBuffer, 0, null, null);
+            tmpPalette.values = null;
+        }
+
         long byteSize() {
-            return (long) updated.values.length * Sizeof.cl_long;
+            return byteSize;
         }
     }
 
     public final class APalette {
-        private long[] values;
-        private byte bitsPerEntry;
+        private ByteBuffer values;
+        private final byte bitsPerEntry = 16;
 
         public APalette() {
-            this.bitsPerEntry = 16;
-
             final int valuesPerLong = 64 / bitsPerEntry;
             final int maxSize = 16 * 16 * 16;
-            this.values = new long[(maxSize + valuesPerLong - 1) / valuesPerLong];
+            this.values = ByteBuffer.allocate((maxSize + valuesPerLong - 1) / valuesPerLong * 8).order(ByteOrder.nativeOrder());
+        }
+
+        private long getArray(int index) {
+            return values.getLong(index * 8);
+        }
+
+        private void setArray(int index, long value) {
+            this.values.putLong(index * 8, value);
         }
 
         public int get(int x, int y, int z) {
@@ -214,21 +222,21 @@ public final class AutomataWorld {
             final int valuesPerLong = 64 / bitsPerEntry;
             final int index = sectionIndex / valuesPerLong;
             final int bitIndex = (sectionIndex - index * valuesPerLong) * bitsPerEntry;
-            return (int) (values[index] >> bitIndex) & ((1 << bitsPerEntry) - 1);
+            return (int) (getArray(index) >> bitIndex) & ((1 << bitsPerEntry) - 1);
         }
 
         public void set(int x, int y, int z, int value) {
             final int bitsPerEntry = this.bitsPerEntry;
-            final long[] values = this.values;
             // Change to palette value
             final int valuesPerLong = 64 / bitsPerEntry;
             final int sectionIndex = getSectionIndex(x, y, z);
             final int index = sectionIndex / valuesPerLong;
             final int bitIndex = (sectionIndex - index * valuesPerLong) * bitsPerEntry;
 
-            final long block = values[index];
+            final long block = getArray(index);
             final long clear = (1L << bitsPerEntry) - 1L;
-            values[index] = block & ~(clear << bitIndex) | ((long) value << bitIndex);
+            final long result = block & ~(clear << bitIndex) | ((long) value << bitIndex);
+            setArray(index, result);
         }
 
         static int getSectionIndex(int x, int y, int z) {
