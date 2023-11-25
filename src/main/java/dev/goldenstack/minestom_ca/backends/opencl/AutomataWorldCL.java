@@ -1,5 +1,7 @@
-package dev.goldenstack.minestom_ca;
+package dev.goldenstack.minestom_ca.backends.opencl;
 
+import dev.goldenstack.minestom_ca.Rule;
+import dev.goldenstack.minestom_ca.RuleAnalysis;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.*;
@@ -19,8 +21,8 @@ import java.util.function.Consumer;
 import static org.jocl.CL.*;
 
 @SuppressWarnings("UnstableApiUsage")
-public final class AutomataWorld {
-    private static final Map<Instance, AutomataWorld> INSTANCES = new HashMap<>();
+public final class AutomataWorldCL {
+    private static final Map<Instance, AutomataWorldCL> INSTANCES = new HashMap<>();
     private final Instance instance;
     private final List<Rule> rules;
     private final int minSection, maxSection;
@@ -33,16 +35,16 @@ public final class AutomataWorld {
     private final int analysisStateCount;
 
     public static void create(Instance instance, List<Rule> rule) {
-        INSTANCES.computeIfAbsent(instance, i -> new AutomataWorld(i, rule));
+        INSTANCES.computeIfAbsent(instance, i -> new AutomataWorldCL(i, rule));
     }
 
-    public static AutomataWorld get(Instance instance) {
-        final AutomataWorld world = INSTANCES.get(instance);
+    public static AutomataWorldCL get(Instance instance) {
+        final AutomataWorldCL world = INSTANCES.get(instance);
         Objects.requireNonNull(world, "Unregistered instance!");
         return world;
     }
 
-    public AutomataWorld(Instance instance, List<Rule> rules) {
+    public AutomataWorldCL(Instance instance, List<Rule> rules) {
         this.instance = instance;
         this.rules = rules;
         this.minSection = instance.getDimensionType().getMinY() / 16;

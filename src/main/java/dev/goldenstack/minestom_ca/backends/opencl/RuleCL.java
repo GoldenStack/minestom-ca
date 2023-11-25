@@ -1,5 +1,6 @@
-package dev.goldenstack.minestom_ca;
+package dev.goldenstack.minestom_ca.backends.opencl;
 
+import dev.goldenstack.minestom_ca.Rule;
 import net.minestom.server.coordinate.Point;
 
 import java.util.List;

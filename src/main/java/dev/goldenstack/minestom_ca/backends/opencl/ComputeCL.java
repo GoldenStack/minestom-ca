@@ -1,4 +1,4 @@
-package dev.goldenstack.minestom_ca;
+package dev.goldenstack.minestom_ca.backends.opencl;
 
 import org.jocl.*;
 
