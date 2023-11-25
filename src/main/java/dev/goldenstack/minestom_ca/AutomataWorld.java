@@ -7,6 +7,9 @@ import net.minestom.server.instance.block.Block;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * An AutomataWorld is a world capable of ticking cellular automata rules.
+ */
 public interface AutomataWorld {
 
     Map<Instance, AutomataWorld> WORLDS = new HashMap<>();
@@ -19,9 +22,23 @@ public interface AutomataWorld {
         return WORLDS.get(instance);
     }
 
+    /**
+     * Gets the instance that is being ticked
+     *
+     * @return the ticked instance
+     */
     Instance instance();
 
+    /**
+     * Simulates one tick of progress for the world.
+     */
     void tick();
 
+    /**
+     * Handles an external block change (e.g. block place or break)
+     *
+     * @param point the location of the change
+     * @param block the Minecraft block being set
+     */
     void handlePlacement(Point point, Block block);
 }

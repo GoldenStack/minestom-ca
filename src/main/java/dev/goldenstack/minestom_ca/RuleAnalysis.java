@@ -2,13 +2,26 @@ package dev.goldenstack.minestom_ca;
 
 import net.minestom.server.coordinate.Point;
 
+/**
+ * Utility functions for tracking information about rules.
+ */
 public final class RuleAnalysis {
+
+    /**
+     * Finds the number of state indices used within the given rule.
+     *
+     * @param rule the rule to check
+     * @return the largest state index used, plus one (as the starting index is 0)
+     */
     public static int stateCount(Rule rule) {
         final int conditionCount = conditionCount(rule.condition(), 0);
         final int resultCount = resultCount(rule.result(), 0);
         return Math.max(conditionCount, resultCount) + 1;
     }
 
+    /**
+     * Finds the largest state index used anywhere within the result.
+     */
     private static int resultCount(Rule.Result result, int current) {
         return switch (result) {
             case Rule.Result.And and -> {
@@ -22,6 +35,9 @@ public final class RuleAnalysis {
         };
     }
 
+    /**
+     * Finds the largest state index used anywhere within the condition.
+     */
     private static int conditionCount(Rule.Condition condition, int current) {
         return switch (condition) {
             case Rule.Condition.And and -> {
