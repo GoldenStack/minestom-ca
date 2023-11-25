@@ -1,5 +1,6 @@
 package dev.goldenstack.minestom_ca.server;
 
+import dev.goldenstack.minestom_ca.AutomataWorld;
 import dev.goldenstack.minestom_ca.backends.opencl.AutomataWorldCL;
 import dev.goldenstack.minestom_ca.server.commands.StartCommand;
 import dev.goldenstack.minestom_ca.server.commands.StopCommand;
@@ -48,7 +49,7 @@ public class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        AutomataWorldCL.create(instance, MOVING_OAK);
+        AutomataWorld.register(new AutomataWorldCL(instance, MOVING_OAK));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(PlayerLoginEvent.class, event -> {
@@ -69,13 +70,13 @@ public class Main {
         globalEventHandler.addListener(PlayerBlockPlaceEvent.class, event -> {
             final Point point = event.getBlockPosition();
             final Block block = event.getBlock();
-            AutomataWorldCL world = AutomataWorldCL.get(event.getPlayer().getInstance());
+            AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
             world.handlePlacement(point, block);
         });
 
         globalEventHandler.addListener(PlayerBlockBreakEvent.class, event -> {
             final Point point = event.getBlockPosition();
-            AutomataWorldCL world = AutomataWorldCL.get(event.getPlayer().getInstance());
+            AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
             world.handlePlacement(point, Block.AIR);
         });
 
@@ -83,7 +84,7 @@ public class Main {
             if (!RUNNING.get()) return;
             final long start = System.nanoTime();
 
-            AutomataWorldCL world = AutomataWorldCL.get(event.getInstance());
+            AutomataWorld world = AutomataWorld.get(event.getInstance());
             world.tick();
 
             final long duration = System.nanoTime() - start;

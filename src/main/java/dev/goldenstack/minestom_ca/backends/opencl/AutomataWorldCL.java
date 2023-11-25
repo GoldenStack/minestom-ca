@@ -1,5 +1,6 @@
 package dev.goldenstack.minestom_ca.backends.opencl;
 
+import dev.goldenstack.minestom_ca.AutomataWorld;
 import dev.goldenstack.minestom_ca.Rule;
 import dev.goldenstack.minestom_ca.RuleAnalysis;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -12,17 +13,13 @@ import org.jocl.*;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
 
 import static org.jocl.CL.*;
 
 @SuppressWarnings("UnstableApiUsage")
-public final class AutomataWorldCL {
-    private static final Map<Instance, AutomataWorldCL> INSTANCES = new HashMap<>();
+public final class AutomataWorldCL implements AutomataWorld {
     private final Instance instance;
     private final List<Rule> rules;
     private final int minSection, maxSection;
@@ -33,16 +30,6 @@ public final class AutomataWorldCL {
 
     // Analysis information
     private final int analysisStateCount;
-
-    public static void create(Instance instance, List<Rule> rule) {
-        INSTANCES.computeIfAbsent(instance, i -> new AutomataWorldCL(i, rule));
-    }
-
-    public static AutomataWorldCL get(Instance instance) {
-        final AutomataWorldCL world = INSTANCES.get(instance);
-        Objects.requireNonNull(world, "Unregistered instance!");
-        return world;
-    }
 
     public AutomataWorldCL(Instance instance, List<Rule> rules) {
         this.instance = instance;
@@ -59,6 +46,12 @@ public final class AutomataWorldCL {
         this.analysisStateCount = rules.stream().mapToInt(RuleAnalysis::stateCount).max().orElseThrow();
     }
 
+    @Override
+    public Instance instance() {
+        return instance;
+    }
+
+    @Override
     public void tick() {
         loadChunks(); // Ensure that all chunks are loaded
         applyRules();
@@ -117,6 +110,7 @@ public final class AutomataWorldCL {
         }
     }
 
+    @Override
     public void handlePlacement(Point point, Block block) {
         final long chunkIndex = ChunkUtils.getChunkIndex(point.chunkX(), point.chunkZ());
         AChunk chunk = this.chunks.get(chunkIndex);
