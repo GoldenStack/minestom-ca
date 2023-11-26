@@ -16,7 +16,8 @@ import java.util.List;
 public record Rule(@NotNull Condition condition, @NotNull Result result) {
 
     public sealed interface Condition {
-        record Literal(int value) implements Condition {}
+        record Literal(int value) implements Condition {
+        }
 
         record And(@NotNull List<Condition> conditions) implements Condition {
             public And {
@@ -69,13 +70,9 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
             }
         }
 
-        record Set(@NotNull Point offset, int index, int value) implements Result {
-            public Set(Point offset, Block block) {
-                this(offset, 0, block.stateId());
-            }
-
+        record Set(int index, int value) implements Result {
             public Set(Block block) {
-                this(new Vec(0, 0, 0), block);
+                this(0, block.stateId());
             }
         }
     }

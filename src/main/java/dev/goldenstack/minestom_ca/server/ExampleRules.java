@@ -1,7 +1,6 @@
 package dev.goldenstack.minestom_ca.server;
 
 import dev.goldenstack.minestom_ca.Rule;
-import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 
 import java.util.List;
@@ -19,16 +18,20 @@ public final class ExampleRules {
             new Result.Set(Block.GRASS_BLOCK)
     ));
 
-    public static final List<Rule> MOVING_OAK = List.of(new Rule(
-            new Condition.And(
-                    new Condition.Equal(Block.AIR),
-                    new Condition.Neighbors(-1, 0, 0, new Condition.Equal(Block.OAK_LOG))
-            ),
-            new Result.And(List.of(
-                    new Result.Set(Block.OAK_LOG),
-                    new Result.Set(new Vec(-1, 0, 0), Block.OAK_PLANKS)
-            ))
-    ));
+    public static final List<Rule> MOVING_OAK = List.of(
+            new Rule(
+                    new Condition.And(
+                            new Condition.Equal(Block.AIR),
+                            new Condition.Neighbors(-1, 0, 0, new Condition.Equal(Block.OAK_LOG))
+                    ),
+                    new Result.Set(Block.OAK_LOG)),
+            new Rule(
+                    new Condition.And(
+                            new Condition.Equal(Block.OAK_LOG),
+                            new Condition.Neighbors(1, 0, 0, new Condition.Equal(Block.AIR))
+                    ),
+                    new Result.Set(Block.OAK_PLANKS))
+    );
 
     public static final List<Rule> HAY_RAINBOW = List.of(
             new Rule(
