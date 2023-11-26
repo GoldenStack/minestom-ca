@@ -53,9 +53,18 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
 
     public sealed interface Expression {
         record Literal(int value) implements Expression {
+            public Literal(@NotNull Block block) {
+                this(block.stateId());
+            }
         }
 
         record Index(int stateIndex) implements Expression {
+        }
+
+        record NeighborIndex(int x, int y, int z, int stateIndex) implements Expression {
+            public NeighborIndex(int x, int y, int z) {
+                this(x, y, z, 0);
+            }
         }
 
         record NeighborsCount(@NotNull List<Point> offsets, @NotNull Condition condition) implements Expression {
