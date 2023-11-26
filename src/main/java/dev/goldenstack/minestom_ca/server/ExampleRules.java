@@ -1,5 +1,6 @@
 package dev.goldenstack.minestom_ca.server;
 
+import dev.goldenstack.minestom_ca.Neighbors;
 import dev.goldenstack.minestom_ca.Rule;
 import net.minestom.server.instance.block.Block;
 
@@ -73,7 +74,7 @@ public final class ExampleRules {
 
     private static final Condition NUM_ALIVE_NEIGHBORS =
             new Condition.Neighbors(
-                    dev.goldenstack.minestom_ca.Neighbors.NEIGHBORS_2D_NOT_SELF,
+                    Neighbors.MOORE_2D,
                     new Condition.Equal(Block.WHITE_WOOL)
             );
 
