@@ -74,5 +74,16 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
 
         record Compare(@NotNull Expression first, @NotNull Expression second) implements Expression {
         }
+
+        record Operation(@NotNull Expression first, @NotNull Expression second,
+                         @NotNull Type type) implements Expression {
+            public enum Type {
+                ADD,
+                SUBTRACT,
+                MULTIPLY,
+                DIVIDE,
+                MODULO
+            }
+        }
     }
 }

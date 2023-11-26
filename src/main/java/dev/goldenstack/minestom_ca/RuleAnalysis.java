@@ -32,6 +32,10 @@ public final class RuleAnalysis {
                     expressionCount(cmp.first(), current),
                     expressionCount(cmp.second(), current)
             ));
+            case Rule.Expression.Operation op -> Math.max(current, Math.max(
+                    expressionCount(op.first(), current),
+                    expressionCount(op.second(), current)
+            ));
         };
     }
 

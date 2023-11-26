@@ -26,7 +26,8 @@ public final class ExampleRules {
                     new Condition.And(
                             new Condition.Equal(Block.DIRT)
                     ),
-                    new Result.Set(Map.of(1, new Expression.Literal(60))) // TODO increment+1
+                    new Result.Set(Map.of(1, new Expression.Operation(new Expression.Index(1),
+                            new Expression.Literal(1), Expression.Operation.Type.ADD)))
             ),
             new Rule(
                     new Condition.And(

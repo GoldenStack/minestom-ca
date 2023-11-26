@@ -182,6 +182,18 @@ public class CLRuleCompiler {
                 yield "(int)sign((double)" + first + "-" + second + ")";
             }
             case Rule.Expression.Index index -> "neighbors[inverted_indices[x+1][y+1][z+1]]"; // TODO states
+            case Rule.Expression.Operation operation -> {
+                final String first = compileExpression(operation.first(), prepend);
+                final String second = compileExpression(operation.second(), prepend);
+                final String operator = switch (operation.type()) {
+                    case ADD -> "+";
+                    case SUBTRACT -> "-";
+                    case MULTIPLY -> "*";
+                    case DIVIDE -> "/";
+                    case MODULO -> "%";
+                };
+                yield "(" + first + operator + second + ")";
+            }
         };
     }
 
