@@ -39,7 +39,7 @@ public class RuleParsingTest {
                         new Set(Block.DIRT)
                 ));
 
-        assertRule("state=#white_wool & (moore2d@state=#white_wool)>2 -> state=#black_wool",
+        assertRule("state=#white_wool & (moore2d@state=#white_wool)<2 -> state=#black_wool",
                 new Rule(
                         new And(
                                 new Equal(Block.WHITE_WOOL),
@@ -51,7 +51,7 @@ public class RuleParsingTest {
                         new Set(Block.BLACK_WOOL)
                 ));
 
-        assertRule("state=#white_wool & (moore2d@state=#white_wool)<3 -> state=#black_wool",
+        assertRule("state=#white_wool & (moore2d@state=#white_wool)>3 -> state=#black_wool",
                 new Rule(
                         new And(
                                 new Equal(Block.WHITE_WOOL),
@@ -63,7 +63,7 @@ public class RuleParsingTest {
                         new Set(Block.BLACK_WOOL)
                 ));
 
-        assertRule("state=#black_wool & (moore2d@state=#white_wool) -> state=#white_wool",
+        assertRule("state=#black_wool & (moore2d@state=#white_wool)=3 -> state=#white_wool",
                 new Rule(
                         new And(
                                 new Equal(Block.BLACK_WOOL),
