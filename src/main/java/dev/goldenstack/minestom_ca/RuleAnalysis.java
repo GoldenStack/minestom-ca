@@ -20,7 +20,6 @@ public final class RuleAnalysis {
     private static int expressionCount(Rule.Expression expression, int current) {
         return switch (expression) {
             case Rule.Expression.Index index -> Math.max(current, index.stateIndex());
-            case Rule.Expression.NeighborIndex neighborIndex -> Math.max(current, neighborIndex.stateIndex());
             case Rule.Expression.Literal ignored -> current;
             case Rule.Expression.NeighborsCount neighborsCount -> {
                 int max = current;

@@ -180,8 +180,7 @@ final class CLRuleCompiler {
                 final String second = compileExpression(cmp.second(), prepend);
                 yield "(int)sign((double)" + first + "-" + second + ")";
             }
-            case Rule.Expression.Index index -> "neighbors[inverted_indices[x+1][y+1][z+1]]"; // TODO states
-            case Rule.Expression.NeighborIndex index ->
+            case Rule.Expression.Index index -> // TODO states
                     String.format("neighbors[inverted_indices[x+1+%s][y+1+%s][z+1+%s]]", index.x(), index.y(), index.z());
             case Rule.Expression.Operation operation -> {
                 final String first = compileExpression(operation.first(), prepend);

@@ -46,7 +46,7 @@ public final class ExampleRules {
                             new Condition.Equal(Block.AIR),
                             new Condition.Equal(
                                     new Expression.Literal(Block.OAK_LOG),
-                                    new Expression.NeighborIndex(-1, 0, 0)
+                                    new Expression.Index(-1, 0, 0)
                             )
                     ),
                     new Result.Set(Block.OAK_LOG)),
@@ -55,7 +55,7 @@ public final class ExampleRules {
                             new Condition.Equal(Block.OAK_LOG),
                             new Condition.Equal(
                                     new Expression.Literal(Block.AIR),
-                                    new Expression.NeighborIndex(1, 0, 0)
+                                    new Expression.Index(1, 0, 0)
                             )
                     ),
                     new Result.Set(Block.OAK_PLANKS))
@@ -67,7 +67,7 @@ public final class ExampleRules {
                             new Condition.Equal(Block.RED_WOOL),
                             new Condition.Equal(
                                     new Expression.Literal(Block.HAY_BLOCK),
-                                    new Expression.NeighborIndex(0, 1, 0)
+                                    new Expression.Index(0, 1, 0)
                             )
                     ),
                     new Result.Set(Block.ORANGE_WOOL)
