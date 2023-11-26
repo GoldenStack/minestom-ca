@@ -44,8 +44,10 @@ This means that, if there is a `dirt` block and the block in the `up` direction 
 This can be read as a rule that grows all uncovered grass.
 
 ### State
-Each block has a list of palette indices. When writing rules, you can just use the names.
-For example, all blocks have a `state` palette, because each block must have a state.
+Each block has an array of states. For example, the index `0` represents the block state ID.
+
+Rules can also define other states. A rule that makes saplings grow may define a `sapling-age` state, and the
+interpreter will automatically assign that an index, such as index `1`.
 
 However, you can also add other states: like `age`. A tree could have a rule that decreases the age value once per tick,
 and grows once the age is zero. This would look something like:
