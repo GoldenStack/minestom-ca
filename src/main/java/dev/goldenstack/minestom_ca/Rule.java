@@ -56,9 +56,12 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
                 offsets = List.copyOf(offsets);
             }
 
+            public Neighbors(@NotNull Point offset, @NotNull Condition condition) {
+                this(List.of(offset), condition);
+            }
 
             public Neighbors(int x, int y, int z, @NotNull Condition condition) {
-                this(List.of(new Vec(x, y, z)), condition);
+                this(new Vec(x, y, z), condition);
             }
         }
     }
