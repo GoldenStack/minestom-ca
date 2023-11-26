@@ -1,7 +1,7 @@
 package dev.goldenstack.minestom_ca.server;
 
 import dev.goldenstack.minestom_ca.AutomataWorld;
-import dev.goldenstack.minestom_ca.backends.opencl.CellularInstance;
+import dev.goldenstack.minestom_ca.backends.opencl.CLCellularInstance;
 import dev.goldenstack.minestom_ca.server.commands.StartCommand;
 import dev.goldenstack.minestom_ca.server.commands.StopCommand;
 import net.minestom.server.MinecraftServer;
@@ -14,14 +14,13 @@ import net.minestom.server.event.instance.InstanceTickEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.player.PlayerLoginEvent;
+import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.world.DimensionType;
 
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static dev.goldenstack.minestom_ca.server.ExampleRules.MOVING_OAK;
@@ -38,7 +37,7 @@ public class Main {
         MinecraftServer.getCommandManager().register(new StopCommand());
 
         // Create an instance
-        CellularInstance instance = new CellularInstance(UUID.randomUUID(), DimensionType.OVERWORLD, MOVING_OAK);
+        InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
         instance.setChunkSupplier(LightingChunk::new);
         instance.setGenerator(unit -> unit.modifier().fillHeight(0, 10, Block.STONE));
         instance.enableAutoChunkLoad(false);
@@ -48,10 +47,9 @@ public class Main {
                 instance.loadChunk(x, z).join();
             }
         }
-        MinecraftServer.getInstanceManager().registerInstance(instance);
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        AutomataWorld.register(instance);
+        AutomataWorld.register(new CLCellularInstance(instance, MOVING_OAK));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(PlayerLoginEvent.class, event -> {

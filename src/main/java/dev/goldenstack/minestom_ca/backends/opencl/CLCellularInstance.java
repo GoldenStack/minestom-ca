@@ -5,26 +5,24 @@ import dev.goldenstack.minestom_ca.Rule;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.DynamicChunk;
 import net.minestom.server.instance.Instance;
-import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.network.packet.server.CachedPacket;
-import net.minestom.server.world.DimensionType;
 import org.jetbrains.annotations.NotNull;
 import org.jocl.*;
 
 import java.util.List;
-import java.util.UUID;
 
-public class CellularInstance extends InstanceContainer implements AutomataWorld {
+public class CLCellularInstance implements AutomataWorld {
 
     private final cl_kernel caKernel;
+    private final Instance instance;
     private boolean tickCA = false;
 
-    public CellularInstance(@NotNull UUID uniqueId, @NotNull DimensionType dimensionType, @NotNull List<Rule> rules) {
-        super(uniqueId, dimensionType);
-        this.caKernel = RuleCompiler.compile(rules);
+    public CLCellularInstance(Instance instance, @NotNull List<Rule> rules) {
+        this.instance = instance;
+        this.caKernel = CLRuleCompiler.compile(rules);
     }
 
     public void setTickCA(boolean tickCA) {
@@ -33,14 +31,14 @@ public class CellularInstance extends InstanceContainer implements AutomataWorld
 
     @Override
     public Instance instance() {
-        return this;
+        return instance;
     }
 
     // TODO: Process multiple sections at once with slight overlap for seamless automata
     @Override
     public void tick() {
         if (tickCA)
-            this.getChunks().forEach(c -> {
+            instance.getChunks().forEach(c -> {
                 if (c.isLoaded())
                     c.getSections().forEach(s -> {
                         if (s.blockPalette().count() <= 0) return;

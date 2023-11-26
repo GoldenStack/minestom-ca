@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-public class RuleCompiler {
+public class CLRuleCompiler {
 
     private static final String KERNEL_SOURCE = """
 
