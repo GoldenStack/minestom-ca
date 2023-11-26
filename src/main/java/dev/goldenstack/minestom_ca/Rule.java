@@ -46,6 +46,10 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
         record Index(int stateIndex) implements Condition {
         }
 
+        record Compare(@NotNull Condition first, @NotNull Condition second) implements Condition {
+
+        }
+
         record Neighbors(@NotNull List<Point> offsets, @NotNull Condition condition) implements Condition {
             public Neighbors {
                 offsets = List.copyOf(offsets);

@@ -67,6 +67,10 @@ public final class RuleAnalysis {
                 }
                 yield max;
             }
+            case Rule.Condition.Compare cmp -> Math.max(current, Math.max(
+                    conditionCount(cmp.first(), current),
+                    conditionCount(cmp.second(), current)
+            ));
             case Rule.Condition.Literal ignored -> current;
         };
     }
