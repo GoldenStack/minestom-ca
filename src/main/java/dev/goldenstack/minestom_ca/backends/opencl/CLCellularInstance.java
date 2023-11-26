@@ -12,8 +12,7 @@ import org.jocl.*;
 
 import java.util.List;
 
-public class CLCellularInstance implements AutomataWorld {
-
+public final class CLCellularInstance implements AutomataWorld {
     private final cl_kernel caKernel;
     private final Instance instance;
 
@@ -43,7 +42,7 @@ public class CLCellularInstance implements AutomataWorld {
 
                 blockPalette.getAll((x, y, z, value) -> oldPaletteValues[z * dimension * dimension + y * dimension + x] = value);
 
-                CLManager clm = CLManager.instance();
+                CLManager clm = CLManager.INSTANCE;
 
                 cl_mem inputMem = CL.clCreateBuffer(clm.context(),
                         CL.CL_MEM_READ_ONLY | CL.CL_MEM_COPY_HOST_PTR,

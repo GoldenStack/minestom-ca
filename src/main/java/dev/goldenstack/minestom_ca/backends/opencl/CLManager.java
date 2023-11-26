@@ -5,17 +5,12 @@ import org.jocl.*;
 
 import java.util.ArrayList;
 
-public class CLManager {
-
-    public static final boolean DEBUG = true;
-    public static final int PLATFORM_INDEX = 0;
-    public static final long PREFERRED_DEVICE_TYPE = CL.CL_DEVICE_TYPE_ALL;
-    public static final int DEVICE_INDEX = 0;
-
-
-    private static boolean initialized = false;
-
-    private static CLManager INSTANCE;
+final class CLManager {
+    static final CLManager INSTANCE = new CLManager();
+    static final boolean DEBUG = true;
+    private static final int PLATFORM_INDEX = 0;
+    private static final long PREFERRED_DEVICE_TYPE = CL.CL_DEVICE_TYPE_ALL;
+    private static final int DEVICE_INDEX = 0;
 
     private final cl_context context;
     private final cl_device_id device; // TODO: This doesn't need to be final, and it should probably allow for users to switch to other devices if necessary
@@ -45,7 +40,7 @@ public class CLManager {
 
         context = CL.clCreateContext(
                 ctxProps, 1, new cl_device_id[]{device},
-                null,null,null
+                null, null, null
         );
 
         cl_queue_properties properties = new cl_queue_properties();
@@ -90,21 +85,5 @@ public class CLManager {
         }
 
         return kernel;
-    }
-
-    public static CLManager instance() {
-        if (!initialized) {
-            return init();
-        }
-        return INSTANCE;
-    }
-
-    public static CLManager init() {
-        if (!initialized) {
-            initialized = true;
-            INSTANCE = new CLManager();
-            return INSTANCE;
-        }
-        throw new IllegalStateException("CLManager already initialized!");
     }
 }

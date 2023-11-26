@@ -15,8 +15,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-public class CLRuleCompiler {
-
+final class CLRuleCompiler {
     private static final String KERNEL_SOURCE = """
             #define NEIGHBOR_COUNT %s
             #define AIR %s
@@ -234,6 +233,6 @@ public class CLRuleCompiler {
         }
 
         // TODO: cross chunk magic
-        return CLManager.instance().compileKernel(assembledKernel, "sampleKernel");
+        return CLManager.INSTANCE.compileKernel(assembledKernel, "sampleKernel");
     }
 }
