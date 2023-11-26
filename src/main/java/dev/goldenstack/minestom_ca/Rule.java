@@ -41,16 +41,6 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
                 this(new Expression.Index(0), new Expression.Literal(block.stateId()));
             }
         }
-
-        record Compare(@NotNull Expression first, @NotNull Expression second) implements Condition {
-            public static Compare greaterThan(@NotNull Expression first, @NotNull Expression second) {
-                return new Compare(first, second);
-            }
-
-            public static Compare lessThan(@NotNull Expression first, @NotNull Expression second) {
-                return new Compare(second, first);
-            }
-        }
     }
 
     public sealed interface Result {
@@ -80,6 +70,10 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
             public NeighborsCount(int x, int y, int z, @NotNull Condition condition) {
                 this(new Vec(x, y, z), condition);
             }
+        }
+
+        // the value 0 if x == y; a value less than 0 if x < y; and a value greater than 0 if x > y
+        record Compare(@NotNull Expression first, @NotNull Expression second) implements Expression {
         }
     }
 }

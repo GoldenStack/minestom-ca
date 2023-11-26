@@ -28,6 +28,10 @@ public final class RuleAnalysis {
                 }
                 yield max;
             }
+            case Rule.Expression.Compare cmp -> Math.max(current, Math.max(
+                    expressionCount(cmp.first(), current),
+                    expressionCount(cmp.second(), current)
+            ));
         };
     }
 
@@ -52,10 +56,6 @@ public final class RuleAnalysis {
                 }
                 yield max;
             }
-            case Rule.Condition.Compare cmp -> Math.max(current, Math.max(
-                    expressionCount(cmp.first(), current),
-                    expressionCount(cmp.second(), current)
-            ));
         };
     }
 }

@@ -119,11 +119,6 @@ public class CLRuleCompiler {
                 final String c = compileCondition(not.condition(), prepend);
                 yield "!(" + c + ")";
             }
-            case Rule.Condition.Compare cmp -> {
-                final String first = compileExpression(cmp.first(), prepend);
-                final String second = compileExpression(cmp.second(), prepend);
-                yield "(int)sign((double)" + first + "-" + second + ")";
-            }
             case Rule.Condition.Or or -> {
                 StringBuilder builder = new StringBuilder();
                 builder.append("(");
@@ -180,6 +175,11 @@ public class CLRuleCompiler {
                         """, result, idxs.size(), idxsName, idxsName, idxsName, compileCondition(neighborsCount.condition(), prepend), result, idxsName, idxsName, idxsName));
 
                 yield result;
+            }
+            case Rule.Expression.Compare cmp -> {
+                final String first = compileExpression(cmp.first(), prepend);
+                final String second = compileExpression(cmp.second(), prepend);
+                yield "(int)sign((double)" + first + "-" + second + ")";
             }
             case Rule.Expression.Index index -> "neighbors[inverted_indices[x+1][y+1][z+1]]"; // TODO states
         };
