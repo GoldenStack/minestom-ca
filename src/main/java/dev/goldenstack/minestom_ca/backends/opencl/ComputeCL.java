@@ -4,7 +4,7 @@ import org.jocl.*;
 
 import static org.jocl.CL.*;
 
-public final class ComputeCL {
+final class ComputeCL {
     // The default platform, device type and device index
     private static final int defaultPlatformIndex = 0;
     private static final long defaultDeviceType = CL_DEVICE_TYPE_GPU;

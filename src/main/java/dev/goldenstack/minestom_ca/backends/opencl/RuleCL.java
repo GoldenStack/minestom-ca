@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-public final class RuleCL {
+final class RuleCL {
     private static final String TEMPLATE = """
             int getSectionIndex(int x, int y, int z) {
                 int dimensionMask = 16 - 1;
