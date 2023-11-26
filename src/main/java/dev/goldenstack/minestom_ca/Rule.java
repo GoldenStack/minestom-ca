@@ -72,7 +72,6 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
             }
         }
 
-        // the value 0 if x == y; a value less than 0 if x < y; and a value greater than 0 if x > y
         record Compare(@NotNull Expression first, @NotNull Expression second) implements Expression {
         }
     }

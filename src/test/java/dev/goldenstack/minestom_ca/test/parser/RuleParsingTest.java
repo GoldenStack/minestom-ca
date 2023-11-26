@@ -1,6 +1,7 @@
 package dev.goldenstack.minestom_ca.test.parser;
 
 import dev.goldenstack.minestom_ca.Rule;
+import dev.goldenstack.minestom_ca.Rule.Expression;
 import net.minestom.server.instance.block.Block;
 import org.junit.jupiter.api.Test;
 
@@ -27,13 +28,13 @@ public class RuleParsingTest {
                 new Rule(
                         new And(
                                 new Equal(Block.AIR),
-                                new Neighbors(WEST, new Equal(Block.OAK_LOG))
+                                new Equal(new Expression.NeighborsCount(WEST, new Equal(Block.OAK_LOG)), new Expression.Literal(1))
                         ),
                         new Set(Block.OAK_LOG)
                 ), new Rule(
                         new And(
                                 new Equal(Block.OAK_LOG),
-                                new Neighbors(EAST, new Equal(Block.AIR))
+                                new Equal(new Expression.NeighborsCount(EAST, new Equal(Block.AIR)), new Expression.Literal(1))
                         ),
                         new Set(Block.OAK_PLANKS)
                 ));
@@ -45,13 +46,13 @@ public class RuleParsingTest {
                 new Rule(
                         new And(
                                 new Equal(Block.DIRT),
-                                new Neighbors(UP, new Equal(Block.AIR))
+                                new Equal(new Expression.NeighborsCount(UP, new Equal(Block.AIR)), new Expression.Literal(1))
                         ),
                         new Set(Block.GRASS_BLOCK)
                 ), new Rule(
                         new And(
                                 new Equal(Block.GRASS_BLOCK),
-                                new Neighbors(UP, new Not(new Equal(Block.AIR)))
+                                new Equal(new Expression.NeighborsCount(UP, new Not(new Equal(Block.AIR))), new Expression.Literal(1))
                         ),
                         new Set(Block.DIRT)
                 ));
@@ -65,8 +66,8 @@ public class RuleParsingTest {
                         new And(
                                 new Equal(Block.WHITE_WOOL),
                                 new Equal(
-                                        new Compare(new Neighbors(MOORE_2D, new Equal(Block.WHITE_WOOL)), new Literal(2)),
-                                        new Literal(1)
+                                        new Expression.Compare(new Expression.NeighborsCount(MOORE_2D, new Equal(Block.WHITE_WOOL)), new Expression.Literal(2)),
+                                        new Expression.Literal(1)
                                 )
                         ),
                         new Set(Block.BLACK_WOOL)
@@ -74,15 +75,15 @@ public class RuleParsingTest {
                         new And(
                                 new Equal(Block.WHITE_WOOL),
                                 new Equal(
-                                        new Compare(new Neighbors(MOORE_2D, new Equal(Block.WHITE_WOOL)), new Literal(3)),
-                                        new Literal(-1)
+                                        new Expression.Compare(new Expression.NeighborsCount(MOORE_2D, new Equal(Block.WHITE_WOOL)), new Expression.Literal(3)),
+                                        new Expression.Literal(-1)
                                 )
                         ),
                         new Set(Block.BLACK_WOOL)
                 ), new Rule(
                         new And(
                                 new Equal(Block.BLACK_WOOL),
-                                new Equal(new Neighbors(MOORE_2D, new Equal(Block.WHITE_WOOL)), new Literal(3))
+                                new Equal(new Expression.NeighborsCount(MOORE_2D, new Equal(Block.WHITE_WOOL)), new Expression.Literal(3))
                         ),
                         new Set(Block.WHITE_WOOL)
                 )
@@ -92,7 +93,7 @@ public class RuleParsingTest {
                 new Rule(
                         new And(
                                 new Equal(Block.WHITE_WOOL),
-                                new Equal(new Index(1), new Literal(0))
+                                new Equal(new Expression.Index(1), new Expression.Literal(0))
                         ),
                         new Set(Block.BLACK_WOOL)
                 ));
@@ -110,7 +111,10 @@ public class RuleParsingTest {
                 new Rule(
                         new And(
                                 new Equal(Block.RED_WOOL),
-                                new Neighbors(UP, new Equal(Block.HAY_BLOCK))
+                                new Equal(
+                                        new Expression.NeighborsCount(UP, new Equal(Block.HAY_BLOCK)),
+                                        new Expression.Literal(1)
+                                )
                         ),
                         new Set(Block.ORANGE_WOOL)
                 ),
