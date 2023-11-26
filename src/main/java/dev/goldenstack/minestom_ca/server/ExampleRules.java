@@ -19,6 +19,27 @@ public final class ExampleRules {
             new Result.Set(Block.GRASS_BLOCK)
     ));
 
+    public static final List<Rule> GROW_DIRT_AGE = List.of(
+            new Rule(
+                    new Condition.And(
+                            new Condition.Equal(Block.DIRT)
+                    ),
+                    new Result.And(
+                            new Result.Set(1, 60) // TODO increment+1
+                    )
+            ),
+            new Rule(
+                    new Condition.And(
+                            new Condition.Equal(Block.DIRT),
+                            new Condition.Equal(new Condition.Index(1), new Condition.Literal(60))
+                    ),
+                    new Result.And(
+                            new Result.Set(Block.GRASS_BLOCK),
+                            new Result.Set(1, 0)
+                    )
+            )
+    );
+
     public static final List<Rule> MOVING_OAK = List.of(
             new Rule(
                     new Condition.And(

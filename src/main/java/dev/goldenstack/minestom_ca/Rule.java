@@ -68,6 +68,10 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
             public And {
                 others = List.copyOf(others);
             }
+
+            public And(@NotNull Result... others) {
+                this(List.of(others));
+            }
         }
 
         record Set(int index, int value) implements Result {
