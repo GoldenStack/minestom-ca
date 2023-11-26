@@ -7,7 +7,7 @@ import java.util.ArrayList;
 
 public class CLManager {
 
-    public static final boolean DEBUG = false;
+    public static final boolean DEBUG = true;
     public static final int PLATFORM_INDEX = 0;
     public static final long PREFERRED_DEVICE_TYPE = CL.CL_DEVICE_TYPE_ALL;
     public static final int DEVICE_INDEX = 0;

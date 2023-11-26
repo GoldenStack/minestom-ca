@@ -23,7 +23,7 @@ import net.minestom.server.item.Material;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static dev.goldenstack.minestom_ca.server.ExampleRules.MOVING_OAK;
+import static dev.goldenstack.minestom_ca.server.ExampleRules.GAME_OF_LIFE;
 
 public class Main {
 
@@ -41,7 +41,7 @@ public class Main {
         instance.setChunkSupplier(LightingChunk::new);
         instance.setGenerator(unit -> unit.modifier().fillHeight(0, 10, Block.STONE));
         instance.enableAutoChunkLoad(false);
-        int range = 1;
+        int range = 10;
         for (int x = -range; x < range; x++) {
             for (int z = -range; z < range; z++) {
                 instance.loadChunk(x, z).join();
@@ -49,7 +49,7 @@ public class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        AutomataWorld.register(new CLCellularInstance(instance, MOVING_OAK));
+        AutomataWorld.register(new CLCellularInstance(instance, GAME_OF_LIFE));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(PlayerLoginEvent.class, event -> {
