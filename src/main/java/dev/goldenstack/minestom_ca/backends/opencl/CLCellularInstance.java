@@ -16,10 +16,10 @@ public final class CLCellularInstance implements AutomataWorld {
 
     // pls be gentle it's my first time storing large amounts of data
     static final class World {
+        public final cl_mem blockDataBufferOut;
         public static final class Region {
             public int[] blockData = new int[512*512*512];
             public final cl_mem blockDataBufferIn;
-            public final cl_mem blockDataBufferOut;
             public Point regionPosition;
 
             Region(Point position) {
@@ -33,12 +33,7 @@ public final class CLCellularInstance implements AutomataWorld {
                         CL.CL_MEM_READ_ONLY | CL.CL_MEM_COPY_HOST_PTR,
                         (long) Sizeof.cl_uint * 512*512*512, Pointer.to(blockData), null
                 );
-                this.blockDataBufferOut = CL.clCreateBuffer(clm.context(),
-                        CL.CL_MEM_READ_WRITE,
-                        (long) Sizeof.cl_uint * 512*512*512, null, null
-                );
             }
-
             public void reset() {
                 CLManager clm = CLManager.INSTANCE;
                 CL.clEnqueueFillBuffer(clm.commandQueue(),
@@ -49,16 +44,17 @@ public final class CLCellularInstance implements AutomataWorld {
                         512*512*512*Sizeof.cl_uint,
                         0, null, null
                 );
-                CL.clEnqueueFillBuffer(clm.commandQueue(),
-                        blockDataBufferOut,
-                        Pointer.to(new int[]{0}),
-                        Sizeof.cl_uint,
-                        0,
-                        512*512*512*Sizeof.cl_uint,
-                        0, null, null
-                );
             }
         }
+
+        public World() {
+            CLManager clm = CLManager.INSTANCE;
+            this.blockDataBufferOut = CL.clCreateBuffer(clm.context(),
+                    CL.CL_MEM_READ_WRITE,
+                    (long) Sizeof.cl_uint * 512*512*512, null, null
+            );
+        }
+
         private final List<Region> regions = new ArrayList<>();
 
         public Region getOrCreateRegion(Point position) {
@@ -70,6 +66,25 @@ public final class CLCellularInstance implements AutomataWorld {
             Region region = new Region(position);
             regions.add(region);
             return region;
+        }
+
+        public void resetOut() {
+            CLManager clm = CLManager.INSTANCE;
+            CL.clEnqueueFillBuffer(clm.commandQueue(),
+                    blockDataBufferOut,
+                    Pointer.to(new int[]{0}),
+                    Sizeof.cl_uint,
+                    0,
+                    512*512*512*Sizeof.cl_uint,
+                    0, null, null
+            );
+        }
+
+        public void resetAll() {
+            resetOut();
+            for (Region r : regions) {
+                r.reset();
+            }
         }
     }
 
@@ -118,7 +133,7 @@ public final class CLCellularInstance implements AutomataWorld {
             CLManager clm = CLManager.INSTANCE;
 
             cl_mem in = r.blockDataBufferIn;
-            cl_mem out = r.blockDataBufferOut;
+            cl_mem out = world.blockDataBufferOut;
 
             CL.clSetKernelArg(caKernel, 0, Sizeof.cl_mem, Pointer.to(in));
             CL.clSetKernelArg(caKernel, 1, Sizeof.cl_mem, Pointer.to(out));
@@ -129,7 +144,7 @@ public final class CLCellularInstance implements AutomataWorld {
             CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null, globalWorkSize, localWorkSize, 0, null, null);
             CL.clEnqueueReadBuffer(clm.commandQueue(), out, true, 0, (long) 512*512*512 * Sizeof.cl_uint, Pointer.to(r.blockData), 0, null, null);
 
-            r.reset();
+            world.resetAll();
         }
     }
 
