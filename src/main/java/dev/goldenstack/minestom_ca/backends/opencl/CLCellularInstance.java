@@ -144,8 +144,9 @@ public final class CLCellularInstance implements AutomataWorld {
             CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null, globalWorkSize, localWorkSize, 0, null, null);
             CL.clEnqueueReadBuffer(clm.commandQueue(), out, true, 0, (long) 512*512*512 * Sizeof.cl_uint, Pointer.to(r.blockData), 0, null, null);
 
-            world.resetAll();
+            world.resetOut();
         }
+        world.resetAll();
     }
 
     @Override
