@@ -45,12 +45,15 @@ final class CLManager {
 
         long[] length = new long[1];
         CL.clGetPlatformInfo(platform, CL.CL_PLATFORM_VERSION, 0, null, length);
-        char[] platformVersion = new char[(int) length[0]/Sizeof.cl_uchar];
-        CL.clGetPlatformInfo(platform, CL.CL_PLATFORM_VERSION, length[0], Pointer.to(platformVersion), null);
+        byte[] platformVersion = new byte[(int) length[0]];
+        CL.clGetPlatformInfo(platform, CL.CL_PLATFORM_VERSION, platformVersion.length, Pointer.to(platformVersion), null);
         String version = new String(platformVersion);
         System.out.println("Using " + version);
+        String s1 = version.substring(version.indexOf(" ")+1);
+        String s2 = s1.substring(0, s1.indexOf(" "));
+        String s3 = s2.substring(0, s2.indexOf("."));
 
-        if (!version.substring(version.indexOf(" ")).substring(0, version.indexOf(" ")).substring(0, version.indexOf(".")).equalsIgnoreCase("1")) {
+        if (!s3.equalsIgnoreCase("1")) {
             cl_queue_properties properties = new cl_queue_properties();
             commandQueue = CL.clCreateCommandQueueWithProperties(context, device, properties, null);
         } else {

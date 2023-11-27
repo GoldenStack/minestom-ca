@@ -10,7 +10,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jocl.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public final class CLCellularInstance implements AutomataWorld {
@@ -19,7 +18,8 @@ public final class CLCellularInstance implements AutomataWorld {
     static final class World {
         public static final class Region {
             public int[] blockData = new int[512*512*512];
-            public final cl_mem blockDataBuffer;
+            public final cl_mem blockDataBufferIn;
+            public final cl_mem blockDataBufferOut;
             public Point regionPosition;
 
             Region(Point position) {
@@ -29,16 +29,28 @@ public final class CLCellularInstance implements AutomataWorld {
                         position.blockZ()%512
                 );
                 CLManager clm = CLManager.INSTANCE;
-                this.blockDataBuffer = CL.clCreateBuffer(clm.context(),
-                        CL.CL_MEM_READ_WRITE | CL.CL_MEM_COPY_HOST_PTR,
+                this.blockDataBufferIn = CL.clCreateBuffer(clm.context(),
+                        CL.CL_MEM_READ_ONLY | CL.CL_MEM_COPY_HOST_PTR,
                         (long) Sizeof.cl_uint * 512*512*512, Pointer.to(blockData), null
+                );
+                this.blockDataBufferOut = CL.clCreateBuffer(clm.context(),
+                        CL.CL_MEM_READ_WRITE,
+                        (long) Sizeof.cl_uint * 512*512*512, null, null
                 );
             }
 
             public void reset() {
                 CLManager clm = CLManager.INSTANCE;
                 CL.clEnqueueFillBuffer(clm.commandQueue(),
-                        blockDataBuffer,
+                        blockDataBufferIn,
+                        Pointer.to(new int[]{0}),
+                        Sizeof.cl_uint,
+                        0,
+                        512*512*512*Sizeof.cl_uint,
+                        0, null, null
+                );
+                CL.clEnqueueFillBuffer(clm.commandQueue(),
+                        blockDataBufferOut,
                         Pointer.to(new int[]{0}),
                         Sizeof.cl_uint,
                         0,
@@ -105,15 +117,17 @@ public final class CLCellularInstance implements AutomataWorld {
         for (World.Region r : world.regions) {
             CLManager clm = CLManager.INSTANCE;
 
-            cl_mem data = r.blockDataBuffer;
+            cl_mem in = r.blockDataBufferIn;
+            cl_mem out = r.blockDataBufferOut;
 
-            CL.clSetKernelArg(caKernel, 0, Sizeof.cl_mem, Pointer.to(data));
+            CL.clSetKernelArg(caKernel, 0, Sizeof.cl_mem, Pointer.to(in));
+            CL.clSetKernelArg(caKernel, 1, Sizeof.cl_mem, Pointer.to(out));
 
             long[] globalWorkSize = new long[]{512, 512, 512};
             long[] localWorkSize = new long[]{localWorkGroupSize, localWorkGroupSize, localWorkGroupSize};
 
             CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null, globalWorkSize, localWorkSize, 0, null, null);
-            CL.clEnqueueReadBuffer(clm.commandQueue(), data, true, 0, (long) 512*512*512 * Sizeof.cl_uint, Pointer.to(r.blockData), 0, null, null);
+            CL.clEnqueueReadBuffer(clm.commandQueue(), out, true, 0, (long) 512*512*512 * Sizeof.cl_uint, Pointer.to(r.blockData), 0, null, null);
 
             r.reset();
         }
