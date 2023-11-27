@@ -43,8 +43,20 @@ final class CLManager {
                 null, null, null
         );
 
-        cl_queue_properties properties = new cl_queue_properties();
-        commandQueue = CL.clCreateCommandQueueWithProperties(context, device, properties, null);
+        long[] length = new long[1];
+        CL.clGetPlatformInfo(platform, CL.CL_PLATFORM_VERSION, 0, null, length);
+        char[] platformVersion = new char[(int) length[0]/Sizeof.cl_uchar];
+        CL.clGetPlatformInfo(platform, CL.CL_PLATFORM_VERSION, length[0], Pointer.to(platformVersion), null);
+        String version = new String(platformVersion);
+        System.out.println("Using " + version);
+
+        if (!version.substring(version.indexOf(" ")).substring(0, version.indexOf(" ")).substring(0, version.indexOf(".")).equalsIgnoreCase("1")) {
+            cl_queue_properties properties = new cl_queue_properties();
+            commandQueue = CL.clCreateCommandQueueWithProperties(context, device, properties, null);
+        } else {
+            //noinspection deprecation
+            commandQueue = CL.clCreateCommandQueue(context, device, 0, null);
+        }
 
         Thread shutdownHook = new Thread(() -> {
             kernels.forEach(k -> {
