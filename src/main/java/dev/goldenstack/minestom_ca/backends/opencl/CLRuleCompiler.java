@@ -42,8 +42,7 @@ final class CLRuleCompiler {
             }
                         
             __kernel void sampleKernel(
-                __global const uint *input,
-                __global uint *output
+                __global uint *worldData
             ) {
                         
                 int globalX = get_global_id(0);
@@ -80,11 +79,11 @@ final class CLRuleCompiler {
                     int nZ = localZ + indices[i][2];
                                                    
                     int nI = (offsetZ + nZ) * globalHeight * globalWidth + (offsetY + nY) * globalWidth + (offsetX + nX);
-                    neighbors[i] = input[nI];
+                    neighbors[i] = worldData[nI];
                 }
                
                 int currentIndex = (globalZ * globalHeight * globalWidth) + (globalY * globalWidth) + globalX;
-                output[currentIndex] = iterate(neighbors);
+                worldData[currentIndex] = iterate(neighbors);
             }
             """;
 
