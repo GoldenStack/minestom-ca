@@ -136,6 +136,6 @@ public final class CLCellularInstance implements AutomataWorld {
     @Override
     public void handlePlacement(Point point, Block block) {
         // eventually.
-        world.getOrCreateRegion(point).blockData[point.blockZ()*512*512+point.blockY()*512+point.blockZ()] = block.stateId();
+        world.getOrCreateRegion(point).blockData[point.blockZ()*512*512+point.blockY()*512+point.blockX()] = block.stateId();
     }
 }
