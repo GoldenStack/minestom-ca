@@ -56,9 +56,9 @@ final class CLManager {
         if (!s3.equalsIgnoreCase("1")) {
             cl_queue_properties properties = new cl_queue_properties();
             // TODO: Test to see if this actually does anything important
-            properties.addProperty(CL.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, 1);
-            properties.addProperty(CL.CL_QUEUE_ON_DEVICE, 1);
-            properties.addProperty(CL.CL_QUEUE_ON_DEVICE_DEFAULT, 1);
+//            properties.addProperty(CL.CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, 1);
+//            properties.addProperty(CL.CL_QUEUE_ON_DEVICE, 1);
+//            properties.addProperty(CL.CL_QUEUE_ON_DEVICE_DEFAULT, 1);
             commandQueue = CL.clCreateCommandQueueWithProperties(context, device, properties, null);
         } else {
             //noinspection deprecation

@@ -23,6 +23,7 @@ import net.minestom.server.item.Material;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static dev.goldenstack.minestom_ca.server.ExampleRules.GAME_OF_LIFE;
 import static dev.goldenstack.minestom_ca.server.ExampleRules.MOVING_OAK;
 
 public class Main {
@@ -49,7 +50,7 @@ public class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        AutomataWorld.register(new CLCellularInstance(instance, MOVING_OAK));
+        AutomataWorld.register(new CLCellularInstance(instance, GAME_OF_LIFE));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(PlayerLoginEvent.class, event -> {

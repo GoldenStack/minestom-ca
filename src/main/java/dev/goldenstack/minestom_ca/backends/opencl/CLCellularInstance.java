@@ -9,8 +9,7 @@ import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
 import org.jocl.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public final class CLCellularInstance implements AutomataWorld {
 
@@ -98,17 +97,16 @@ public final class CLCellularInstance implements AutomataWorld {
         this.caKernel = CLRuleCompiler.compile(rules);
         this.world = new World();
 
-        // TODO: stoopid
-        int preloadRange = 2;
-        for (int x = 0; x < preloadRange; x++) {
-            for (int z = 0; z < preloadRange; z++) {
-                World.Region r = world.getOrCreateRegion(new Vec(x*512, 0, z*512));
-                for (int i = 0; i < 512; i++) {
-                    for (int j = 0; j < 512; j++) {
-                        for (int k = 0; k < 30; k++) {
-                            r.blockData[i * 512 * 512 + k * 512 + j] = Block.STONE.stateId();
-                        }
-                    }
+        World.Region r = world.getOrCreateRegion(new Vec(0, 0, 0));
+        r.blockData[4 * 512 * 512 + 30 * 512 + 4] = Block.WHITE_WOOL.stateId();
+        r.blockData[5 * 512 * 512 + 30 * 512 + 5] = Block.WHITE_WOOL.stateId();
+        r.blockData[5 * 512 * 512 + 30 * 512 + 6] = Block.WHITE_WOOL.stateId();
+        r.blockData[4 * 512 * 512 + 30 * 512 + 6] = Block.WHITE_WOOL.stateId();
+        r.blockData[3 * 512 * 512 + 30 * 512 + 6] = Block.WHITE_WOOL.stateId();
+        for (int i = 0; i < 512; i++) {
+            for (int j = 0; j < 512; j++) {
+                for (int k = 0; k < 30; k++) {
+                    r.blockData[i * 512 * 512 + k * 512 + j] = Block.STONE.stateId();
                 }
             }
         }
@@ -126,11 +124,30 @@ public final class CLCellularInstance implements AutomataWorld {
         return instance;
     }
 
+    private final Set<Chunk> previouslyLoaded = new HashSet<>();
+
     // TODO: Process multiple sections at once with slight overlap for seamless automata
     @Override
     public void tick() {
+        for (Chunk c : instance.getChunks()) {
+            if (!previouslyLoaded.add(c)) continue;
+            World.Region r = world.getOrCreateRegion(new Vec(c.getChunkX(), 0, c.getChunkZ()));
+            for (int i = 0; i < instance.getDimensionType().getHeight()/16; i++) {
+                Section s = c.getSection(i+(instance.getDimensionType().getMinY()/16));
+                int cx = (c.getChunkX()*16)%512;
+                int cy = (i*16);
+                int cz = (c.getChunkZ()*16)%512;
+                s.blockPalette().getAll((x,y,z, value) -> r.blockData[Math.abs((cz+z*512*512)+((y+cy)*512)+(cx+x))] = value);
+            }
+        }
+
         for (World.Region r : world.regions) {
             CLManager clm = CLManager.INSTANCE;
+
+//            if (!Arrays.equals(r.blockData, lastBlockData)) {
+//                System.out.println("Region had block change!");
+//                System.arraycopy(r.blockData, 0, lastBlockData, 0, 512 * 512 * 512);
+//            }
 
             cl_mem in = r.blockDataBufferIn;
             cl_mem out = world.blockDataBufferOut;
@@ -141,7 +158,9 @@ public final class CLCellularInstance implements AutomataWorld {
             long[] globalWorkSize = new long[]{512, 512, 512};
             long[] localWorkSize = new long[]{localWorkGroupSize, localWorkGroupSize, localWorkGroupSize};
 
-            CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null, globalWorkSize, localWorkSize, 0, null, null);
+            cl_event event = new cl_event();
+            CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null, globalWorkSize, localWorkSize, 0, null, event);
+            CL.clWaitForEvents(1, new cl_event[]{event});
             CL.clEnqueueReadBuffer(clm.commandQueue(), out, true, 0, (long) 512*512*512 * Sizeof.cl_uint, Pointer.to(r.blockData), 0, null, null);
 
             world.resetOut();
