@@ -6,171 +6,174 @@ import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.*;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.network.packet.server.CachedPacket;
 import org.jetbrains.annotations.NotNull;
 import org.jocl.*;
 
 import java.util.*;
 
 public final class CLCellularInstance implements AutomataWorld {
-
-    // pls be gentle it's my first time storing large amounts of data
-    static final class World {
-        public final cl_mem blockDataBufferOut;
-        public static final class Region {
-            public int[] blockData = new int[512*512*512];
-            public final cl_mem blockDataBufferIn;
-            public Point regionPosition;
-
-            Region(Point position) {
-                this.regionPosition = new Vec(
-                        position.blockX()%512,
-                        position.blockY()%512,
-                        position.blockZ()%512
-                );
-                CLManager clm = CLManager.INSTANCE;
-                this.blockDataBufferIn = CL.clCreateBuffer(clm.context(),
-                        CL.CL_MEM_READ_ONLY | CL.CL_MEM_COPY_HOST_PTR,
-                        (long) Sizeof.cl_uint * 512*512*512, Pointer.to(blockData), null
-                );
-            }
-            public void reset() {
-                CLManager clm = CLManager.INSTANCE;
-                CL.clEnqueueFillBuffer(clm.commandQueue(),
-                        blockDataBufferIn,
-                        Pointer.to(new int[]{0}),
-                        Sizeof.cl_uint,
-                        0,
-                        512*512*512*Sizeof.cl_uint,
-                        0, null, null
-                );
-            }
-        }
-
-        public World() {
-            CLManager clm = CLManager.INSTANCE;
-            this.blockDataBufferOut = CL.clCreateBuffer(clm.context(),
-                    CL.CL_MEM_READ_WRITE,
-                    (long) Sizeof.cl_uint * 512*512*512, null, null
-            );
-        }
-
-        private final List<Region> regions = new ArrayList<>();
-
-        public Region getOrCreateRegion(Point position) {
-            List<Region> filtered = regions.stream().filter(r ->
-                    r.regionPosition.blockX() != position.blockX()%512 &&
-                    r.regionPosition.blockZ() != position.blockZ()%512
-            ).toList();
-            if (!filtered.isEmpty()) return filtered.stream().findFirst().get();
-            Region region = new Region(position);
-            regions.add(region);
-            return region;
-        }
-
-        public void resetOut() {
-            CLManager clm = CLManager.INSTANCE;
-            CL.clEnqueueFillBuffer(clm.commandQueue(),
-                    blockDataBufferOut,
-                    Pointer.to(new int[]{0}),
-                    Sizeof.cl_uint,
-                    0,
-                    512*512*512*Sizeof.cl_uint,
-                    0, null, null
-            );
-        }
-
-        public void resetAll() {
-            resetOut();
-            for (Region r : regions) {
-                r.reset();
-            }
-        }
-    }
+    private final CLManager clm = CLManager.INSTANCE;
+    public final cl_mem blockDataBufferOut = CL.clCreateBuffer(clm.context(),
+            CL.CL_MEM_READ_WRITE,
+            (long) Sizeof.cl_uint * 512 * 512 * 512, null, null
+    );
+    private final Map<RegionIndex, Region> regions = new HashMap<>();
+    private final Set<Chunk> previouslyLoaded = new HashSet<>();
 
     private final cl_kernel caKernel;
     private final Instance instance;
-    private final World world;
-    private final long localWorkGroupSize;
+
+    private final long[] globalWorkSize;
+    private final long[] localWorkSize;
+
+    private final int minY;
 
     public CLCellularInstance(Instance instance, @NotNull List<Rule> rules) {
         this.instance = instance;
         this.caKernel = CLRuleCompiler.compile(rules);
-        this.world = new World();
 
-        World.Region r = world.getOrCreateRegion(new Vec(0, 0, 0));
-        r.blockData[4 * 512 * 512 + 30 * 512 + 4] = Block.WHITE_WOOL.stateId();
-        r.blockData[5 * 512 * 512 + 30 * 512 + 5] = Block.WHITE_WOOL.stateId();
-        r.blockData[5 * 512 * 512 + 30 * 512 + 6] = Block.WHITE_WOOL.stateId();
-        r.blockData[4 * 512 * 512 + 30 * 512 + 6] = Block.WHITE_WOOL.stateId();
-        r.blockData[3 * 512 * 512 + 30 * 512 + 6] = Block.WHITE_WOOL.stateId();
-        for (int i = 0; i < 512; i++) {
-            for (int j = 0; j < 512; j++) {
-                for (int k = 0; k < 30; k++) {
-                    r.blockData[i * 512 * 512 + k * 512 + j] = Block.STONE.stateId();
-                }
-            }
-        }
-
-        CLManager clm = CLManager.INSTANCE;
         long[] nativeOutput = new long[1];
         CL.clGetKernelWorkGroupInfo(caKernel, clm.device(), CL.CL_KERNEL_WORK_GROUP_SIZE, Sizeof.cl_ulong, Pointer.to(nativeOutput), null);
-        localWorkGroupSize = nativeOutput[0];
+        final long localWorkGroupSize = nativeOutput[0];
         System.out.println("Found max group size of " + localWorkGroupSize + " for CA kernel");
-    }
+        this.globalWorkSize = new long[]{512, 512, 512};
+        this.localWorkSize = new long[]{localWorkGroupSize, localWorkGroupSize, localWorkGroupSize};
 
+        this.minY = instance.getDimensionType().getMinY();
+    }
 
     @Override
     public Instance instance() {
         return instance;
     }
 
-    private final Set<Chunk> previouslyLoaded = new HashSet<>();
-
-    // TODO: Process multiple sections at once with slight overlap for seamless automata
     @Override
     public void tick() {
-        for (Chunk c : instance.getChunks()) {
-            if (!previouslyLoaded.add(c)) continue;
-            World.Region r = world.getOrCreateRegion(new Vec(c.getChunkX(), 0, c.getChunkZ()));
-            for (int i = 0; i < instance.getDimensionType().getHeight()/16; i++) {
-                Section s = c.getSection(i+(instance.getDimensionType().getMinY()/16));
-                int cx = (c.getChunkX()*16)%512;
-                int cy = (i*16);
-                int cz = (c.getChunkZ()*16)%512;
-                s.blockPalette().getAll((x,y,z, value) -> r.blockData[Math.abs((cz+z*512*512)+((y+cy)*512)+(cx+x))] = value);
-            }
-        }
+        queryChunks();
+        tickRegions();
+    }
 
-        for (World.Region r : world.regions) {
-            CLManager clm = CLManager.INSTANCE;
-
-//            if (!Arrays.equals(r.blockData, lastBlockData)) {
-//                System.out.println("Region had block change!");
-//                System.arraycopy(r.blockData, 0, lastBlockData, 0, 512 * 512 * 512);
-//            }
-
+    private void tickRegions() {
+        // Tick each region
+        //if(false)
+        for (Region r : regions.values()) {
             cl_mem in = r.blockDataBufferIn;
-            cl_mem out = world.blockDataBufferOut;
+            cl_mem out = blockDataBufferOut;
 
             CL.clSetKernelArg(caKernel, 0, Sizeof.cl_mem, Pointer.to(in));
             CL.clSetKernelArg(caKernel, 1, Sizeof.cl_mem, Pointer.to(out));
 
-            long[] globalWorkSize = new long[]{512, 512, 512};
-            long[] localWorkSize = new long[]{localWorkGroupSize, localWorkGroupSize, localWorkGroupSize};
-
-            cl_event event = new cl_event();
-            CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null, globalWorkSize, localWorkSize, 0, null, event);
-            CL.clWaitForEvents(1, new cl_event[]{event});
-            CL.clEnqueueReadBuffer(clm.commandQueue(), out, true, 0, (long) 512*512*512 * Sizeof.cl_uint, Pointer.to(r.blockData), 0, null, null);
-
-            world.resetOut();
+            CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null,
+                    globalWorkSize, localWorkSize,
+                    0, null, null);
+            CL.clEnqueueReadBuffer(clm.commandQueue(), out, true,
+                    0, (long) 512 * 512 * 512 * Sizeof.cl_uint, Pointer.to(r.blockData),
+                    0, null, null);
         }
-        world.resetAll();
+        // Update each chunk
+        for (Chunk chunk : previouslyLoaded) {
+            final int chunkX = chunk.getChunkX();
+            final int chunkZ = chunk.getChunkZ();
+            final int regionX = getRegionCoordinate(chunkX * 16);
+            final int regionZ = getRegionCoordinate(chunkZ * 16);
+            final Region region = regions.get(new RegionIndex(regionX, regionZ));
+            assert region != null;
+            final int[] blocks = region.blockData;
+            final int cx = mod(chunkX, 32) * 16;
+            final int cz = mod(chunkZ, 32) * 16;
+            int i = 0;
+            for (Section s : chunk.getSections()) {
+                final int cy = (i++ * 16);
+                s.blockPalette().setAll((x, y, z) -> {
+                    final int localX = cx + x;
+                    final int localY = cy + y;
+                    final int localZ = cz + z;
+                    final int index = localZ * 512 * 512 + localY * 512 + localX;
+                    return blocks[index];
+                });
+            }
+            // Send packet
+            try {
+                var blockCacheField = DynamicChunk.class.getDeclaredField("chunkCache");
+                blockCacheField.setAccessible(true);
+                var lightCacheField = LightingChunk.class.getDeclaredField("lightCache");
+                lightCacheField.setAccessible(true);
+                //noinspection UnstableApiUsage
+                ((CachedPacket) lightCacheField.get(chunk)).invalidate();
+                //noinspection UnstableApiUsage
+                ((CachedPacket) blockCacheField.get(chunk)).invalidate();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            chunk.sendChunk();
+        }
+    }
+
+    private void queryChunks() {
+        for (Chunk c : instance.getChunks()) {
+            if (!previouslyLoaded.add(c)) continue;
+            Region r = getOrCreateRegion(new Vec(c.getChunkX() * 16, 0, c.getChunkZ() * 16));
+            int i = 0;
+            int[] blocks = r.blockData;
+            final int cx = mod(c.getChunkX(), 32) * 16;
+            final int cz = mod(c.getChunkZ(), 32) * 16;
+            for (Section s : c.getSections()) {
+                final int cy = (i++ * 16);
+                s.blockPalette().getAll((x, y, z, value) -> {
+                    final int localX = cx + x;
+                    final int localY = cy + y;
+                    final int localZ = cz + z;
+                    final int index = localZ * 512 * 512 + localY * 512 + localX;
+                    blocks[index] = value;
+                });
+            }
+        }
     }
 
     @Override
     public void handlePlacement(Point point, Block block) {
-        // eventually.
-        world.getOrCreateRegion(point).blockData[(point.blockZ()%512)*512*512+(point.blockY()%512)*512+(point.blockX()%512)] = block.stateId();
+        final int regionX = getRegionCoordinate(point.blockX());
+        final int regionZ = getRegionCoordinate(point.blockZ());
+        Region region = regions.get(new RegionIndex(regionX, regionZ));
+        assert region != null : "Region " + regionX + ", " + regionZ + " does not exist";
+        final int localX = mod(point.blockX(), 512);
+        final int localY = mod(point.blockY(), 512) - minY;
+        final int localZ = mod(point.blockZ(), 512);
+        region.blockData[localZ * 512 * 512 + localY * 512 + localX] = block.stateId();
+    }
+
+    public Region getOrCreateRegion(Point position) {
+        final int regionX = getRegionCoordinate(position.blockX());
+        final int regionZ = getRegionCoordinate(position.blockZ());
+        return regions.computeIfAbsent(new RegionIndex(regionX, regionZ),
+                r -> new Region(r.regionX, r.regionZ));
+    }
+
+    final class Region {
+        private final int regionX, regionZ;
+        final int[] blockData = new int[512 * 512 * 512];
+        final cl_mem blockDataBufferIn;
+
+        Region(int regionX, int regionZ) {
+            System.out.println("Created region " + regionX + ", " + regionZ);
+            this.regionX = regionX;
+            this.regionZ = regionZ;
+            this.blockDataBufferIn = CL.clCreateBuffer(clm.context(),
+                    CL.CL_MEM_READ_ONLY | CL.CL_MEM_COPY_HOST_PTR,
+                    (long) Sizeof.cl_uint * 512 * 512 * 512, Pointer.to(blockData), null
+            );
+        }
+    }
+
+    record RegionIndex(int regionX, int regionZ) {
+    }
+
+    public static int getRegionCoordinate(int xz) {
+        return xz >> 9;
+    }
+
+    public static int mod(int dividend, int divisor) {
+        return (dividend % divisor + divisor) % divisor;
     }
 }
