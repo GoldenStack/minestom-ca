@@ -14,10 +14,13 @@ import java.util.*;
 
 public final class CLCellularInstance implements AutomataWorld {
     private final CLManager clm = CLManager.INSTANCE;
-    public final cl_mem blockDataBufferOut = CL.clCreateBuffer(clm.context(),
+    private final cl_mem blockDataBufferOut = CL.clCreateBuffer(clm.context(),
             CL.CL_MEM_READ_WRITE,
             (long) Sizeof.cl_uint * 512 * 512 * 512, null, null
     );
+    private final cl_mem blockDataBufferIn = CL.clCreateBuffer(clm.context(),
+            CL.CL_MEM_READ_WRITE,
+            (long) Sizeof.cl_uint * 512 * 512 * 512, null, null);
     private final Map<RegionIndex, Region> regions = new HashMap<>();
     private final Set<Chunk> previouslyLoaded = new HashSet<>();
 
@@ -40,6 +43,9 @@ public final class CLCellularInstance implements AutomataWorld {
         this.globalWorkSize = new long[]{512, 512, 512};
         this.localWorkSize = new long[]{localWorkGroupSize, localWorkGroupSize, localWorkGroupSize};
 
+        CL.clSetKernelArg(caKernel, 0, Sizeof.cl_mem, Pointer.to(blockDataBufferIn));
+        CL.clSetKernelArg(caKernel, 1, Sizeof.cl_mem, Pointer.to(blockDataBufferOut));
+
         this.minY = instance.getDimensionType().getMinY();
     }
 
@@ -58,16 +64,13 @@ public final class CLCellularInstance implements AutomataWorld {
         // Tick each region
         //if(false)
         for (Region r : regions.values()) {
-            cl_mem in = r.blockDataBufferIn;
-            cl_mem out = blockDataBufferOut;
-
-            CL.clSetKernelArg(caKernel, 0, Sizeof.cl_mem, Pointer.to(in));
-            CL.clSetKernelArg(caKernel, 1, Sizeof.cl_mem, Pointer.to(out));
-
+            CL.clEnqueueWriteBuffer(clm.commandQueue(), blockDataBufferIn, true,
+                    0, (long) 512 * 512 * 512 * Sizeof.cl_uint, Pointer.to(r.blockData),
+                    0, null, null);
             CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null,
                     globalWorkSize, localWorkSize,
                     0, null, null);
-            CL.clEnqueueReadBuffer(clm.commandQueue(), out, true,
+            CL.clEnqueueReadBuffer(clm.commandQueue(), blockDataBufferOut, true,
                     0, (long) 512 * 512 * 512 * Sizeof.cl_uint, Pointer.to(r.blockData),
                     0, null, null);
         }
@@ -147,23 +150,11 @@ public final class CLCellularInstance implements AutomataWorld {
         final int regionX = getRegionCoordinate(position.blockX());
         final int regionZ = getRegionCoordinate(position.blockZ());
         return regions.computeIfAbsent(new RegionIndex(regionX, regionZ),
-                r -> new Region(r.regionX, r.regionZ));
+                r -> new Region());
     }
 
     final class Region {
-        private final int regionX, regionZ;
         final int[] blockData = new int[512 * 512 * 512];
-        final cl_mem blockDataBufferIn;
-
-        Region(int regionX, int regionZ) {
-            System.out.println("Created region " + regionX + ", " + regionZ);
-            this.regionX = regionX;
-            this.regionZ = regionZ;
-            this.blockDataBufferIn = CL.clCreateBuffer(clm.context(),
-                    CL.CL_MEM_READ_ONLY | CL.CL_MEM_COPY_HOST_PTR,
-                    (long) Sizeof.cl_uint * 512 * 512 * 512, Pointer.to(blockData), null
-            );
-        }
     }
 
     record RegionIndex(int regionX, int regionZ) {
