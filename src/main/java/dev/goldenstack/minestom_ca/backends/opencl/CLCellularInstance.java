@@ -9,6 +9,9 @@ import net.minestom.server.network.packet.server.CachedPacket;
 import org.jetbrains.annotations.NotNull;
 import org.jocl.*;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -157,16 +160,18 @@ public final class CLCellularInstance implements AutomataWorld {
     }
 
     final class Region {
-        final int[] blockData = new int[512 * 512 * 512];
+        final IntBuffer blockData = ByteBuffer.allocateDirect(512 * 512 * 512 * 4)
+                .order(ByteOrder.nativeOrder())
+                .asIntBuffer();
 
         void setLocal(int x, int y, int z, int value) {
             final int index = z * 512 * 512 + y * 512 + x;
-            this.blockData[index] = value;
+            this.blockData.put(index, value);
         }
 
         int getLocal(int x, int y, int z) {
             final int index = z * 512 * 512 + y * 512 + x;
-            return blockData[index];
+            return blockData.get(index);
         }
     }
 
