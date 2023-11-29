@@ -28,20 +28,13 @@ public final class CLCellularInstance implements AutomataWorld {
     private final Instance instance;
 
     private final long[] globalWorkSize;
-    private final long[] localWorkSize;
 
     private final int minY;
 
     public CLCellularInstance(Instance instance, @NotNull List<Rule> rules) {
         this.instance = instance;
         this.caKernel = CLRuleCompiler.compile(rules);
-
-        long[] nativeOutput = new long[1];
-        CL.clGetKernelWorkGroupInfo(caKernel, clm.device(), CL.CL_KERNEL_WORK_GROUP_SIZE, Sizeof.cl_ulong, Pointer.to(nativeOutput), null);
-        final long localWorkGroupSize = nativeOutput[0];
-        System.out.println("Found max group size of " + localWorkGroupSize + " for CA kernel");
         this.globalWorkSize = new long[]{512, 512, 512};
-        this.localWorkSize = new long[]{localWorkGroupSize, localWorkGroupSize, localWorkGroupSize};
 
         CL.clSetKernelArg(caKernel, 0, Sizeof.cl_mem, Pointer.to(blockDataBufferIn));
         CL.clSetKernelArg(caKernel, 1, Sizeof.cl_mem, Pointer.to(blockDataBufferOut));
@@ -66,17 +59,26 @@ public final class CLCellularInstance implements AutomataWorld {
 
     private void tickRegions() {
         // Tick each region
-        //if(false)
+        System.out.println("Region count: " + regions.size());
         for (Region r : regions.values()) {
+            long time = System.nanoTime();
             CL.clEnqueueWriteBuffer(clm.commandQueue(), blockDataBufferIn, true,
                     0, (long) 512 * 512 * 512 * Sizeof.cl_uint, Pointer.to(r.blockData),
                     0, null, null);
+            CL.clFinish(clm.commandQueue());
+            System.out.println("Took " + (System.nanoTime() - time) / 1.0e6 + "ms to write buffer");
+            time = System.nanoTime();
             CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null,
                     globalWorkSize, null, // TODO localWorkSize
                     0, null, null);
+            CL.clFinish(clm.commandQueue());
+            System.out.println("Took " + (System.nanoTime() - time) / 1.0e6 + "ms to run kernel");
+            time = System.nanoTime();
             CL.clEnqueueReadBuffer(clm.commandQueue(), blockDataBufferOut, true,
                     0, (long) 512 * 512 * 512 * Sizeof.cl_uint, Pointer.to(r.blockData),
                     0, null, null);
+            CL.clFinish(clm.commandQueue());
+            System.out.println("Took " + (System.nanoTime() - time) / 1.0e6 + "ms to read buffer");
         }
         // Update each chunk
         for (Chunk chunk : instance.getChunks()) {
