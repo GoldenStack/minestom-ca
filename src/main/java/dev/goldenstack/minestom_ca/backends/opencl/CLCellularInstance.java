@@ -160,11 +160,13 @@ public final class CLCellularInstance implements AutomataWorld {
         final int[] blockData = new int[512 * 512 * 512];
 
         void setLocal(int x, int y, int z, int value) {
-            this.blockData[z * 512 * 512 + y * 512 + x] = value;
+            final int index = z * 512 * 512 + y * 512 + x;
+            this.blockData[index] = value;
         }
 
         int getLocal(int x, int y, int z) {
-            return blockData[z * 512 * 512 + y * 512 + x];
+            final int index = z * 512 * 512 + y * 512 + x;
+            return blockData[index];
         }
     }
 
