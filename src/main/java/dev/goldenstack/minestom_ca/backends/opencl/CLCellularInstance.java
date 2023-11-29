@@ -82,7 +82,6 @@ public final class CLCellularInstance implements AutomataWorld {
             final int regionZ = getRegionCoordinate(chunkZ * 16);
             final Region region = regions.get(new RegionIndex(regionX, regionZ));
             assert region != null;
-            final int[] blocks = region.blockData;
             final int cx = mod(chunkX, 32) * 16;
             final int cz = mod(chunkZ, 32) * 16;
             int i = 0;
@@ -92,8 +91,7 @@ public final class CLCellularInstance implements AutomataWorld {
                     final int localX = cx + x;
                     final int localY = cy + y;
                     final int localZ = cz + z;
-                    final int index = localZ * 512 * 512 + localY * 512 + localX;
-                    return blocks[index];
+                    return region.getLocal(localX, localY, localZ);
                 });
             }
             // Send packet
@@ -118,7 +116,6 @@ public final class CLCellularInstance implements AutomataWorld {
             if (!previouslyLoaded.add(c)) continue;
             Region r = getOrCreateRegion(new Vec(c.getChunkX() * 16, 0, c.getChunkZ() * 16));
             int i = 0;
-            int[] blocks = r.blockData;
             final int cx = mod(c.getChunkX(), 32) * 16;
             final int cz = mod(c.getChunkZ(), 32) * 16;
             for (Section s : c.getSections()) {
@@ -127,8 +124,7 @@ public final class CLCellularInstance implements AutomataWorld {
                     final int localX = cx + x;
                     final int localY = cy + y;
                     final int localZ = cz + z;
-                    final int index = localZ * 512 * 512 + localY * 512 + localX;
-                    blocks[index] = value;
+                    r.setLocal(localX, localY, localZ, value);
                 });
             }
         }
@@ -143,7 +139,7 @@ public final class CLCellularInstance implements AutomataWorld {
         final int localX = mod(point.blockX(), 512);
         final int localY = mod(point.blockY(), 512) - minY;
         final int localZ = mod(point.blockZ(), 512);
-        region.blockData[localZ * 512 * 512 + localY * 512 + localX] = block.stateId();
+        region.setLocal(localX, localY, localZ, block.stateId());
     }
 
     public Region getOrCreateRegion(Point position) {
@@ -155,6 +151,14 @@ public final class CLCellularInstance implements AutomataWorld {
 
     final class Region {
         final int[] blockData = new int[512 * 512 * 512];
+
+        void setLocal(int x, int y, int z, int value) {
+            this.blockData[z * 512 * 512 + y * 512 + x] = value;
+        }
+
+        int getLocal(int x, int y, int z) {
+            return blockData[z * 512 * 512 + y * 512 + x];
+        }
     }
 
     record RegionIndex(int regionX, int regionZ) {
