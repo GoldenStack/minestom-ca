@@ -16,11 +16,11 @@ import java.util.Map;
 public final class CLCellularInstance implements AutomataWorld {
     private final CLManager clm = CLManager.INSTANCE;
     private final cl_mem blockDataBufferOut = CL.clCreateBuffer(clm.context(),
-            CL.CL_MEM_READ_WRITE,
+            CL.CL_MEM_READ_WRITE | CL.CL_MEM_ALLOC_HOST_PTR,
             (long) Sizeof.cl_uint * 512 * 512 * 512, null, null
     );
     private final cl_mem blockDataBufferIn = CL.clCreateBuffer(clm.context(),
-            CL.CL_MEM_READ_WRITE,
+            CL.CL_MEM_READ_WRITE | CL.CL_MEM_ALLOC_HOST_PTR,
             (long) Sizeof.cl_uint * 512 * 512 * 512, null, null);
     private final Map<RegionIndex, Region> regions = new HashMap<>();
 
@@ -69,7 +69,7 @@ public final class CLCellularInstance implements AutomataWorld {
             System.out.println("Took " + (System.nanoTime() - time) / 1.0e6 + "ms to write buffer");
             time = System.nanoTime();
             CL.clEnqueueNDRangeKernel(clm.commandQueue(), caKernel, 3, null,
-                    globalWorkSize, null, // TODO localWorkSize
+                    globalWorkSize, null,
                     0, null, null);
             CL.clFinish(clm.commandQueue());
             System.out.println("Took " + (System.nanoTime() - time) / 1.0e6 + "ms to run kernel");
