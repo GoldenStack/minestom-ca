@@ -3,14 +3,15 @@ package dev.goldenstack.minestom_ca.backends.opencl;
 import dev.goldenstack.minestom_ca.AutomataWorld;
 import dev.goldenstack.minestom_ca.Rule;
 import net.minestom.server.coordinate.Point;
-import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.*;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.network.packet.server.CachedPacket;
 import org.jetbrains.annotations.NotNull;
 import org.jocl.*;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class CLCellularInstance implements AutomataWorld {
     private final CLManager clm = CLManager.INSTANCE;
@@ -22,7 +23,6 @@ public final class CLCellularInstance implements AutomataWorld {
             CL.CL_MEM_READ_WRITE,
             (long) Sizeof.cl_uint * 512 * 512 * 512, null, null);
     private final Map<RegionIndex, Region> regions = new HashMap<>();
-    private final Set<Chunk> previouslyLoaded = new HashSet<>();
 
     private final cl_kernel caKernel;
     private final Instance instance;
@@ -47,6 +47,11 @@ public final class CLCellularInstance implements AutomataWorld {
         CL.clSetKernelArg(caKernel, 1, Sizeof.cl_mem, Pointer.to(blockDataBufferOut));
 
         this.minY = instance.getDimensionType().getMinY();
+
+        // Register loaded chunks
+        for (Chunk c : instance.getChunks()) {
+            handleChunkLoad(c.getChunkX(), c.getChunkZ());
+        }
     }
 
     @Override
@@ -56,7 +61,6 @@ public final class CLCellularInstance implements AutomataWorld {
 
     @Override
     public void tick() {
-        queryChunks();
         tickRegions();
     }
 
@@ -75,7 +79,7 @@ public final class CLCellularInstance implements AutomataWorld {
                     0, null, null);
         }
         // Update each chunk
-        for (Chunk chunk : previouslyLoaded) {
+        for (Chunk chunk : instance.getChunks()) {
             final int chunkX = chunk.getChunkX();
             final int chunkZ = chunk.getChunkZ();
             final int regionX = getRegionCoordinate(chunkX * 16);
@@ -111,25 +115,6 @@ public final class CLCellularInstance implements AutomataWorld {
         }
     }
 
-    private void queryChunks() {
-        for (Chunk c : instance.getChunks()) {
-            if (!previouslyLoaded.add(c)) continue;
-            Region r = getOrCreateRegion(new Vec(c.getChunkX() * 16, 0, c.getChunkZ() * 16));
-            int i = 0;
-            final int cx = mod(c.getChunkX(), 32) * 16;
-            final int cz = mod(c.getChunkZ(), 32) * 16;
-            for (Section s : c.getSections()) {
-                final int cy = (i++ * 16);
-                s.blockPalette().getAll((x, y, z, value) -> {
-                    final int localX = cx + x;
-                    final int localY = cy + y;
-                    final int localZ = cz + z;
-                    r.setLocal(localX, localY, localZ, value);
-                });
-            }
-        }
-    }
-
     @Override
     public void handlePlacement(Point point, Block block) {
         final int regionX = getRegionCoordinate(point.blockX());
@@ -142,11 +127,31 @@ public final class CLCellularInstance implements AutomataWorld {
         region.setLocal(localX, localY, localZ, block.stateId());
     }
 
-    public Region getOrCreateRegion(Point position) {
-        final int regionX = getRegionCoordinate(position.blockX());
-        final int regionZ = getRegionCoordinate(position.blockZ());
-        return regions.computeIfAbsent(new RegionIndex(regionX, regionZ),
+    @Override
+    public void handleChunkLoad(int chunkX, int chunkZ) {
+        final Chunk c = instance.getChunk(chunkX, chunkZ);
+        assert c != null;
+        final int regionX = getRegionCoordinate(chunkX * 16);
+        final int regionZ = getRegionCoordinate(chunkZ * 16);
+        Region region = regions.computeIfAbsent(new RegionIndex(regionX, regionZ),
                 r -> new Region());
+        int i = 0;
+        final int cx = mod(chunkX, 32) * 16;
+        final int cz = mod(chunkZ, 32) * 16;
+        for (Section s : c.getSections()) {
+            final int cy = (i++ * 16);
+            s.blockPalette().getAll((x, y, z, value) -> {
+                final int localX = cx + x;
+                final int localY = cy + y;
+                final int localZ = cz + z;
+                region.setLocal(localX, localY, localZ, value);
+            });
+        }
+    }
+
+    @Override
+    public void handleChunkUnload(int chunkX, int chunkZ) {
+        // TODO
     }
 
     final class Region {

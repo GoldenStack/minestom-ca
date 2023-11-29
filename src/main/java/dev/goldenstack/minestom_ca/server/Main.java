@@ -10,6 +10,8 @@ import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
 import net.minestom.server.event.GlobalEventHandler;
+import net.minestom.server.event.instance.InstanceChunkLoadEvent;
+import net.minestom.server.event.instance.InstanceChunkUnloadEvent;
 import net.minestom.server.event.instance.InstanceTickEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
@@ -24,10 +26,8 @@ import net.minestom.server.item.Material;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static dev.goldenstack.minestom_ca.server.ExampleRules.GAME_OF_LIFE;
-import static dev.goldenstack.minestom_ca.server.ExampleRules.MOVING_OAK;
 
-public class Main {
-
+public final class Main {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
 
     public static void main(String[] args) {
@@ -68,18 +68,26 @@ public class Main {
             player.setRespawnPoint(new Pos(0, 13, 0));
         });
 
-        globalEventHandler.addListener(PlayerBlockPlaceEvent.class, event -> {
-            final Point point = event.getBlockPosition();
-            final Block block = event.getBlock();
-            AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
-            world.handlePlacement(point, block);
-        });
-
-        globalEventHandler.addListener(PlayerBlockBreakEvent.class, event -> {
-            final Point point = event.getBlockPosition();
-            AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
-            world.handlePlacement(point, Block.AIR);
-        });
+        globalEventHandler
+                .addListener(PlayerBlockPlaceEvent.class, event -> {
+                    final Point point = event.getBlockPosition();
+                    final Block block = event.getBlock();
+                    AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
+                    world.handlePlacement(point, block);
+                })
+                .addListener(PlayerBlockBreakEvent.class, event -> {
+                    final Point point = event.getBlockPosition();
+                    AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
+                    world.handlePlacement(point, Block.AIR);
+                })
+                .addListener(InstanceChunkLoadEvent.class, event -> {
+                    AutomataWorld world = AutomataWorld.get(event.getInstance());
+                    world.handleChunkLoad(event.getChunkX(), event.getChunkZ());
+                })
+                .addListener(InstanceChunkUnloadEvent.class, event -> {
+                    AutomataWorld world = AutomataWorld.get(event.getInstance());
+                    world.handleChunkUnload(event.getChunkX(), event.getChunkZ());
+                });
 
         globalEventHandler.addListener(InstanceTickEvent.class, event -> {
             if (!RUNNING.get()) return;

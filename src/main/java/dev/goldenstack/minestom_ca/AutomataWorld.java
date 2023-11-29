@@ -41,4 +41,8 @@ public interface AutomataWorld {
      * @param block the Minecraft block being set
      */
     void handlePlacement(Point point, Block block);
+
+    void handleChunkLoad(int chunkX, int chunkZ);
+
+    void handleChunkUnload(int chunkX, int chunkZ);
 }
