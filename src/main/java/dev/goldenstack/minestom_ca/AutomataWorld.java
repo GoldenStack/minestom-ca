@@ -15,19 +15,15 @@ public interface AutomataWorld {
     Map<Instance, AutomataWorld> WORLDS = new HashMap<>();
 
     static void register(AutomataWorld world) {
-        WORLDS.put(world.instance(), world);
+        final AutomataWorld prev = WORLDS.put(world.instance(), world);
+        if (prev != null) {
+            throw new IllegalStateException("An AutomataWorld is already registered for the instance " + world.instance());
+        }
     }
 
     static AutomataWorld get(Instance instance) {
         return WORLDS.get(instance);
     }
-
-    /**
-     * Gets the instance that is being ticked
-     *
-     * @return the ticked instance
-     */
-    Instance instance();
 
     /**
      * Simulates one tick of progress for the world.
@@ -45,4 +41,11 @@ public interface AutomataWorld {
     void handleChunkLoad(int chunkX, int chunkZ);
 
     void handleChunkUnload(int chunkX, int chunkZ);
+
+    /**
+     * Gets the instance that is being ticked
+     *
+     * @return the ticked instance
+     */
+    Instance instance();
 }

@@ -1,10 +1,12 @@
 package dev.goldenstack.minestom_ca.server;
 
 import dev.goldenstack.minestom_ca.AutomataWorld;
-import dev.goldenstack.minestom_ca.backends.opencl.CLCellularInstance;
+import dev.goldenstack.minestom_ca.backends.lazy.LazyWorld;
 import dev.goldenstack.minestom_ca.server.commands.StartCommand;
 import dev.goldenstack.minestom_ca.server.commands.StopCommand;
+import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.adventure.audience.Audiences;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
@@ -42,7 +44,7 @@ public final class Main {
         instance.setChunkSupplier(LightingChunk::new);
         instance.setGenerator(unit -> unit.modifier().fillHeight(0, 10, Block.STONE));
         instance.enableAutoChunkLoad(false);
-        int range = 10;
+        int range = 5;
         for (int x = -range; x < range; x++) {
             for (int z = -range; z < range; z++) {
                 instance.loadChunk(x, z).join();
@@ -50,7 +52,8 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        AutomataWorld.register(new CLCellularInstance(instance, MOVING_OAK));
+        AutomataWorld.register(new LazyWorld(instance, MOVING_OAK));
+        //AutomataWorld.register(new CLCellularInstance(instance, MOVING_OAK));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(PlayerLoginEvent.class, event -> {
@@ -97,7 +100,7 @@ public final class Main {
             world.tick();
 
             final long duration = System.nanoTime() - start;
-            System.out.printf("Took %.3fms\n", duration / 1.0e6);
+            Audiences.all().sendPlayerListHeader(Component.text("Took " + duration / 1.0e6 + "ms"));
         });
 
         minecraftServer.start("0.0.0.0", 25565);
