@@ -10,16 +10,23 @@ import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.utils.chunk.ChunkUtils;
 
 import java.util.*;
 
+@SuppressWarnings("UnstableApiUsage")
 public final class LazyWorld implements AutomataWorld {
     private final Instance instance;
     private final List<Rule> rules;
     private final int minY;
     private final boolean[] trackedStates = new boolean[Short.MAX_VALUE];
 
-    private final Set<Point> trackedBlocks = new HashSet<>();
+    private final Map<Long, LChunk> loadedChunks = new HashMap<>();
+
+    final class LChunk {
+        // Block indexes to track next tick
+        private final Set<Integer> trackedBlocks = new HashSet<>();
+    }
 
     public LazyWorld(Instance instance, List<Rule> rules) {
         this.instance = instance;
@@ -44,20 +51,35 @@ public final class LazyWorld implements AutomataWorld {
     public void tick() {
         Map<Point, Block> changes = new HashMap<>();
         // Retrieve changes
-        for (Point point : trackedBlocks) {
-            final Block updated = executeRules(point);
-            if (updated != null) {
-                changes.put(point, updated);
+        for (var entry : loadedChunks.entrySet()) {
+            final long chunkIndex = entry.getKey();
+            final LChunk lChunk = entry.getValue();
+            final int chunkX = ChunkUtils.getChunkCoordX(chunkIndex);
+            final int chunkZ = ChunkUtils.getChunkCoordZ(chunkIndex);
+            for (int blockIndex : lChunk.trackedBlocks) {
+                final int localX = ChunkUtils.blockIndexToChunkPositionX(blockIndex);
+                final int localY = ChunkUtils.blockIndexToChunkPositionY(blockIndex);
+                final int localZ = ChunkUtils.blockIndexToChunkPositionZ(blockIndex);
+                final int x = localX + chunkX * 16;
+                final int y = localY;
+                final int z = localZ + chunkZ * 16;
+                final Block updated = executeRules(x, y, z);
+                if (updated != null) {
+                    changes.put(new Vec(x, y, z), updated);
+                }
             }
         }
         // Apply changes
         for (Map.Entry<Point, Block> entry : changes.entrySet()) {
             final Point point = entry.getKey();
             final Block block = entry.getValue();
-            this.instance.setBlock(point, block);
+            try {
+                this.instance.setBlock(point, block);
+            } catch (IllegalStateException ignored) {
+            }
         }
         // Prepare for next tick
-        this.trackedBlocks.clear();
+        for (LChunk lchunk : loadedChunks.values()) lchunk.trackedBlocks.clear();
         for (Map.Entry<Point, Block> entry : changes.entrySet()) {
             final Point point = entry.getKey();
             final int blockX = point.blockX();
@@ -67,12 +89,9 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    private Block executeRules(Point point) {
+    private Block executeRules(int x, int y, int z) {
         Block block = null;
         for (Rule rule : rules) {
-            final int x = point.blockX();
-            final int y = point.blockY();
-            final int z = point.blockZ();
             final boolean condition = verifyCondition(x, y, z, rule.condition());
             if (condition) {
                 block = runResult(x, y, z, rule.result());
@@ -122,7 +141,11 @@ public final class LazyWorld implements AutomataWorld {
                 final int blockY = y + index.y();
                 final int blockZ = z + index.z();
                 // TODO: internal states
-                yield instance.getBlock(blockX, blockY, blockZ).stateId();
+                try {
+                    yield instance.getBlock(blockX, blockY, blockZ).stateId();
+                } catch (NullPointerException e) {
+                    yield 0;
+                }
             }
             case Rule.Expression.Literal literal -> literal.value();
             case Rule.Expression.NeighborsCount neighborsCount -> {
@@ -189,13 +212,24 @@ public final class LazyWorld implements AutomataWorld {
             final int nX = x + offset.blockX();
             final int nY = y + offset.blockY();
             final int nZ = z + offset.blockZ();
-            this.trackedBlocks.add(new Vec(nX, nY, nZ));
+
+            final int chunkX = ChunkUtils.getChunkCoordinate(nX);
+            final int chunkZ = ChunkUtils.getChunkCoordinate(nZ);
+            final long chunkIndex = ChunkUtils.getChunkIndex(chunkX, chunkZ);
+            LChunk lChunk = this.loadedChunks.computeIfAbsent(chunkIndex,
+                    k -> new LChunk());
+
+            final int localX = ChunkUtils.toSectionRelativeCoordinate(nX);
+            final int localZ = ChunkUtils.toSectionRelativeCoordinate(nZ);
+            final int blockIndex = ChunkUtils.getBlockIndex(localX, nY, localZ);
+            lChunk.trackedBlocks.add(blockIndex);
         }
     }
 
     @Override
     public void handleChunkUnload(int chunkX, int chunkZ) {
-        // TODO
+        final long chunkIndex = ChunkUtils.getChunkIndex(chunkX, chunkZ);
+        this.loadedChunks.remove(chunkIndex);
     }
 
     @Override
