@@ -219,13 +219,8 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     @Override
-    public void handlePlacement(Point point, Block block) {
-        if (!trackedStates[block.stateId()]) return;
-        // Add neighbors
-        final int blockX = point.blockX();
-        final int blockY = point.blockY();
-        final int blockZ = point.blockZ();
-        register(blockX, blockY, blockZ);
+    public void handlePlacement(int x, int y, int z, Map<Integer, Integer> properties) {
+        register(x, y, z);
     }
 
     @Override

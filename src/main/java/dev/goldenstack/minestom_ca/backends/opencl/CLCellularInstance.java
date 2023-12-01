@@ -2,9 +2,7 @@ package dev.goldenstack.minestom_ca.backends.opencl;
 
 import dev.goldenstack.minestom_ca.AutomataWorld;
 import dev.goldenstack.minestom_ca.Rule;
-import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.*;
-import net.minestom.server.instance.block.Block;
 import net.minestom.server.network.packet.server.CachedPacket;
 import org.jetbrains.annotations.NotNull;
 import org.jocl.*;
@@ -121,15 +119,16 @@ public final class CLCellularInstance implements AutomataWorld {
     }
 
     @Override
-    public void handlePlacement(Point point, Block block) {
-        final int regionX = getRegionCoordinate(point.blockX());
-        final int regionZ = getRegionCoordinate(point.blockZ());
+    public void handlePlacement(int x, int y, int z, Map<Integer, Integer> properties) {
+        final int regionX = getRegionCoordinate(x);
+        final int regionZ = getRegionCoordinate(z);
         Region region = regions.get(new RegionIndex(regionX, regionZ));
         assert region != null : "Region " + regionX + ", " + regionZ + " does not exist";
-        final int localX = mod(point.blockX(), 512);
-        final int localY = mod(point.blockY(), 512) - minY;
-        final int localZ = mod(point.blockZ(), 512);
-        region.setLocal(localX, localY, localZ, block.stateId());
+        final int localX = mod(x, 512);
+        final int localY = mod(y, 512) - minY;
+        final int localZ = mod(z, 512);
+        final int blockState = properties.get(0);
+        region.setLocal(localX, localY, localZ, blockState);
     }
 
     @Override

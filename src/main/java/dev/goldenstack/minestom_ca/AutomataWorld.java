@@ -32,11 +32,13 @@ public interface AutomataWorld {
 
     /**
      * Handles an external block change (e.g. block place or break)
-     *
-     * @param point the location of the change
-     * @param block the Minecraft block being set
      */
-    void handlePlacement(Point point, Block block);
+    void handlePlacement(int x, int y, int z, Map<Integer, Integer> properties);
+
+    default void handlePlacement(Point point, Block block) {
+        handlePlacement(point.blockX(), point.blockY(), point.blockZ(),
+                Map.of(0, (int) block.stateId()));
+    }
 
     void handleChunkLoad(int chunkX, int chunkZ);
 
