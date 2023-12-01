@@ -10,6 +10,7 @@ import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.utils.chunk.ChunkUtils;
 
 import java.util.*;
@@ -19,6 +20,8 @@ public final class LazyWorld implements AutomataWorld {
     private final Instance instance;
     private final List<Rule> rules;
     private final int minY;
+
+    private final int stateCount;
     private final boolean[] trackedStates = new boolean[Short.MAX_VALUE];
 
     private final Map<Long, LChunk> loadedChunks = new HashMap<>();
@@ -26,6 +29,11 @@ public final class LazyWorld implements AutomataWorld {
     final class LChunk {
         // Block indexes to track next tick
         private final Set<Integer> trackedBlocks = new HashSet<>();
+        private final Palette[] states = new Palette[stateCount - 1];
+
+        {
+            Arrays.setAll(states, i -> Palette.blocks());
+        }
     }
 
     public LazyWorld(Instance instance, List<Rule> rules) {
@@ -33,6 +41,7 @@ public final class LazyWorld implements AutomataWorld {
         this.rules = rules;
         this.minY = instance.getDimensionType().getMinY();
 
+        this.stateCount = RuleAnalysis.stateCount(rules);
         for (Rule rule : rules) {
             RuleAnalysis.queryExpression(rule.condition(), Rule.Expression.Literal.class, literal -> {
                 this.trackedStates[literal.value()] = true;
@@ -49,7 +58,7 @@ public final class LazyWorld implements AutomataWorld {
 
     @Override
     public void tick() {
-        Map<Point, Block> changes = new HashMap<>();
+        Map<Point, Map<Integer, Integer>> changes = new HashMap<>();
         // Retrieve changes
         for (var entry : loadedChunks.entrySet()) {
             final long chunkIndex = entry.getKey();
@@ -63,25 +72,41 @@ public final class LazyWorld implements AutomataWorld {
                 final int x = localX + chunkX * 16;
                 final int y = localY;
                 final int z = localZ + chunkZ * 16;
-                final Block updated = executeRules(x, y, z);
+                final Map<Integer, Integer> updated = executeRules(x, y, z);
                 if (updated != null) {
                     changes.put(new Vec(x, y, z), updated);
                 }
             }
         }
         // Apply changes
-        for (Map.Entry<Point, Block> entry : changes.entrySet()) {
+        for (Map.Entry<Point, Map<Integer, Integer>> entry : changes.entrySet()) {
             final Point point = entry.getKey();
-            final Block block = entry.getValue();
-            try {
-                this.instance.setBlock(point, block);
-            } catch (IllegalStateException ignored) {
+            final Map<Integer, Integer> blockChange = entry.getValue();
+            for (Map.Entry<Integer, Integer> changeEntry : blockChange.entrySet()) {
+                final int stateIndex = changeEntry.getKey();
+                final int value = changeEntry.getValue();
+                if (stateIndex == 0) {
+                    try {
+                        final Block block = Block.fromStateId((short) value);
+                        this.instance.setBlock(point, block);
+                    } catch (IllegalStateException ignored) {
+                    }
+                } else {
+                    final LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
+                            ChunkUtils.getChunkCoordinate(point.blockX()),
+                            ChunkUtils.getChunkCoordinate(point.blockZ())));
+                    if (lChunk == null) continue;
+                    final int localX = ChunkUtils.toSectionRelativeCoordinate(point.blockX());
+                    final int localY = ChunkUtils.toSectionRelativeCoordinate(point.blockY());
+                    final int localZ = ChunkUtils.toSectionRelativeCoordinate(point.blockZ());
+                    Palette palette = lChunk.states[stateIndex - 1];
+                    palette.set(localX, localY, localZ, value);
+                }
             }
         }
         // Prepare for next tick
         for (LChunk lchunk : loadedChunks.values()) lchunk.trackedBlocks.clear();
-        for (Map.Entry<Point, Block> entry : changes.entrySet()) {
-            final Point point = entry.getKey();
+        for (Point point : changes.keySet()) {
             final int blockX = point.blockX();
             final int blockY = point.blockY();
             final int blockZ = point.blockZ();
@@ -89,8 +114,8 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    private Block executeRules(int x, int y, int z) {
-        Block block = null;
+    private Map<Integer, Integer> executeRules(int x, int y, int z) {
+        Map<Integer, Integer> block = null;
         for (Rule rule : rules) {
             final boolean condition = verifyCondition(x, y, z, rule.condition());
             if (condition) {
@@ -123,13 +148,16 @@ public final class LazyWorld implements AutomataWorld {
         };
     }
 
-    private Block runResult(int x, int y, int z, Rule.Result result) {
+    private Map<Integer, Integer> runResult(int x, int y, int z, Rule.Result result) {
         return switch (result) {
             case Rule.Result.Set set -> {
-                // TODO: internal states
-                final Rule.Expression blockStateExpression = set.expressions().get(0);
-                final int state = expression(x, y, z, blockStateExpression);
-                yield Block.fromStateId((short) state);
+                Map<Integer, Integer> map = new HashMap<>();
+                for (var entry : set.expressions().entrySet()) {
+                    final int stateIndex = entry.getKey();
+                    final int value = expression(x, y, z, entry.getValue());
+                    map.put(stateIndex, value);
+                }
+                yield map;
             }
         };
     }
@@ -140,11 +168,23 @@ public final class LazyWorld implements AutomataWorld {
                 final int blockX = x + index.x();
                 final int blockY = y + index.y();
                 final int blockZ = z + index.z();
-                // TODO: internal states
-                try {
-                    yield instance.getBlock(blockX, blockY, blockZ).stateId();
-                } catch (NullPointerException e) {
-                    yield 0;
+                final int stateIndex = index.stateIndex();
+                if (stateIndex == 0) {
+                    try {
+                        yield instance.getBlock(blockX, blockY, blockZ).stateId();
+                    } catch (NullPointerException e) {
+                        yield 0;
+                    }
+                } else {
+                    final LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
+                            ChunkUtils.getChunkCoordinate(blockX),
+                            ChunkUtils.getChunkCoordinate(blockZ)));
+                    if (lChunk == null) yield 0;
+                    final int localX = ChunkUtils.toSectionRelativeCoordinate(blockX);
+                    final int localY = ChunkUtils.toSectionRelativeCoordinate(blockY);
+                    final int localZ = ChunkUtils.toSectionRelativeCoordinate(blockZ);
+                    final Palette palette = lChunk.states[stateIndex - 1];
+                    yield palette.get(localX, localY, localZ);
                 }
             }
             case Rule.Expression.Literal literal -> literal.value();

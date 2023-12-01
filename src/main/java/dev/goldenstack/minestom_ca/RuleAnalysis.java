@@ -1,5 +1,6 @@
 package dev.goldenstack.minestom_ca;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -10,13 +11,13 @@ public final class RuleAnalysis {
 
     /**
      * Finds the number of state indices used within the given rule.
-     *
-     * @param rule the rule to check
-     * @return the largest state index used, plus one (as the starting index is 0)
      */
-    public static int stateCount(Rule rule) {
+    public static int stateCount(List<Rule> rules) {
         AtomicInteger max = new AtomicInteger(0);
-        queryExpression(rule.condition(), Rule.Expression.Index.class, index -> max.set(Math.max(max.get(), index.stateIndex())));
+        for (Rule rule : rules) {
+            queryExpression(rule.condition(), Rule.Expression.Index.class,
+                    index -> max.set(Math.max(max.get(), index.stateIndex())));
+        }
         return max.get() + 1;
     }
 
