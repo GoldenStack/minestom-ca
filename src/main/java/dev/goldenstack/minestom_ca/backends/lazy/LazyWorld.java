@@ -44,6 +44,7 @@ public final class LazyWorld implements AutomataWorld {
         this.stateCount = RuleAnalysis.stateCount(rules);
         for (Rule rule : rules) {
             RuleAnalysis.queryExpression(rule.condition(), Rule.Expression.Literal.class, literal -> {
+                if (literal.value() < 0 || literal.value() >= trackedStates.length) return;
                 this.trackedStates[literal.value()] = true;
             });
         }
