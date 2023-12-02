@@ -17,7 +17,7 @@ public class Neighbors {
 
     public static final @NotNull Point UP = new Vec(0, 1, 0);
 
-    public static final @NotNull Point DOWN = new Vec(0, 1, 0);
+    public static final @NotNull Point DOWN = new Vec(0, -1, 0);
 
     public static final @NotNull Point NORTH = new Vec(0, 0, -1);
     public static final @NotNull Point EAST = new Vec(1, 0, 0);
