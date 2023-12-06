@@ -1,0 +1,20 @@
+// States: push_north, push_south, push_east, push_west, push_up, push_down
+// Number value is the distance the block should be pushed
+
+// TODO: what syntax to copy a neighbor block's state?
+// Normal piston (push > 0)
+
+#air & south@push_north>0 -> south & push_north=south@push_north-1
+push_north!0 & north@#air -> #air & push_north=0
+
+#air & north@push_south>0 -> north & push_south=north@push_south-1
+push_south!0 & south@#air -> #air & push_south=0
+
+#air & east@push_west>0 -> east & push_west=east@push_west-1
+push_west!0 & west@#air -> #air & push_west=0
+
+#air & west@push_east>0 -> west & push_east=west@push_east-1
+push_east!0 & east@#air -> #air & push_east=0
+
+// Sticky piston (push < 0)
+// TODO
