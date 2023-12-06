@@ -27,12 +27,6 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
             }
         }
 
-        record Or(@NotNull List<Condition> conditions) implements Condition {
-            public Or {
-                conditions = List.copyOf(conditions);
-            }
-        }
-
         record Not(@NotNull Condition condition) implements Condition {
         }
 

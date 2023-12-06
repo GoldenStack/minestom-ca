@@ -140,12 +140,6 @@ public final class LazyWorld implements AutomataWorld {
                 yield first == second;
             }
             case Rule.Condition.Not not -> !verifyCondition(x, y, z, not.condition());
-            case Rule.Condition.Or or -> {
-                for (Rule.Condition c : or.conditions()) {
-                    if (verifyCondition(x, y, z, c)) yield true;
-                }
-                yield false;
-            }
         };
     }
 

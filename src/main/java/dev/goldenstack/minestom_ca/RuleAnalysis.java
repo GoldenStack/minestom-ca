@@ -33,11 +33,6 @@ public final class RuleAnalysis {
                 queryExpression(equal.second(), type, consumer);
             }
             case Rule.Condition.Not not -> queryExpression(not.condition(), type, consumer);
-            case Rule.Condition.Or or -> {
-                for (Rule.Condition c : or.conditions()) {
-                    queryExpression(c, type, consumer);
-                }
-            }
         }
     }
 

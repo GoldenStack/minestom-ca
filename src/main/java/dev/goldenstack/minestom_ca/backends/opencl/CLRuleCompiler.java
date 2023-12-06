@@ -118,19 +118,6 @@ final class CLRuleCompiler {
                 final String c = compileCondition(not.condition(), prepend);
                 yield "!(" + c + ")";
             }
-            case Rule.Condition.Or or -> {
-                StringBuilder builder = new StringBuilder();
-                builder.append("(");
-                for (int i = 0; i < or.conditions().size(); i++) {
-                    builder.append("(");
-                    builder.append(compileCondition(or.conditions().get(i), prepend));
-                    builder.append(")");
-                    if (i != or.conditions().size() - 1)
-                        builder.append("||");
-                }
-                builder.append(")");
-                yield builder.toString();
-            }
         };
     }
 
