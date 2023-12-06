@@ -5,6 +5,8 @@ import dev.goldenstack.minestom_ca.Rule.Expression;
 import net.minestom.server.instance.block.Block;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static dev.goldenstack.minestom_ca.Neighbors.*;
 import static dev.goldenstack.minestom_ca.Rule.Condition.*;
 import static dev.goldenstack.minestom_ca.Rule.Result.Set;
@@ -136,6 +138,30 @@ public final class RuleParsingTest {
                 ), new Rule(
                         new Equal(Block.BLUE_WOOL),
                         new Set(Block.PURPLE_WOOL)
+                ));
+    }
+
+    @Test
+    public void stateTests() {
+        assertRule("points=1 -> #dirt",
+                new Rule(
+                        new Equal(new Expression.Index(1), new Expression.Literal(1)),
+                        new Set(Block.DIRT)
+                ));
+        assertRule("points=0 -> points=1",
+                new Rule(
+                        new Equal(new Expression.Index(1), new Expression.Literal(0)),
+                        new Set(Map.of(
+                                1, new Expression.Literal(1)
+                        ))
+                ));
+        assertRule("points=1 -> #dirt points=2",
+                new Rule(
+                        new Equal(new Expression.Index(1), new Expression.Literal(1)),
+                        new Set(Map.of(
+                                0, new Expression.Literal(Block.DIRT),
+                                1, new Expression.Literal(2)
+                        ))
                 ));
     }
 }

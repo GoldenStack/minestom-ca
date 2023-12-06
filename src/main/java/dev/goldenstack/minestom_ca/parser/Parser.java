@@ -27,7 +27,6 @@ public final class Parser {
     }
 
     public void feedTokens(List<Token> tokens) {
-        System.out.println("feedTokens " + tokens);
         this.tokens = tokens;
         this.index = 0;
         while (!isAtEnd()) {
@@ -122,7 +121,7 @@ public final class Parser {
             advance();
             consume(Token.RightBracket.class, "Expected ']'");
             return new CountPredicate(-1, true, false, (int) number.value());
-        } else if (peek() instanceof Token.LessThan lessThan && peekNext() instanceof Token.Number number) {
+        } else if (peek() instanceof Token.LessThan && peekNext() instanceof Token.Number number) {
             // Lesser than
             advance();
             advance();
@@ -136,20 +135,22 @@ public final class Parser {
     }
 
     private Rule.Result nextResult() {
+        Map<Integer, Rule.Expression> properties = new HashMap<>();
         while (!(peek() instanceof Token.EOF)) {
             if (peek() instanceof Token.Constant constant) {
                 advance();
                 final Block block = Block.fromNamespaceId(constant.value());
                 if (block == null) throw error("Unknown block " + constant.value());
-                if (peek() instanceof Token.EOF) {
-                    return new Rule.Result.Set(block);
-                } else if (peek() instanceof Token.And) {
-                    advance();
-                    throw new UnsupportedOperationException();
-                }
+                properties.put(0, new Rule.Expression.Literal(block));
+            } else if (peek() instanceof Token.Identifier identifier) {
+                advance();
+                consume(Token.Equals.class, "Expected '='");
+                final int index = this.properties.computeIfAbsent(identifier.value(),
+                        s -> stateCounter.incrementAndGet());
+                properties.put(index, nextExpression());
             }
         }
-        throw error("Expected result");
+        return new Rule.Result.Set(properties);
     }
 
     private Rule.Expression nextExpression() {
