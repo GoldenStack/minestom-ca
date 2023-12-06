@@ -1,5 +1,6 @@
-// States: push_north, push_south, push_east, push_west, push_up, push_down
+// Push states: push_north, push_south, push_east, push_west, push_up, push_down
 // Number value is the distance the block should be pushed
+// Sticky state: sticky_count(distance)
 
 // TODO: what syntax to copy a neighbor block's state?
 // Normal piston (push > 0)
@@ -17,4 +18,14 @@ push_west!0 & west@#air -> #air & push_west=0
 push_east!0 & east@#air -> #air & push_east=0
 
 // Sticky piston (push < 0)
-// TODO
+// `sticky_count` is the number of blocks that should be pushed
+
+sticky_count=0 & north@sticky_count!0 & north@push_north!0 -> sticky_count=north@sticky_count-1 & push_south=north@push_north
+sticky_count=0 & south@sticky_count!0 & south@push_south!0 -> sticky_count=south@sticky_count-1 & push_north=south@push_south
+sticky_count=0 & east@sticky_count!0 & east@push_east!0 -> sticky_count=east@sticky_count-1 & push_west=east@push_east
+sticky_count=0 & west@sticky_count!0 & west@push_west!0 -> sticky_count=west@sticky_count-1 & push_east=west@push_west
+
+sticky_count!0 & push_north!0 & south@sticky_count=0 -> sticky_count=0
+sticky_count!0 & push_south!0 & north@sticky_count=0 -> sticky_count=0
+sticky_count!0 & push_east!0 & west@sticky_count=0 -> sticky_count=0
+sticky_count!0 & push_west!0 & east@sticky_count=0 -> sticky_count=0
