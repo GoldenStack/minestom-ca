@@ -166,24 +166,21 @@ public final class LazyWorld implements AutomataWorld {
     private int expression(int x, int y, int z, Rule.Expression expression) {
         return switch (expression) {
             case Rule.Expression.Index index -> {
-                final int blockX = x + index.x();
-                final int blockY = y + index.y();
-                final int blockZ = z + index.z();
                 final int stateIndex = index.stateIndex();
                 if (stateIndex == 0) {
                     try {
-                        yield instance.getBlock(blockX, blockY, blockZ).stateId();
+                        yield instance.getBlock(x, y, z).stateId();
                     } catch (NullPointerException e) {
                         yield 0;
                     }
                 } else {
                     final LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
-                            ChunkUtils.getChunkCoordinate(blockX),
-                            ChunkUtils.getChunkCoordinate(blockZ)));
+                            ChunkUtils.getChunkCoordinate(x),
+                            ChunkUtils.getChunkCoordinate(z)));
                     if (lChunk == null) yield 0;
-                    final int localX = ChunkUtils.toSectionRelativeCoordinate(blockX);
-                    final int localY = ChunkUtils.toSectionRelativeCoordinate(blockY);
-                    final int localZ = ChunkUtils.toSectionRelativeCoordinate(blockZ);
+                    final int localX = ChunkUtils.toSectionRelativeCoordinate(x);
+                    final int localY = ChunkUtils.toSectionRelativeCoordinate(y);
+                    final int localZ = ChunkUtils.toSectionRelativeCoordinate(z);
                     final Palette palette = lChunk.states[stateIndex - 1];
                     yield palette.get(localX, localY, localZ);
                 }

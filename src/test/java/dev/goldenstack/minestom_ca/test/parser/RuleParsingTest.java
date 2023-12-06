@@ -28,13 +28,13 @@ public final class RuleParsingTest {
                 new Rule(
                         new And(
                                 new Equal(Block.AIR),
-                                new Equal(new Expression.Index(WEST), new Expression.Literal(Block.OAK_LOG))
+                                new Equal(new Expression.NeighborsCount(WEST, new Equal(Block.OAK_LOG)), new Expression.Literal(1))
                         ),
                         new Set(Block.OAK_LOG)
                 ), new Rule(
                         new And(
                                 new Equal(Block.OAK_LOG),
-                                new Equal(new Expression.Index(EAST), new Expression.Literal(Block.AIR))
+                                new Equal(new Expression.NeighborsCount(EAST, new Equal(Block.AIR)), new Expression.Literal(1))
                         ),
                         new Set(Block.OAK_PLANKS)
                 ));
@@ -46,13 +46,13 @@ public final class RuleParsingTest {
                 new Rule(
                         new And(
                                 new Equal(Block.DIRT),
-                                new Equal(new Expression.Index(UP), new Expression.Literal(Block.AIR))
+                                new Equal(new Expression.NeighborsCount(UP, new Equal(Block.AIR)), new Expression.Literal(1))
                         ),
                         new Set(Block.GRASS_BLOCK)
                 ), new Rule(
                         new And(
                                 new Equal(Block.GRASS_BLOCK),
-                                new Not(new Equal(new Expression.Index(UP), new Expression.Literal(Block.AIR)))
+                                new Equal(new Expression.NeighborsCount(UP, new Not(new Equal(Block.AIR))), new Expression.Literal(1))
                         ),
                         new Set(Block.DIRT)
                 ));
@@ -111,10 +111,7 @@ public final class RuleParsingTest {
                 new Rule(
                         new And(
                                 new Equal(Block.RED_WOOL),
-                                new Equal(
-                                        new Expression.Index(UP),
-                                        new Expression.Literal(Block.HAY_BLOCK)
-                                )
+                                new Equal(new Expression.NeighborsCount(UP, new Equal(Block.HAY_BLOCK)), new Expression.Literal(1))
                         ),
                         new Set(Block.ORANGE_WOOL)
                 ),

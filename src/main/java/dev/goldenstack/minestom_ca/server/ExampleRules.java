@@ -8,6 +8,7 @@ import net.minestom.server.instance.block.Block;
 import java.util.List;
 import java.util.Map;
 
+import static dev.goldenstack.minestom_ca.Neighbors.*;
 import static dev.goldenstack.minestom_ca.Rule.Condition;
 import static dev.goldenstack.minestom_ca.Rule.Result;
 
@@ -44,19 +45,13 @@ public final class ExampleRules {
             new Rule(
                     new Condition.And(
                             new Condition.Equal(Block.AIR),
-                            new Condition.Equal(
-                                    new Expression.Literal(Block.OAK_LOG),
-                                    new Expression.Index(-1, 0, 0)
-                            )
+                            new Condition.Equal(new Expression.NeighborsCount(WEST, new Condition.Equal(Block.OAK_LOG)), new Expression.Literal(1))
                     ),
                     new Result.Set(Block.OAK_LOG)),
             new Rule(
                     new Condition.And(
                             new Condition.Equal(Block.OAK_LOG),
-                            new Condition.Equal(
-                                    new Expression.Literal(Block.AIR),
-                                    new Expression.Index(1, 0, 0)
-                            )
+                            new Condition.Equal(new Expression.NeighborsCount(EAST, new Condition.Equal(Block.AIR)), new Expression.Literal(1))
                     ),
                     new Result.Set(Block.OAK_PLANKS))
     );
@@ -65,10 +60,7 @@ public final class ExampleRules {
             new Rule(
                     new Condition.And(
                             new Condition.Equal(Block.RED_WOOL),
-                            new Condition.Equal(
-                                    new Expression.Literal(Block.HAY_BLOCK),
-                                    new Expression.Index(0, 1, 0)
-                            )
+                            new Condition.Equal(new Expression.NeighborsCount(UP, new Condition.Equal(Block.HAY_BLOCK)), new Expression.Literal(1))
                     ),
                     new Result.Set(Block.ORANGE_WOOL)
             ),

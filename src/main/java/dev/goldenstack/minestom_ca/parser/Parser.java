@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
 
 import static dev.goldenstack.minestom_ca.Neighbors.*;
 import static java.util.Map.entry;
@@ -57,7 +56,7 @@ public final class Parser {
 
     private Rule.Condition nextCondition() {
         while (!(peek() instanceof Token.Arrow)) {
-            CountPredicate countPredicate = null;
+            CountPredicate countPredicate = new CountPredicate(1, false, false, 0);
             if (peek() instanceof Token.LeftBracket) {
                 countPredicate = nextCountPredicate();
             }
@@ -73,54 +72,47 @@ public final class Parser {
                     advance();
                     return new Rule.Condition.And(new Rule.Condition.Equal(block), nextCondition());
                 }
+            } else if (peek() instanceof Token.Exclamation) {
+                // Self block check not
+                advance();
+                final Token.Constant constant = consume(Token.Constant.class, "Expected constant");
+                final Block block = Block.fromNamespaceId(constant.value());
+                if (block == null) throw error("Unknown block " + constant.value());
+                final Rule.Condition.Not condition = new Rule.Condition.Not(new Rule.Condition.Equal(block));
+                if (peek() instanceof Token.Arrow) {
+                    return condition;
+                } else if (peek() instanceof Token.And) {
+                    advance();
+                    return new Rule.Condition.And(condition, nextCondition());
+                }
             } else if (peek() instanceof Token.Identifier identifier) {
                 advance();
                 if (!(peek() instanceof Token.At)) {
                     // Self identifier
                     final int index = this.properties.computeIfAbsent(identifier.value(),
                             s -> stateCounter.incrementAndGet());
-                    if (peek() instanceof Token.Equals) {
-                        advance();
-                        if (peek() instanceof Token.Number number) {
-                            advance();
-                            return new Rule.Condition.Equal(
-                                    new Rule.Expression.Index(index),
-                                    new Rule.Expression.Literal((int) number.value())
-                            );
-                        }
-                    }
+                    return switch (advance()) {
+                        case Token.Equals ignored -> new Rule.Condition.Equal(
+                                new Rule.Expression.Index(index),
+                                nextExpression()
+                        );
+                        case Token.Exclamation ignored -> new Rule.Condition.Not(
+                                new Rule.Condition.Equal(
+                                        new Rule.Expression.Index(index),
+                                        nextExpression()
+                                ));
+                        default -> throw error("Expected operator");
+                    };
                 } else {
                     // Neighbor block check
                     consume(Token.At.class, "Expected '@'");
                     final List<Point> targets = TARGETS.get(identifier.value());
-                    BiFunction<Rule.Expression, Rule.Expression, Rule.Condition> conditionFunction =
-                            Rule.Condition.Equal::new;
-                    if (peek() instanceof Token.Exclamation) {
-                        advance();
-                        conditionFunction = conditionFunction.andThen(Rule.Condition.Not::new);
-                    }
-                    if (countPredicate == null) {
-                        // Single neighbor
-                        if (targets.size() != 1) throw error("Expected single neighbor");
-                        Rule.Expression expression = null;
-                        if (peek() instanceof Token.Constant constant) {
-                            advance();
-                            final Block block = Block.fromNamespaceId(constant.value());
-                            if (block == null) throw error("Unknown block " + constant.value());
-                            expression = new Rule.Expression.Literal(block);
-                        }
-                        if (expression == null) throw error("Expected expression");
-                        return conditionFunction.apply(new Rule.Expression.Index(targets.get(0)), expression);
-                    } else {
-                        // Multiple neighbors
-                        Rule.Expression neighborsCount = new Rule.Expression.NeighborsCount(targets, nextCondition());
-                        return new Rule.Condition.Equal(
-                                countPredicate.compare ?
-                                        new Rule.Expression.Compare(neighborsCount, new Rule.Expression.Literal(countPredicate.compareWith()))
-                                        : neighborsCount,
-                                new Rule.Expression.Literal(countPredicate.value())
-                        );
-                    }
+                    Rule.Expression neighborsCount = new Rule.Expression.NeighborsCount(targets, nextCondition());
+                    return new Rule.Condition.Equal(countPredicate.compare ?
+                            new Rule.Expression.Compare(neighborsCount, new Rule.Expression.Literal(countPredicate.compareWith())) :
+                            neighborsCount,
+                            new Rule.Expression.Literal(countPredicate.value())
+                    );
                 }
             }
         }
@@ -174,6 +166,20 @@ public final class Parser {
             }
         }
         throw error("Expected result");
+    }
+
+    private Rule.Expression nextExpression() {
+        if (peek() instanceof Token.Number number) {
+            advance();
+            return new Rule.Expression.Literal((int) number.value());
+        }
+        if (peek() instanceof Token.Constant constant) {
+            advance();
+            final Block block = Block.fromNamespaceId(constant.value());
+            if (block == null) throw error("Unknown block " + constant.value());
+            return new Rule.Expression.Literal(block);
+        }
+        throw error("Expected number");
     }
 
     public List<Rule> rules() {

@@ -58,22 +58,7 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
             }
         }
 
-        record Index(int x, int y, int z, int stateIndex) implements Expression {
-            public Index(int stateIndex) {
-                this(0, 0, 0, stateIndex);
-            }
-
-            public Index(int x, int y, int z) {
-                this(x, y, z, 0);
-            }
-
-            public Index(@NotNull Point offset, int stateIndex) {
-                this(offset.blockX(), offset.blockY(), offset.blockZ(), stateIndex);
-            }
-
-            public Index(@NotNull Point offset) {
-                this(offset, 0);
-            }
+        record Index(int stateIndex) implements Expression {
         }
 
         record NeighborsCount(@NotNull List<Point> offsets, @NotNull Condition condition) implements Expression {
