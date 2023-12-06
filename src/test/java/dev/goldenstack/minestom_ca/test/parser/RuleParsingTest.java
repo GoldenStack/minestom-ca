@@ -10,20 +10,20 @@ import static dev.goldenstack.minestom_ca.Rule.Condition.*;
 import static dev.goldenstack.minestom_ca.Rule.Result.Set;
 import static dev.goldenstack.minestom_ca.test.parser.TestUtils.assertRule;
 
-public class RuleParsingTest {
+public final class RuleParsingTest {
 
     @Test
     public void testRules() {
 
-        assertRule("state=#dirt -> state=#grass_block",
+        assertRule("#dirt -> #grass_block",
                 new Rule(
                         new Equal(Block.DIRT),
                         new Set(Block.GRASS_BLOCK)
                 ));
 
         assertRule("""
-                        state=#air & west@state=#oak_log -> state=#oak_log
-                        state=#oak_log & east@state=#air -> state=#oak_planks
+                        #air & west@#oak_log -> #oak_log
+                        #oak_log & east@#air -> #oak_planks
                         """,
                 new Rule(
                         new And(
@@ -40,8 +40,8 @@ public class RuleParsingTest {
                 ));
 
         assertRule("""
-                        state=#dirt & up@state=#air -> state=#grass_block
-                        state=#grass_block & up@state!=#air -> state=#dirt
+                        #dirt & up@#air -> #grass_block
+                        #grass_block & up@!#air -> #dirt
                         """,
                 new Rule(
                         new And(
@@ -58,9 +58,9 @@ public class RuleParsingTest {
                 ));
 
         assertRule("""
-                        state=#white_wool & (moore2d@state=#white_wool)<2 -> state=#black_wool
-                        state=#white_wool & (moore2d@state=#white_wool)>3 -> state=#black_wool
-                        state=#black_wool & (moore2d@state=#white_wool)=3 -> state=#white_wool
+                        #white_wool & [<2]moore2d@#white_wool -> #black_wool
+                        #white_wool & [>3]moore2d@#white_wool -> #black_wool
+                        #black_wool & [3]moore2d@#white_wool -> #white_wool
                         """,
                 new Rule(
                         new And(
@@ -89,7 +89,7 @@ public class RuleParsingTest {
                 )
         );
 
-        assertRule("state=#white_wool & points=0 -> state=#black_wool",
+        assertRule("#white_wool & points=0 -> #black_wool",
                 new Rule(
                         new And(
                                 new Equal(Block.WHITE_WOOL),
@@ -99,14 +99,14 @@ public class RuleParsingTest {
                 ));
 
         assertRule("""
-                        state=#red_wool & up@state=#hay_block -> state=#orange_wool
-                        state=#orange_wool -> state=#yellow_wool
-                        state=#yellow_wool -> state=#lime_wool
-                        state=#lime_wool -> state=#green_wool
-                        state=#green_wool -> state=#cyan_wool
-                        state=#cyan_wool -> state=#light_blue_wool
-                        state=#light_blue_wool -> state=#blue_wool
-                        state=#blue_wool -> state=#purple_wool
+                        #red_wool & up@#hay_block -> #orange_wool
+                        #orange_wool -> #yellow_wool
+                        #yellow_wool -> #lime_wool
+                        #lime_wool -> #green_wool
+                        #green_wool -> #cyan_wool
+                        #cyan_wool -> #light_blue_wool
+                        #light_blue_wool -> #blue_wool
+                        #blue_wool -> #purple_wool
                         """,
                 new Rule(
                         new And(
@@ -141,6 +141,4 @@ public class RuleParsingTest {
                         new Set(Block.PURPLE_WOOL)
                 ));
     }
-
 }
-
