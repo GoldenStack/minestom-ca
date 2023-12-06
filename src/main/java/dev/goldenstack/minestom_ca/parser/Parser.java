@@ -30,73 +30,69 @@ public final class Parser {
         this.tokens = tokens;
         this.index = 0;
         while (!isAtEnd()) {
-            final Rule.Condition condition = nextCondition();
-            consume(Token.Arrow.class, "Expected '->'");
+            Rule.Condition condition = null;
             List<Rule.Result> results = new ArrayList<>();
+            while (!(peek() instanceof Token.Arrow)) {
+                if (condition == null) {
+                    condition = nextCondition();
+                } else {
+                    condition = new Rule.Condition.And(condition, nextCondition());
+                }
+                if (peek() instanceof Token.And) advance();
+            }
+            consume(Token.Arrow.class, "Expected '->'");
             while (!(peek() instanceof Token.EOF)) results.add(nextResult());
             this.rules.add(new Rule(condition, results));
         }
     }
 
     private Rule.Condition nextCondition() {
-        while (!(peek() instanceof Token.Arrow)) {
-            CountPredicate countPredicate = new CountPredicate(1, false, false, 0);
-            if (peek() instanceof Token.LeftBracket) {
-                countPredicate = nextCountPredicate();
-            }
+        CountPredicate countPredicate = new CountPredicate(1, false, false, 0);
+        if (peek() instanceof Token.LeftBracket) {
+            countPredicate = nextCountPredicate();
+        }
 
-            if (peek() instanceof Token.Constant constant) {
-                // Self block check
-                advance();
-                final Block block = Block.fromNamespaceId(constant.value());
-                if (block == null) throw error("Unknown block " + constant.value());
-                if (peek() instanceof Token.Arrow) {
-                    return new Rule.Condition.Equal(block);
-                } else if (peek() instanceof Token.And) {
-                    advance();
-                    return new Rule.Condition.And(new Rule.Condition.Equal(block), nextCondition());
-                }
-            } else if (peek() instanceof Token.Exclamation) {
-                // Self block check not
-                advance();
-                final Token.Constant constant = consume(Token.Constant.class, "Expected constant");
-                final Block block = Block.fromNamespaceId(constant.value());
-                if (block == null) throw error("Unknown block " + constant.value());
-                final Rule.Condition.Not condition = new Rule.Condition.Not(new Rule.Condition.Equal(block));
-                if (peek() instanceof Token.Arrow) {
-                    return condition;
-                } else if (peek() instanceof Token.And) {
-                    advance();
-                    return new Rule.Condition.And(condition, nextCondition());
-                }
-            } else if (peek() instanceof Token.Identifier identifier) {
-                advance();
-                if (!(peek() instanceof Token.At)) {
-                    // Self identifier
-                    final int index = getIndex(identifier.value());
-                    return switch (advance()) {
-                        case Token.Equals ignored -> new Rule.Condition.Equal(
-                                new Rule.Expression.Index(index),
-                                nextExpression()
-                        );
-                        case Token.Exclamation ignored -> new Rule.Condition.Not(
-                                new Rule.Condition.Equal(
-                                        new Rule.Expression.Index(index),
-                                        nextExpression()
-                                ));
-                        default -> throw error("Expected operator");
-                    };
-                } else {
-                    // Neighbor block check
-                    consume(Token.At.class, "Expected '@'");
-                    final List<Point> targets = NAMED.get(identifier.value());
-                    Rule.Expression neighborsCount = new Rule.Expression.NeighborsCount(targets, nextCondition());
-                    return new Rule.Condition.Equal(countPredicate.compare ?
-                            new Rule.Expression.Compare(neighborsCount, new Rule.Expression.Literal(countPredicate.compareWith())) :
-                            neighborsCount,
-                            new Rule.Expression.Literal(countPredicate.value())
+        if (peek() instanceof Token.Constant constant) {
+            // Self block check
+            advance();
+            final Block block = Block.fromNamespaceId(constant.value());
+            if (block == null) throw error("Unknown block " + constant.value());
+            return new Rule.Condition.Equal(block);
+        } else if (peek() instanceof Token.Exclamation) {
+            // Self block check not
+            advance();
+            final Token.Constant constant = consume(Token.Constant.class, "Expected constant");
+            final Block block = Block.fromNamespaceId(constant.value());
+            if (block == null) throw error("Unknown block " + constant.value());
+            final Rule.Condition.Not condition = new Rule.Condition.Not(new Rule.Condition.Equal(block));
+            return condition;
+        } else if (peek() instanceof Token.Identifier identifier) {
+            advance();
+            if (!(peek() instanceof Token.At)) {
+                // Self identifier
+                final int index = getIndex(identifier.value());
+                return switch (advance()) {
+                    case Token.Equals ignored -> new Rule.Condition.Equal(
+                            new Rule.Expression.Index(index),
+                            nextExpression()
                     );
-                }
+                    case Token.Exclamation ignored -> new Rule.Condition.Not(
+                            new Rule.Condition.Equal(
+                                    new Rule.Expression.Index(index),
+                                    nextExpression()
+                            ));
+                    default -> throw error("Expected operator");
+                };
+            } else {
+                // Neighbor block check
+                consume(Token.At.class, "Expected '@'");
+                final List<Point> targets = NAMED.get(identifier.value());
+                Rule.Expression neighborsCount = new Rule.Expression.NeighborsCount(targets, nextCondition());
+                return new Rule.Condition.Equal(countPredicate.compare ?
+                        new Rule.Expression.Compare(neighborsCount, new Rule.Expression.Literal(countPredicate.compareWith())) :
+                        neighborsCount,
+                        new Rule.Expression.Literal(countPredicate.value())
+                );
             }
         }
         throw error("Expected condition");
