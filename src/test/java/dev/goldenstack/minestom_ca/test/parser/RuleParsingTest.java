@@ -10,11 +10,11 @@ import static dev.goldenstack.minestom_ca.Neighbors.*;
 import static dev.goldenstack.minestom_ca.Rule.Condition.*;
 import static dev.goldenstack.minestom_ca.test.parser.TestUtils.assertRule;
 
+@SuppressWarnings("DuplicateExpressions")
 public final class RuleParsingTest {
 
     @Test
     public void testRules() {
-
         assertRule("#dirt -> #grass_block",
                 new Rule(
                         new Equal(Block.DIRT),
@@ -161,6 +161,35 @@ public final class RuleParsingTest {
                 new Rule(
                         new Equal(Block.DIRT),
                         new SetIndex(1, new Expression.NeighborIndex(0, 1, 0, 1))
+                ));
+    }
+
+    @Test
+    public void comments() {
+        assertRule("""
+                        // Test comment
+                        #dirt -> #grass_block
+                        """,
+                new Rule(
+                        new Equal(Block.DIRT),
+                        new SetIndex(Block.GRASS_BLOCK)
+                ));
+        assertRule("""
+                        #dirt -> #grass_block
+                        // Test comment
+                        """,
+                new Rule(
+                        new Equal(Block.DIRT),
+                        new SetIndex(Block.GRASS_BLOCK)
+                ));
+        assertRule("""
+                        // Test comment
+                        #dirt -> #grass_block
+                        // Test comment
+                        """,
+                new Rule(
+                        new Equal(Block.DIRT),
+                        new SetIndex(Block.GRASS_BLOCK)
                 ));
     }
 }

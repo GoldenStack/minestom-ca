@@ -81,6 +81,8 @@ public final class Scanner {
             return nextToken();
         }
 
+        if (isAtEnd()) return null;
+
         char c = advance();
 
         if (Character.isLetter(c)) {
