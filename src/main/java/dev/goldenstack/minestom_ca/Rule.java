@@ -61,6 +61,9 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
         record Index(int stateIndex) implements Expression {
         }
 
+        record NeighborIndex(int x, int y, int z, int stateIndex) implements Expression {
+        }
+
         record NeighborsCount(@NotNull List<Point> offsets, @NotNull Condition condition) implements Expression {
             public NeighborsCount {
                 offsets = List.copyOf(offsets);

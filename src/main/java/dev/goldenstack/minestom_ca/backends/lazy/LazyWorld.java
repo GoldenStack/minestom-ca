@@ -185,6 +185,8 @@ public final class LazyWorld implements AutomataWorld {
                     yield palette.get(localX, localY, localZ);
                 }
             }
+            case Rule.Expression.NeighborIndex index ->
+                    expression(x + index.x(), y + index.y(), z + index.z(), new Rule.Expression.Index(index.stateIndex()));
             case Rule.Expression.Literal literal -> literal.value();
             case Rule.Expression.NeighborsCount neighborsCount -> {
                 int count = 0;

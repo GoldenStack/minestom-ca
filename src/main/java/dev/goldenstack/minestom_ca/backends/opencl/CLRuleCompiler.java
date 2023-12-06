@@ -182,6 +182,8 @@ final class CLRuleCompiler {
             }
             case Rule.Expression.Index index -> // TODO states
                     "neighbors[inverted_indices[x+1][y+1][z+1]]";
+            case Rule.Expression.NeighborIndex index ->
+                    String.format("neighbors[inverted_indices[x+1+%s][y+1+%s][z+1+%s]]", index.x(), index.y(), index.z());
             case Rule.Expression.Operation operation -> {
                 final String first = compileExpression(operation.first(), prepend);
                 final String second = compileExpression(operation.second(), prepend);

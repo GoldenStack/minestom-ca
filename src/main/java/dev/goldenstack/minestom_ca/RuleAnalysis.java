@@ -54,6 +54,9 @@ public final class RuleAnalysis {
             case Rule.Expression.Index index -> {
                 // Empty
             }
+            case Rule.Expression.NeighborIndex neighborIndex -> {
+                // Empty
+            }
             case Rule.Expression.Literal literal -> {
                 // Empty
             }

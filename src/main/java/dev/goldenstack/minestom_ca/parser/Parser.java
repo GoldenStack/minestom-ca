@@ -72,8 +72,7 @@ public final class Parser {
                 advance();
                 if (!(peek() instanceof Token.At)) {
                     // Self identifier
-                    final int index = this.properties.computeIfAbsent(identifier.value(),
-                            s -> stateCounter.incrementAndGet());
+                    final int index = getIndex(identifier.value());
                     return switch (advance()) {
                         case Token.Equals ignored -> new Rule.Condition.Equal(
                                 new Rule.Expression.Index(index),
@@ -145,8 +144,7 @@ public final class Parser {
             } else if (peek() instanceof Token.Identifier identifier) {
                 advance();
                 consume(Token.Equals.class, "Expected '='");
-                final int index = this.properties.computeIfAbsent(identifier.value(),
-                        s -> stateCounter.incrementAndGet());
+                final int index = getIndex(identifier.value());
                 properties.put(index, nextExpression());
             }
         }
@@ -164,11 +162,34 @@ public final class Parser {
             if (block == null) throw error("Unknown block " + constant.value());
             return new Rule.Expression.Literal(block);
         }
+        if (peek() instanceof Token.Identifier identifier) {
+            advance();
+            if (!(peek() instanceof Token.At)) {
+                // Self state
+                final int index = getIndex(identifier.value());
+                return new Rule.Expression.Index(index);
+            } else {
+                // Neighbor state
+                advance();
+                final List<Point> targets = NAMED.get(identifier.value());
+                final Point first = targets.get(0);
+                final Token.Identifier identifier2 = consume(Token.Identifier.class, "Expected identifier");
+                final int index = getIndex(identifier2.value());
+                return new Rule.Expression.NeighborIndex(
+                        first.blockX(), first.blockY(), first.blockZ(),
+                        index);
+            }
+        }
         throw error("Expected number");
     }
 
     public List<Rule> rules() {
         return List.copyOf(rules);
+    }
+
+    int getIndex(String identifier) {
+        return this.properties.computeIfAbsent(identifier,
+                s -> stateCounter.incrementAndGet());
     }
 
     <T extends Token> T consume(Class<T> type, String message) {

@@ -163,5 +163,12 @@ public final class RuleParsingTest {
                                 1, new Expression.Literal(2)
                         ))
                 ));
+        assertRule("#dirt -> points=up@points",
+                new Rule(
+                        new Equal(Block.DIRT),
+                        new Set(Map.of(
+                                1, new Expression.NeighborIndex(0, 1, 0, 1)
+                        ))
+                ));
     }
 }
