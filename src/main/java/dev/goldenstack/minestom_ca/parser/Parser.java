@@ -30,19 +30,16 @@ public final class Parser {
         this.tokens = tokens;
         this.index = 0;
         while (!isAtEnd()) {
-            Rule.Condition condition = null;
+            List<Rule.Condition> conditions = new ArrayList<>();
             List<Rule.Result> results = new ArrayList<>();
             while (!(peek() instanceof Token.Arrow)) {
-                if (condition == null) {
-                    condition = nextCondition();
-                } else {
-                    condition = new Rule.Condition.And(condition, nextCondition());
-                }
+                conditions.add(nextCondition());
                 if (peek() instanceof Token.And) advance();
             }
             consume(Token.Arrow.class, "Expected '->'");
             while (!(peek() instanceof Token.EOF)) results.add(nextResult());
-            this.rules.add(new Rule(condition, results));
+            this.rules.add(new Rule(conditions.size() == 1 ? conditions.getFirst() :
+                    new Rule.Condition.And(conditions), results));
         }
     }
 
