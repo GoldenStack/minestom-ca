@@ -1,0 +1,14 @@
+// Wireworld states:
+// 0 - empty
+// 1 - electron head
+// 2 - electron tail
+// 3 - conductor
+
+// Head to tail
+ww_state=1 -> ww_state=2
+
+// Tail to conductor
+ww_state=2 -> ww_state=3
+
+// Conductor to head
+ww_state=3 & [1,2]moore3d@state=1-> ww_state=1
