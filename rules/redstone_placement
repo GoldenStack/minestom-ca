@@ -1,0 +1,23 @@
+// Lengthening
+
+#redstone_wire[north=!side] & north@#redstone_wire = #redstone_wire[north=side]
+#redstone_wire[south=!side] & south@#redstone_wire = #redstone_wire[south=side]
+#redstone_wire[east=!side] & east@#redstone_wire = #redstone_wire[east=side]
+#redstone_wire[west=!side] & west@#redstone_wire = #redstone_wire[west=side]
+
+#redstone_wire[north=!up] & north_up@#redstone_wire = #redstone_wire[north=up]
+#redstone_wire[south=!up] & south_up@#redstone_wire = #redstone_wire[south=up]
+#redstone_wire[east=!up] & east_up@#redstone_wire = #redstone_wire[east=up]
+#redstone_wire[west=!up] & west_up@#redstone_wire = #redstone_wire[west=up]
+
+#redstone_wire[north=!side] & north_down@#redstone_wire = #redstone_wire[north=side]
+#redstone_wire[south=!side] & south_down@#redstone_wire = #redstone_wire[south=side]
+#redstone_wire[east=!side] & east_down@#redstone_wire = #redstone_wire[east=side]
+#redstone_wire[west=!side] & west_down@#redstone_wire = #redstone_wire[west=side]
+
+// Shortening
+
+#redstone_wire[north=!none] & !north@#redstone_wire & !north_up@#redstone_wire & !north_down@#redstone_wire = #redstone_wire[north=none]
+#redstone_wire[south=!none] & !south@#redstone_wire & !south_up@#redstone_wire & !south_down@#redstone_wire = #redstone_wire[south=none]
+#redstone_wire[east=!none] & !east@#redstone_wire & !east_up@#redstone_wire & !east_down@#redstone_wire = #redstone_wire[east=none]
+#redstone_wire[west=!none] & !west@#redstone_wire & !west_up@#redstone_wire & !west_down@#redstone_wire = #redstone_wire[west=none]
