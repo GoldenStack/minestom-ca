@@ -120,7 +120,15 @@ public final class LazyWorld implements AutomataWorld {
         for (Rule rule : rules) {
             final boolean condition = verifyCondition(x, y, z, rule.condition());
             if (condition) {
-                block = runResult(x, y, z, rule.result());
+                block = new HashMap<>();
+                for (Rule.Result result : rule.results()) {
+                    switch (result) {
+                        case Rule.Result.SetIndex set -> {
+                            final int value = expression(x, y, z, set.expression());
+                            block.put(set.stateIndex(), value);
+                        }
+                    }
+                }
             }
         }
         return block;
@@ -140,20 +148,6 @@ public final class LazyWorld implements AutomataWorld {
                 yield first == second;
             }
             case Rule.Condition.Not not -> !verifyCondition(x, y, z, not.condition());
-        };
-    }
-
-    private Map<Integer, Integer> runResult(int x, int y, int z, Rule.Result result) {
-        return switch (result) {
-            case Rule.Result.Set set -> {
-                Map<Integer, Integer> map = new HashMap<>();
-                for (var entry : set.expressions().entrySet()) {
-                    final int stateIndex = entry.getKey();
-                    final int value = expression(x, y, z, entry.getValue());
-                    map.put(stateIndex, value);
-                }
-                yield map;
-            }
         };
     }
 

@@ -6,15 +6,18 @@ import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * A generic rule for a cellular automata situated in a Minecraft world.
- *
- * @param condition the condition for rule application
- * @param result    the calculated result of rule application
  */
-public record Rule(@NotNull Condition condition, @NotNull Result result) {
+public record Rule(@NotNull Condition condition, List<Result> results) {
+    public Rule {
+        results = List.copyOf(results);
+    }
+
+    public Rule(Condition condition, Result... results) {
+        this(condition, List.of(results));
+    }
 
     public sealed interface Condition {
         record And(@NotNull List<Condition> conditions) implements Condition {
@@ -38,9 +41,9 @@ public record Rule(@NotNull Condition condition, @NotNull Result result) {
     }
 
     public sealed interface Result {
-        record Set(Map<Integer, Expression> expressions) implements Result {
-            public Set(Block block) {
-                this(Map.of(0, new Expression.Literal(block.stateId())));
+        record SetIndex(int stateIndex, Expression expression) implements Result {
+            public SetIndex(Block block) {
+                this(0, new Expression.Literal(block.stateId()));
             }
         }
     }

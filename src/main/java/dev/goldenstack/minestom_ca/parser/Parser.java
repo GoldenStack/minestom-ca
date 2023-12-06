@@ -32,8 +32,9 @@ public final class Parser {
         while (!isAtEnd()) {
             final Rule.Condition condition = nextCondition();
             consume(Token.Arrow.class, "Expected '->'");
-            final Rule.Result result = nextResult();
-            this.rules.add(new Rule(condition, result));
+            List<Rule.Result> results = new ArrayList<>();
+            while (!(peek() instanceof Token.EOF)) results.add(nextResult());
+            this.rules.add(new Rule(condition, results));
         }
     }
 
@@ -134,21 +135,18 @@ public final class Parser {
     }
 
     private Rule.Result nextResult() {
-        Map<Integer, Rule.Expression> properties = new HashMap<>();
-        while (!(peek() instanceof Token.EOF)) {
-            if (peek() instanceof Token.Constant constant) {
-                advance();
-                final Block block = Block.fromNamespaceId(constant.value());
-                if (block == null) throw error("Unknown block " + constant.value());
-                properties.put(0, new Rule.Expression.Literal(block));
-            } else if (peek() instanceof Token.Identifier identifier) {
-                advance();
-                consume(Token.Equals.class, "Expected '='");
-                final int index = getIndex(identifier.value());
-                properties.put(index, nextExpression());
-            }
+        if (peek() instanceof Token.Constant constant) {
+            advance();
+            final Block block = Block.fromNamespaceId(constant.value());
+            if (block == null) throw error("Unknown block " + constant.value());
+            return new Rule.Result.SetIndex(0, new Rule.Expression.Literal(block));
+        } else if (peek() instanceof Token.Identifier identifier) {
+            advance();
+            consume(Token.Equals.class, "Expected '='");
+            final int index = getIndex(identifier.value());
+            return new Rule.Result.SetIndex(index, nextExpression());
         }
-        return new Rule.Result.Set(properties);
+        throw error("Expected result");
     }
 
     private Rule.Expression nextExpression() {

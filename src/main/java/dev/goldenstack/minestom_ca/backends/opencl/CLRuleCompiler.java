@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -191,12 +190,15 @@ final class CLRuleCompiler {
         StringBuilder prep = new StringBuilder();
         for (Rule rule : rules) {
             StringBuilder res = new StringBuilder();
-            switch (rule.result()) {
-                case Rule.Result.Set set -> {
-                    final Map<Integer, Rule.Expression> map = set.expressions();
-                    // TODO state
-                    final String value = compileExpression(map.get(0), prep::append);
-                    res.append(String.format("return %s;", value));
+            for (Rule.Result result : rule.results()) {
+                // TODO properly handle multiple results
+                switch (result) {
+                    case Rule.Result.SetIndex set -> {
+                        // TODO state
+                        if (set.stateIndex() != 0) continue;
+                        final String value = compileExpression(set.expression(), prep::append);
+                        res.append(String.format("return %s;", value));
+                    }
                 }
             }
 
