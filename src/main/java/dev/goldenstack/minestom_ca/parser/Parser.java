@@ -12,25 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static dev.goldenstack.minestom_ca.Neighbors.*;
-import static java.util.Map.entry;
+import static dev.goldenstack.minestom_ca.Neighbors.NAMED;
 
 public final class Parser {
-    private static final Map<String, List<Point>> TARGETS = Map.ofEntries(
-            entry("up", List.of(UP)),
-            entry("down", List.of(DOWN)),
-            entry("north", List.of(NORTH)),
-            entry("south", List.of(SOUTH)),
-            entry("east", List.of(EAST)),
-            entry("west", List.of(WEST)),
-            entry("northeast", List.of(NORTHEAST)),
-            entry("southeast", List.of(SOUTHEAST)),
-            entry("northwest", List.of(NORTHWEST)),
-            entry("southwest", List.of(SOUTHWEST)),
-            entry("moore2dself", MOORE_2D_SELF),
-            entry("moore2d", MOORE_2D)
-    );
-
     private List<Token> tokens;
     private int index;
 
@@ -106,7 +90,7 @@ public final class Parser {
                 } else {
                     // Neighbor block check
                     consume(Token.At.class, "Expected '@'");
-                    final List<Point> targets = TARGETS.get(identifier.value());
+                    final List<Point> targets = NAMED.get(identifier.value());
                     Rule.Expression neighborsCount = new Rule.Expression.NeighborsCount(targets, nextCondition());
                     return new Rule.Condition.Equal(countPredicate.compare ?
                             new Rule.Expression.Compare(neighborsCount, new Rule.Expression.Literal(countPredicate.compareWith())) :

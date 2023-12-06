@@ -11,8 +11,7 @@ import java.util.Map;
 /**
  * Stores lists of neighbors.
  */
-public class Neighbors {
-
+public final class Neighbors {
     public static final @NotNull Point SELF = Vec.ZERO;
 
     public static final @NotNull Point UP = new Vec(0, 1, 0);
@@ -63,7 +62,7 @@ public class Neighbors {
             Map.entry("north", List.of(NORTH)),
             Map.entry("east", List.of(EAST)),
             Map.entry("south", List.of(SOUTH)),
-            Map.entry("west", List.of(SOUTH)),
+            Map.entry("west", List.of(WEST)),
             Map.entry("northeast", List.of(NORTHEAST)),
             Map.entry("southeast", List.of(SOUTHEAST)),
             Map.entry("northwest", List.of(NORTHWEST)),
@@ -77,5 +76,4 @@ public class Neighbors {
             Map.entry("neumann3dself", NEUMANN_3D_SELF),
             Map.entry("neumann3d", NEUMANN_3D)
     );
-
 }
