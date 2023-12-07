@@ -74,9 +74,7 @@ public final class LazyWorld implements AutomataWorld {
                 final int y = localY;
                 final int z = localZ + chunkZ * 16;
                 final Map<Integer, Integer> updated = executeRules(x, y, z);
-                if (updated != null) {
-                    changes.put(new Vec(x, y, z), updated);
-                }
+                if (updated != null) changes.put(new Vec(x, y, z), updated);
             }
         }
         // Apply changes
@@ -89,6 +87,7 @@ public final class LazyWorld implements AutomataWorld {
                 if (stateIndex == 0) {
                     try {
                         final Block block = Block.fromStateId((short) value);
+                        assert block != null;
                         this.instance.setBlock(point, block);
                     } catch (IllegalStateException ignored) {
                     }
@@ -118,15 +117,13 @@ public final class LazyWorld implements AutomataWorld {
     private Map<Integer, Integer> executeRules(int x, int y, int z) {
         Map<Integer, Integer> block = null;
         for (Rule rule : rules) {
-            final boolean condition = verifyCondition(x, y, z, rule.condition());
-            if (condition) {
-                block = new HashMap<>();
-                for (Rule.Result result : rule.results()) {
-                    switch (result) {
-                        case Rule.Result.SetIndex set -> {
-                            final int value = expression(x, y, z, set.expression());
-                            block.put(set.stateIndex(), value);
-                        }
+            if (!verifyCondition(x, y, z, rule.condition())) continue;
+            block = new HashMap<>();
+            for (Rule.Result result : rule.results()) {
+                switch (result) {
+                    case Rule.Result.SetIndex set -> {
+                        final int value = expression(x, y, z, set.expression());
+                        block.put(set.stateIndex(), value);
                     }
                 }
             }
@@ -173,8 +170,9 @@ public final class LazyWorld implements AutomataWorld {
                     yield palette.get(localX, localY, localZ);
                 }
             }
-            case Rule.Expression.NeighborIndex index ->
-                    expression(x + index.x(), y + index.y(), z + index.z(), new Rule.Expression.Index(index.stateIndex()));
+            case Rule.Expression.NeighborIndex index -> expression(
+                    x + index.x(), y + index.y(), z + index.z(),
+                    new Rule.Expression.Index(index.stateIndex()));
             case Rule.Expression.Literal literal -> literal.value();
             case Rule.Expression.NeighborsCount neighborsCount -> {
                 int count = 0;
@@ -182,8 +180,7 @@ public final class LazyWorld implements AutomataWorld {
                     final int nX = x + offset.blockX();
                     final int nY = y + offset.blockY();
                     final int nZ = z + offset.blockZ();
-                    final boolean valid = verifyCondition(nX, nY, nZ, neighborsCount.condition());
-                    if (valid) count++;
+                    if (verifyCondition(nX, nY, nZ, neighborsCount.condition())) count++;
                 }
                 yield count;
             }
