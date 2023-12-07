@@ -37,6 +37,9 @@ public final class Scanner {
         record Exclamation() implements Token {
         }
 
+        record Comma() implements Token {
+        }
+
         record Separator() implements Token {
         }
 
@@ -121,6 +124,7 @@ public final class Scanner {
         if (c == '@') return new Token.At();
         if (c == '&') return new Token.And();
         if (c == '!') return new Token.Exclamation();
+        if (c == ',') return new Token.Comma();
         if (c == '|') return new Token.Separator();
         if (c == ':') return new Token.Colon();
         if (c == '[') return new Token.LeftBracket();

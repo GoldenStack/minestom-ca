@@ -49,11 +49,9 @@ public final class Parser {
             countPredicate = nextCountPredicate();
         }
 
-        if (peek() instanceof Token.Constant constant) {
+        if (peek() instanceof Token.Constant) {
             // Self block check
-            advance();
-            final Block block = Block.fromNamespaceId(constant.value());
-            if (block == null) throw error("Unknown block " + constant.value());
+            final Block block = nextBlock();
             return new Rule.Condition.Equal(block);
         } else if (peek() instanceof Token.Exclamation) {
             // Self block check not
@@ -128,10 +126,8 @@ public final class Parser {
     }
 
     private Rule.Result nextResult() {
-        if (peek() instanceof Token.Constant constant) {
-            advance();
-            final Block block = Block.fromNamespaceId(constant.value());
-            if (block == null) throw error("Unknown block " + constant.value());
+        if (peek() instanceof Token.Constant) {
+            final Block block = nextBlock();
             return new Rule.Result.SetIndex(0, new Rule.Expression.Literal(block));
         } else if (peek() instanceof Token.Identifier identifier) {
             advance();
@@ -147,10 +143,8 @@ public final class Parser {
             advance();
             return new Rule.Expression.Literal((int) number.value());
         }
-        if (peek() instanceof Token.Constant constant) {
-            advance();
-            final Block block = Block.fromNamespaceId(constant.value());
-            if (block == null) throw error("Unknown block " + constant.value());
+        if (peek() instanceof Token.Constant) {
+            final Block block = nextBlock();
             return new Rule.Expression.Literal(block);
         }
         if (peek() instanceof Token.Identifier identifier) {
@@ -172,6 +166,34 @@ public final class Parser {
             }
         }
         throw error("Expected number");
+    }
+
+    private Block nextBlock() {
+        final Token.Constant constant = consume(Token.Constant.class, "Expected constant");
+        Block block = Block.fromNamespaceId(constant.value());
+        if (block == null) throw error("Unknown block: " + constant.value());
+        if (peek() instanceof Token.LeftBracket && peekNext() instanceof Token.Identifier) {
+            // Block has properties
+            advance();
+            while (!(peek() instanceof Token.RightBracket)) {
+                final Token.Identifier propertyName = consume(Token.Identifier.class, "Expected property name");
+                consume(Token.Equals.class, "Expected '='");
+                String propertyValue;
+                if (peek() instanceof Token.Identifier identifier) {
+                    advance();
+                    propertyValue = identifier.value();
+                } else if (peek() instanceof Token.Number number) {
+                    advance();
+                    propertyValue = String.valueOf(number.value());
+                } else {
+                    throw error("Expected property value");
+                }
+                block = block.withProperty(propertyName.value(), propertyValue);
+                if (peek() instanceof Token.Comma) advance();
+            }
+            consume(Token.RightBracket.class, "Expected ']'");
+        }
+        return block;
     }
 
     public List<Rule> rules() {

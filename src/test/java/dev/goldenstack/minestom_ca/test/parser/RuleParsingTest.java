@@ -165,6 +165,27 @@ public final class RuleParsingTest {
     }
 
     @Test
+    public void blockStateTests() {
+        assertRule("#redstone_wire[power=15] -> #dirt",
+                new Rule(
+                        new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE.withProperty("power", "15"))),
+                        new SetIndex(Block.DIRT)
+                ));
+        assertRule("#redstone_wire[power=15, south=side] -> #dirt",
+                new Rule(
+                        new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE
+                                .withProperty("power", "15")
+                                .withProperty("south", "side"))),
+                        new SetIndex(Block.DIRT)
+                ));
+        assertRule("#redstone_wire[power=15] -> #redstone_wire[power=7]",
+                new Rule(
+                        new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE.withProperty("power", "15"))),
+                        new SetIndex(Block.REDSTONE_WIRE.withProperty("power", "7"))
+                ));
+    }
+
+    @Test
     public void comments() {
         assertRule("""
                         // Test comment
