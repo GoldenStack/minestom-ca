@@ -4,6 +4,7 @@ import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -45,6 +46,9 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
             public SetIndex(Block block) {
                 this(0, new Expression.Literal(block.stateId()));
             }
+        }
+
+        record TriggerEvent(String event, @Nullable Expression expression) implements Result {
         }
     }
 

@@ -199,6 +199,7 @@ final class CLRuleCompiler {
                         final String value = compileExpression(set.expression(), prep::append);
                         res.append(String.format("return %s;", value));
                     }
+                    default -> throw new IllegalStateException("Unexpected value: " + result);
                 }
             }
 

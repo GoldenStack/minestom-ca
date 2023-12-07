@@ -31,6 +31,9 @@ public final class Scanner {
         record At() implements Token {
         }
 
+        record Dollar() implements Token {
+        }
+
         record And() implements Token {
         }
 
@@ -122,6 +125,7 @@ public final class Scanner {
             return new Token.Arrow();
         }
         if (c == '@') return new Token.At();
+        if (c == '$') return new Token.Dollar();
         if (c == '&') return new Token.And();
         if (c == '!') return new Token.Exclamation();
         if (c == ',') return new Token.Comma();

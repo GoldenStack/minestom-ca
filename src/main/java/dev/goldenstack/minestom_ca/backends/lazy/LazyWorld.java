@@ -125,6 +125,16 @@ public final class LazyWorld implements AutomataWorld {
                         final int value = expression(x, y, z, set.expression());
                         block.put(index, value);
                     }
+                    case Rule.Result.TriggerEvent triggerEvent -> {
+                        final String eventName = triggerEvent.event();
+                        final Rule.Expression eventExpression = triggerEvent.expression();
+                        if (eventExpression != null) {
+                            final int value = expression(x, y, z, eventExpression);
+                            System.out.println("Event: " + eventName + "=" + value);
+                        } else {
+                            System.out.println("Event: " + eventName);
+                        }
+                    }
                 }
             }
         }

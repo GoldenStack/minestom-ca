@@ -67,7 +67,7 @@ public final class RuleParsingTest {
                                 new Equal(Block.WHITE_WOOL),
                                 new Equal(
                                         new Expression.Compare(new Expression.NeighborsCount(MOORE_2D, new Equal(Block.WHITE_WOOL)), new Expression.Literal(2)),
-                                        new Expression.Literal(1)
+                                        new Expression.Literal(-1)
                                 )
                         ),
                         new SetIndex(Block.BLACK_WOOL)
@@ -76,7 +76,7 @@ public final class RuleParsingTest {
                                 new Equal(Block.WHITE_WOOL),
                                 new Equal(
                                         new Expression.Compare(new Expression.NeighborsCount(MOORE_2D, new Equal(Block.WHITE_WOOL)), new Expression.Literal(3)),
-                                        new Expression.Literal(-1)
+                                        new Expression.Literal(1)
                                 )
                         ),
                         new SetIndex(Block.BLACK_WOOL)
@@ -200,6 +200,20 @@ public final class RuleParsingTest {
                 new Rule(
                         new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE.withProperty("power", "15"))),
                         new SetIndex(Block.REDSTONE_WIRE.withProperty("power", "7"))
+                ));
+    }
+
+    @Test
+    public void eventTriggerTest() {
+        assertRule("#dirt -> $dirt_exist=1",
+                new Rule(
+                        new Equal(Block.DIRT),
+                        new Rule.Result.TriggerEvent("dirt_exist", new Expression.Literal(1))
+                ));
+        assertRule("#dirt -> $dirt_exist",
+                new Rule(
+                        new Equal(Block.DIRT),
+                        new Rule.Result.TriggerEvent("dirt_exist", null)
                 ));
     }
 

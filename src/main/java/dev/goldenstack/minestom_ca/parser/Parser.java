@@ -146,6 +146,15 @@ public final class Parser {
             consume(Token.Equals.class, "Expected '='");
             final int index = getIndex(identifier.value());
             return new Rule.Result.SetIndex(index, nextExpression());
+        } else if (peek() instanceof Token.Dollar) {
+            advance();
+            final Token.Identifier identifier = consume(Token.Identifier.class, "Expected identifier");
+            Rule.Expression expression = null;
+            if (peek() instanceof Token.Equals) {
+                consume(Token.Equals.class, "Expected '='");
+                expression = nextExpression();
+            }
+            return new Rule.Result.TriggerEvent(identifier.value(), expression);
         }
         throw error("Expected result");
     }
