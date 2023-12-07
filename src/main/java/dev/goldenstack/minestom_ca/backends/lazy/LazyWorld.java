@@ -115,19 +115,20 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     private Map<Integer, Integer> executeRules(int x, int y, int z) {
-        Map<Integer, Integer> block = null;
+        Map<Integer, Integer> block = new HashMap<>();
         for (Rule rule : rules) {
             if (!verifyCondition(x, y, z, rule.condition())) continue;
-            block = new HashMap<>();
             for (Rule.Result result : rule.results()) {
                 switch (result) {
                     case Rule.Result.SetIndex set -> {
+                        final int index = set.stateIndex();
                         final int value = expression(x, y, z, set.expression());
-                        block.put(set.stateIndex(), value);
+                        block.put(index, value);
                     }
                 }
             }
         }
+        if (block.isEmpty()) return null;
         return block;
     }
 

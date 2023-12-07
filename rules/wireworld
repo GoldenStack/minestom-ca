@@ -5,10 +5,16 @@
 // 3 - conductor
 
 // Head to tail
-ww_state=1 -> ww_state=2
+ww_state=1 -> ww_state=2 #purple_wool
 
 // Tail to conductor
-ww_state=2 -> ww_state=3
+ww_state=2 -> ww_state=3 #white_wool
 
 // Conductor to head
-ww_state=3 & [1,2]moore3d@state=1-> ww_state=1
+ww_state=3 & [>0]moore3d@ww_state=1 & [<3]moore3d@ww_state=1 -> ww_state=1 #red_wool
+
+// Initiate conductors
+#white_wool & ww_state=0 -> ww_state=3
+
+// Power start
+#white_wool & [!0]neumann3d@#redstone_block -> ww_state=1

@@ -38,7 +38,7 @@ public final class Parser {
             }
             consume(Token.Arrow.class, "Expected '->'");
             while (!(peek() instanceof Token.EOF)) results.add(nextResult());
-            this.rules.add(new Rule(conditions.size() == 1 ? conditions.getFirst() :
+            this.rules.add(new Rule(conditions.size() == 1 ? conditions.get(0) :
                     new Rule.Condition.And(conditions), results));
         }
     }
@@ -83,11 +83,23 @@ public final class Parser {
                 consume(Token.At.class, "Expected '@'");
                 final List<Point> targets = NAMED.get(identifier.value());
                 Rule.Expression neighborsCount = new Rule.Expression.NeighborsCount(targets, nextCondition());
-                return new Rule.Condition.Equal(countPredicate.compare ?
-                        new Rule.Expression.Compare(neighborsCount, new Rule.Expression.Literal(countPredicate.compareWith())) :
-                        neighborsCount,
-                        new Rule.Expression.Literal(countPredicate.value())
-                );
+                if (countPredicate.compare) {
+                    return new Rule.Condition.Equal(
+                            new Rule.Expression.Compare(neighborsCount, new Rule.Expression.Literal(countPredicate.compareWith())),
+                            new Rule.Expression.Literal(countPredicate.value())
+                    );
+                } else if (countPredicate.not) {
+                    return new Rule.Condition.Not(
+                            new Rule.Condition.Equal(
+                                    neighborsCount,
+                                    new Rule.Expression.Literal(countPredicate.value())
+                            ));
+                } else {
+                    return new Rule.Condition.Equal(
+                            neighborsCount,
+                            new Rule.Expression.Literal(countPredicate.value())
+                    );
+                }
             }
         }
         throw error("Expected condition");
@@ -100,7 +112,7 @@ public final class Parser {
             advance();
             consume(Token.RightBracket.class, "Expected ']'");
             return new CountPredicate((int) number.value(), false, false, 0);
-        } else if (peek() instanceof Token.Number number && peekNext() instanceof Token.Exclamation) {
+        } else if (peek() instanceof Token.Exclamation && peekNext() instanceof Token.Number number) {
             // Not
             advance();
             advance();
@@ -111,13 +123,13 @@ public final class Parser {
             advance();
             advance();
             consume(Token.RightBracket.class, "Expected ']'");
-            return new CountPredicate(-1, true, false, (int) number.value());
+            return new CountPredicate(1, true, false, (int) number.value());
         } else if (peek() instanceof Token.LessThan && peekNext() instanceof Token.Number number) {
             // Lesser than
             advance();
             advance();
             consume(Token.RightBracket.class, "Expected ']'");
-            return new CountPredicate(1, true, false, (int) number.value());
+            return new CountPredicate(-1, true, false, (int) number.value());
         }
         throw error("Expected count predicate");
     }

@@ -140,6 +140,24 @@ public final class RuleParsingTest {
     }
 
     @Test
+    public void notPredicate() {
+        assertRule("""
+                        #white_wool & [!0]moore2d@#white_wool -> #black_wool
+                        """,
+                new Rule(
+                        new And(
+                                new Equal(Block.WHITE_WOOL),
+                                new Not(new Equal(
+                                        new Expression.NeighborsCount(MOORE_2D, new Equal(Block.WHITE_WOOL)),
+                                        new Expression.Literal(0))
+                                )
+                        ),
+                        new SetIndex(Block.BLACK_WOOL)
+                )
+        );
+    }
+
+    @Test
     public void stateTests() {
         assertRule("points=1 -> #dirt",
                 new Rule(
