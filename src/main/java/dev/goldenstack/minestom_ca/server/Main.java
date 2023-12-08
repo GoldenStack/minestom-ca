@@ -4,6 +4,7 @@ import dev.goldenstack.minestom_ca.AutomataWorld;
 import dev.goldenstack.minestom_ca.Program;
 import dev.goldenstack.minestom_ca.backends.lazy.LazyWorld;
 import dev.goldenstack.minestom_ca.server.commands.StartCommand;
+import dev.goldenstack.minestom_ca.server.commands.StateCommand;
 import dev.goldenstack.minestom_ca.server.commands.StopCommand;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
@@ -25,8 +26,13 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import org.jglrxavpok.hephaistos.nbt.NBT;
+import org.jglrxavpok.hephaistos.nbt.NBTCompound;
+import org.jglrxavpok.hephaistos.nbt.NBTInt;
 
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class Main {
@@ -39,6 +45,7 @@ public final class Main {
         // Register commands
         MinecraftServer.getCommandManager().register(new StartCommand());
         MinecraftServer.getCommandManager().register(new StopCommand());
+        MinecraftServer.getCommandManager().register(new StateCommand());
 
         // Create an instance
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
@@ -77,7 +84,20 @@ public final class Main {
                     final Point point = event.getBlockPosition();
                     final Block block = event.getBlock();
                     AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
-                    world.handlePlacement(point, block);
+
+                    Map<Integer, Integer> properties = new HashMap<>();
+                    properties.put(0, (int) block.stateId());
+                    final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
+                    final NBTCompound nbt = item.meta().toNBT();
+                    for (Map.Entry<String, NBT> entry : nbt.getEntries()) {
+                        if (entry.getValue() instanceof NBTInt nbtInt) {
+                            final String name = entry.getKey();
+                            final int value = nbtInt.getValue();
+                            final Integer index = world.program().variables().get(name);
+                            if (index != null) properties.put(index, value);
+                        }
+                    }
+                    world.handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
                 })
                 .addListener(PlayerBlockBreakEvent.class, event -> {
                     final Point point = event.getBlockPosition();

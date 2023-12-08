@@ -219,11 +219,7 @@ public final class Parser {
     }
 
     public Program program() {
-        Map<Integer, String> variables = new HashMap<>();
-        for (Map.Entry<String, Integer> entry : properties.entrySet()) {
-            variables.put(entry.getValue(), entry.getKey());
-        }
-        return new Program(rules, variables);
+        return new Program(rules, properties);
     }
 
     int getIndex(String identifier) {

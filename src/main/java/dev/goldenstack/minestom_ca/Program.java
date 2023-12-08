@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
-public record Program(List<Rule> rules, Map<Integer, String> variables) {
+public record Program(List<Rule> rules, Map<String, Integer> variables) {
     public Program {
         rules = List.copyOf(rules);
         variables = Map.copyOf(variables);

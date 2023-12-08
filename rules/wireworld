@@ -17,4 +17,4 @@ ww_state=3 & [>0]moore3d@ww_state=1 & [<3]moore3d@ww_state=1 -> ww_state=1 #red_
 #white_wool & ww_state=0 -> ww_state=3
 
 // Power start
-#white_wool & [!0]neumann3d@#redstone_block -> ww_state=1
+ww_state=3 & [!0]neumann3d@generator=1 -> ww_state=1 #red_wool
