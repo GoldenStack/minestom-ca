@@ -215,6 +215,16 @@ public final class LazyWorld implements AutomataWorld {
 
     @Override
     public void handlePlacement(int x, int y, int z, Map<Integer, Integer> properties) {
+        LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
+                ChunkUtils.getChunkCoordinate(x),
+                ChunkUtils.getChunkCoordinate(z)));
+        final int localX = ChunkUtils.toSectionRelativeCoordinate(x);
+        final int localZ = ChunkUtils.toSectionRelativeCoordinate(z);
+        for(int i = 1; i < stateCount; i++) {
+            Palette palette = lChunk.states[i - 1];
+            final int value = properties.getOrDefault(i, 0);
+            palette.set(localX, y, localZ, value);
+        }
         register(x, y, z);
     }
 
