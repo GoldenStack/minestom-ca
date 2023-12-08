@@ -50,4 +50,6 @@ public interface AutomataWorld {
      * @return the ticked instance
      */
     Instance instance();
+
+    Program program();
 }

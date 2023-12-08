@@ -1,8 +1,7 @@
 package dev.goldenstack.minestom_ca.server;
 
 import dev.goldenstack.minestom_ca.AutomataWorld;
-import dev.goldenstack.minestom_ca.Rule;
-import dev.goldenstack.minestom_ca.RuleLoader;
+import dev.goldenstack.minestom_ca.Program;
 import dev.goldenstack.minestom_ca.backends.lazy.LazyWorld;
 import dev.goldenstack.minestom_ca.server.commands.StartCommand;
 import dev.goldenstack.minestom_ca.server.commands.StopCommand;
@@ -28,12 +27,11 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
 import java.nio.file.Path;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class Main {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
-    private static final List<Rule> FILE_RULES = RuleLoader.fromFile(Path.of("rules/wireworld"));
+    private static final Program FILE_PROGRAM = Program.fromFile(Path.of("rules/wireworld"));
 
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
@@ -55,7 +53,7 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        AutomataWorld.register(new LazyWorld(instance, FILE_RULES));
+        AutomataWorld.register(new LazyWorld(instance, FILE_PROGRAM));
         //AutomataWorld.register(new CLCellularInstance(instance, MOVING_OAK));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();

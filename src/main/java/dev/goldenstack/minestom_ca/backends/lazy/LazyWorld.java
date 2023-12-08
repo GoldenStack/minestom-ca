@@ -1,9 +1,6 @@
 package dev.goldenstack.minestom_ca.backends.lazy;
 
-import dev.goldenstack.minestom_ca.AutomataWorld;
-import dev.goldenstack.minestom_ca.Neighbors;
-import dev.goldenstack.minestom_ca.Rule;
-import dev.goldenstack.minestom_ca.RuleAnalysis;
+import dev.goldenstack.minestom_ca.*;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Chunk;
@@ -18,6 +15,7 @@ import java.util.*;
 @SuppressWarnings("UnstableApiUsage")
 public final class LazyWorld implements AutomataWorld {
     private final Instance instance;
+    private final Program program;
     private final List<Rule> rules;
     private final int minY;
 
@@ -36,9 +34,10 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    public LazyWorld(Instance instance, List<Rule> rules) {
+    public LazyWorld(Instance instance, Program program) {
         this.instance = instance;
-        this.rules = rules;
+        this.program = program;
+        this.rules = program.rules();
         this.minY = instance.getDimensionType().getMinY();
 
         this.stateCount = RuleAnalysis.stateCount(rules);
@@ -266,5 +265,10 @@ public final class LazyWorld implements AutomataWorld {
     @Override
     public Instance instance() {
         return instance;
+    }
+
+    @Override
+    public Program program() {
+        return program;
     }
 }

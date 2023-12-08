@@ -1,6 +1,7 @@
 package dev.goldenstack.minestom_ca.parser;
 
 
+import dev.goldenstack.minestom_ca.Program;
 import dev.goldenstack.minestom_ca.Rule;
 import dev.goldenstack.minestom_ca.parser.Scanner.Token;
 import net.minestom.server.coordinate.Point;
@@ -217,8 +218,12 @@ public final class Parser {
         return block;
     }
 
-    public List<Rule> rules() {
-        return List.copyOf(rules);
+    public Program program() {
+        Map<Integer, String> variables = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : properties.entrySet()) {
+            variables.put(entry.getValue(), entry.getKey());
+        }
+        return new Program(rules, variables);
     }
 
     int getIndex(String identifier) {

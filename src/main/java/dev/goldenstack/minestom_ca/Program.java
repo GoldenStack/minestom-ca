@@ -7,9 +7,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
-public final class RuleLoader {
-    public static List<Rule> fromFile(Path path){
+public record Program(List<Rule> rules, Map<Integer, String> variables) {
+    public Program {
+        rules = List.copyOf(rules);
+        variables = Map.copyOf(variables);
+    }
+
+    public static Program fromFile(Path path) {
         final String program;
         try {
             program = Files.readAllLines(path).stream().reduce("", (a, b) -> a + "\n" + b);
@@ -19,13 +25,13 @@ public final class RuleLoader {
         return fromString(program);
     }
 
-    public static List<Rule> fromString(String program){
+    public static Program fromString(String program) {
         List<String> lines = List.of(program.split("\n"));
         Parser parser = new Parser();
         for (String string : lines) {
             List<Scanner.Token> tokens = new Scanner(string).scanTokens();
             parser.feedTokens(tokens);
         }
-        return parser.rules();
+        return parser.program();
     }
 }

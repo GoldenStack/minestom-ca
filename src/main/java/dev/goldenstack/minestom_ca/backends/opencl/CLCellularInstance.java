@@ -1,17 +1,15 @@
 package dev.goldenstack.minestom_ca.backends.opencl;
 
 import dev.goldenstack.minestom_ca.AutomataWorld;
-import dev.goldenstack.minestom_ca.Rule;
+import dev.goldenstack.minestom_ca.Program;
 import net.minestom.server.instance.*;
 import net.minestom.server.network.packet.server.CachedPacket;
-import org.jetbrains.annotations.NotNull;
 import org.jocl.*;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public final class CLCellularInstance implements AutomataWorld {
@@ -27,14 +25,16 @@ public final class CLCellularInstance implements AutomataWorld {
 
     private final cl_kernel caKernel;
     private final Instance instance;
+    private final Program program;
 
     private final long[] globalWorkSize;
 
     private final int minY;
 
-    public CLCellularInstance(Instance instance, @NotNull List<Rule> rules) {
+    public CLCellularInstance(Instance instance, Program program) {
         this.instance = instance;
-        this.caKernel = CLRuleCompiler.compile(rules);
+        this.program = program;
+        this.caKernel = CLRuleCompiler.compile(program.rules());
         this.globalWorkSize = new long[]{512, 512, 512};
 
         CL.clSetKernelArg(caKernel, 0, Sizeof.cl_mem, Pointer.to(blockDataBufferIn));
@@ -51,6 +51,11 @@ public final class CLCellularInstance implements AutomataWorld {
     @Override
     public Instance instance() {
         return instance;
+    }
+
+    @Override
+    public Program program() {
+        return program;
     }
 
     @Override
