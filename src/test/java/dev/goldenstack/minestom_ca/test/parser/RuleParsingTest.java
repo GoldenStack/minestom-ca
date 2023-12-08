@@ -218,6 +218,24 @@ public final class RuleParsingTest {
     }
 
     @Test
+    public void math() {
+        assertRule("points!0 -> points=points+1",
+                new Rule(
+                        new Not(new Equal(new Expression.Index(1), new Expression.Literal(0))),
+                        new SetIndex(1, new Expression.Operation(
+                                new Expression.Index(1), new Expression.Literal(1),
+                                Expression.Operation.Type.ADD))
+                ));
+        assertRule("points!0 -> points=points-1",
+                new Rule(
+                        new Not(new Equal(new Expression.Index(1), new Expression.Literal(0))),
+                        new SetIndex(1, new Expression.Operation(
+                                new Expression.Index(1), new Expression.Literal(1),
+                                Expression.Operation.Type.SUBTRACT))
+                ));
+    }
+
+    @Test
     public void comments() {
         assertRule("""
                         // Test comment

@@ -48,6 +48,9 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
             }
         }
 
+        record BlockCopy(int x, int y, int z) implements Result {
+        }
+
         record TriggerEvent(String event, @Nullable Expression expression) implements Result {
         }
     }

@@ -18,6 +18,7 @@ import net.minestom.server.event.instance.InstanceChunkLoadEvent;
 import net.minestom.server.event.instance.InstanceChunkUnloadEvent;
 import net.minestom.server.event.instance.InstanceTickEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
+import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.player.PlayerLoginEvent;
 import net.minestom.server.instance.InstanceContainer;
@@ -37,7 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class Main {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
-    private static final Program FILE_PROGRAM = Program.fromFile(Path.of("rules/wireworld"));
+    private static final Program FILE_PROGRAM = Program.fromFile(Path.of("rules/piston"));
 
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
@@ -103,6 +104,13 @@ public final class Main {
                     final Point point = event.getBlockPosition();
                     AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
                     world.handlePlacement(point, Block.AIR);
+                })
+                .addListener(PlayerBlockInteractEvent.class, event -> {
+                    final Player player = event.getPlayer();
+                    final Point point = event.getBlockPosition();
+                    AutomataWorld world = AutomataWorld.get(player.getInstance());
+                    final Map<String, Integer> indexes = world.queryNames(point.blockX(), point.blockY(), point.blockZ());
+                    player.sendMessage(Component.text("States: " + indexes));
                 })
                 .addListener(InstanceChunkLoadEvent.class, event -> {
                     AutomataWorld world = AutomataWorld.get(event.getInstance());

@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static dev.goldenstack.minestom_ca.Neighbors.NAMED;
 
 public final class Parser {
+    private int line;
     private List<Token> tokens;
     private int index;
 
@@ -28,6 +29,7 @@ public final class Parser {
     }
 
     public void feedTokens(List<Token> tokens) {
+        this.line++;
         this.tokens = tokens;
         this.index = 0;
         while (!isAtEnd()) {
@@ -60,8 +62,7 @@ public final class Parser {
             final Token.Constant constant = consume(Token.Constant.class, "Expected constant");
             final Block block = Block.fromNamespaceId(constant.value());
             if (block == null) throw error("Unknown block " + constant.value());
-            final Rule.Condition.Not condition = new Rule.Condition.Not(new Rule.Condition.Equal(block));
-            return condition;
+            return new Rule.Condition.Not(new Rule.Condition.Equal(block));
         } else if (peek() instanceof Token.Identifier identifier) {
             advance();
             if (!(peek() instanceof Token.At)) {
@@ -140,14 +141,25 @@ public final class Parser {
 
     private Rule.Result nextResult() {
         if (peek() instanceof Token.Constant) {
+            // Change block
             final Block block = nextBlock();
             return new Rule.Result.SetIndex(0, new Rule.Expression.Literal(block));
         } else if (peek() instanceof Token.Identifier identifier) {
+            // Change state
             advance();
             consume(Token.Equals.class, "Expected '='");
             final int index = getIndex(identifier.value());
             return new Rule.Result.SetIndex(index, nextExpression());
+        } else if (peek() instanceof Token.Tilde) {
+            // Block copy
+            advance();
+            Token.Identifier identifier = consume(Token.Identifier.class, "Expected identifier");
+            final List<Point> targets = NAMED.get(identifier.value());
+            if (targets.size() > 1) throw error("Block copy can only be used with a single target");
+            final Point first = targets.get(0);
+            return new Rule.Result.BlockCopy(first.blockX(), first.blockY(), first.blockZ());
         } else if (peek() instanceof Token.Dollar) {
+            // Event triggering
             advance();
             final Token.Identifier identifier = consume(Token.Identifier.class, "Expected identifier");
             Rule.Expression expression = null;
@@ -161,20 +173,19 @@ public final class Parser {
     }
 
     private Rule.Expression nextExpression() {
+        Rule.Expression expression = null;
         if (peek() instanceof Token.Number number) {
             advance();
-            return new Rule.Expression.Literal((int) number.value());
-        }
-        if (peek() instanceof Token.Constant) {
+            expression = new Rule.Expression.Literal((int) number.value());
+        } else if (peek() instanceof Token.Constant) {
             final Block block = nextBlock();
-            return new Rule.Expression.Literal(block);
-        }
-        if (peek() instanceof Token.Identifier identifier) {
+            expression = new Rule.Expression.Literal(block);
+        } else if (peek() instanceof Token.Identifier identifier) {
             advance();
             if (!(peek() instanceof Token.At)) {
                 // Self state
                 final int index = getIndex(identifier.value());
-                return new Rule.Expression.Index(index);
+                expression = new Rule.Expression.Index(index);
             } else {
                 // Neighbor state
                 advance();
@@ -182,12 +193,22 @@ public final class Parser {
                 final Point first = targets.get(0);
                 final Token.Identifier identifier2 = consume(Token.Identifier.class, "Expected identifier");
                 final int index = getIndex(identifier2.value());
-                return new Rule.Expression.NeighborIndex(
+                expression = new Rule.Expression.NeighborIndex(
                         first.blockX(), first.blockY(), first.blockZ(),
                         index);
             }
         }
-        throw error("Expected number");
+        if (expression == null) throw error("Expected number");
+        final Rule.Expression.Operation.Type type = switch (peek()) {
+            case Token.Plus ignored -> Rule.Expression.Operation.Type.ADD;
+            case Token.Minus ignored -> Rule.Expression.Operation.Type.SUBTRACT;
+            default -> null;
+        };
+        if (type != null) {
+            advance();
+            return new Rule.Expression.Operation(expression, nextExpression(), type);
+        }
+        return expression;
     }
 
     private Block nextBlock() {
@@ -260,6 +281,6 @@ public final class Parser {
     }
 
     private RuntimeException error(String message) {
-        return new RuntimeException("Error at line " + -1 + ": " + message + " got " + peek().getClass().getSimpleName());
+        return new RuntimeException("Error at line " + (line - 1) + ": " + message + " got " + peek().getClass().getSimpleName());
     }
 }

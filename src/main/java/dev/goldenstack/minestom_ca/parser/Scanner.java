@@ -34,6 +34,9 @@ public final class Scanner {
         record Dollar() implements Token {
         }
 
+        record Tilde() implements Token {
+        }
+
         record And() implements Token {
         }
 
@@ -59,6 +62,9 @@ public final class Scanner {
         }
 
         record Plus() implements Token {
+        }
+
+        record Minus() implements Token {
         }
 
         record GreaterThan() implements Token {
@@ -105,10 +111,6 @@ public final class Scanner {
             final long value = nextNumber();
             return new Token.Number(value);
         }
-        if (c == '-' && Character.isDigit(peek())) {
-            final long value = nextNumber();
-            return new Token.Number(value);
-        }
         if (c == '{') {
             skipWhitespace();
             final long x = nextNumber();
@@ -126,6 +128,7 @@ public final class Scanner {
         }
         if (c == '@') return new Token.At();
         if (c == '$') return new Token.Dollar();
+        if (c == '~') return new Token.Tilde();
         if (c == '&') return new Token.And();
         if (c == '!') return new Token.Exclamation();
         if (c == ',') return new Token.Comma();
@@ -135,6 +138,7 @@ public final class Scanner {
         if (c == ']') return new Token.RightBracket();
         if (c == '=') return new Token.Equals();
         if (c == '+') return new Token.Plus();
+        if (c == '-') return new Token.Minus();
         if (c == '>') return new Token.GreaterThan();
         if (c == '<') return new Token.LessThan();
 
@@ -142,11 +146,6 @@ public final class Scanner {
     }
 
     private long nextNumber() {
-        final char peek = peek();
-        if (peek == '-') {
-            advance();
-            return -nextNumber();
-        }
         final int startIndex = index;
         while (Character.isDigit(peek())) advance();
         return Long.parseLong(input.substring(startIndex, index));

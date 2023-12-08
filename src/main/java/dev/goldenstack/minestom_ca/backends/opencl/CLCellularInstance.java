@@ -163,6 +163,11 @@ public final class CLCellularInstance implements AutomataWorld {
         // TODO
     }
 
+    @Override
+    public Map<Integer, Integer> queryIndexes(int x, int y, int z) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
     final class Region {
         final IntBuffer blockData = ByteBuffer.allocateDirect(512 * 512 * 512 * 4)
                 .order(ByteOrder.nativeOrder())
