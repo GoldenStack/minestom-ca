@@ -17,6 +17,7 @@ public final class LazyWorld implements AutomataWorld {
     private final Instance instance;
     private final Program program;
     private final List<Rule> rules;
+    private final int sectionCount;
     private final int minY;
 
     private final int stateCount;
@@ -27,10 +28,35 @@ public final class LazyWorld implements AutomataWorld {
     final class LChunk {
         // Block indexes to track next tick
         private final Set<Integer> trackedBlocks = new HashSet<>();
-        private final Palette[] states = new Palette[stateCount - 1];
+        private final LSection[] sections = new LSection[sectionCount];
 
         {
-            Arrays.setAll(states, i -> Palette.blocks());
+            Arrays.setAll(sections, i -> new LSection());
+        }
+
+        int getState(int x, int y, int z, int stateIndex) {
+            final LSection section = sections[(y - minY) / 16];
+            final Palette palette = section.states[stateIndex - 1];
+            return palette.get(ChunkUtils.toSectionRelativeCoordinate(x),
+                    ChunkUtils.toSectionRelativeCoordinate(y),
+                    ChunkUtils.toSectionRelativeCoordinate(z));
+        }
+
+        void setState(int x, int y, int z, int stateIndex, int value) {
+            final LSection section = sections[(y - minY) / 16];
+            final Palette palette = section.states[stateIndex - 1];
+            palette.set(ChunkUtils.toSectionRelativeCoordinate(x),
+                    ChunkUtils.toSectionRelativeCoordinate(y),
+                    ChunkUtils.toSectionRelativeCoordinate(z),
+                    value);
+        }
+
+        private final class LSection {
+            private final Palette[] states = new Palette[stateCount - 1];
+
+            {
+                Arrays.setAll(states, i -> Palette.blocks());
+            }
         }
     }
 
@@ -38,6 +64,7 @@ public final class LazyWorld implements AutomataWorld {
         this.instance = instance;
         this.program = program;
         this.rules = program.rules();
+        this.sectionCount = instance.getDimensionType().getHeight() / 16;
         this.minY = instance.getDimensionType().getMinY();
 
         this.stateCount = RuleAnalysis.stateCount(rules);
@@ -95,11 +122,8 @@ public final class LazyWorld implements AutomataWorld {
                             ChunkUtils.getChunkCoordinate(point.blockX()),
                             ChunkUtils.getChunkCoordinate(point.blockZ())));
                     if (lChunk == null) continue;
-                    final int localX = ChunkUtils.toSectionRelativeCoordinate(point.blockX());
-                    final int localY = ChunkUtils.toSectionRelativeCoordinate(point.blockY());
-                    final int localZ = ChunkUtils.toSectionRelativeCoordinate(point.blockZ());
-                    Palette palette = lChunk.states[stateIndex - 1];
-                    palette.set(localX, localY, localZ, value);
+                    lChunk.setState(point.blockX(), point.blockY(), point.blockZ(),
+                            stateIndex, value);
                 }
             }
         }
@@ -136,11 +160,8 @@ public final class LazyWorld implements AutomataWorld {
                         LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
                                 ChunkUtils.getChunkCoordinate(blockX),
                                 ChunkUtils.getChunkCoordinate(blockZ)));
-                        final int localX = ChunkUtils.toSectionRelativeCoordinate(blockX);
-                        final int localZ = ChunkUtils.toSectionRelativeCoordinate(blockZ);
                         for (int i = 1; i < stateCount; i++) {
-                            Palette palette = lChunk.states[i - 1];
-                            final int value = palette.get(localX, blockY, localZ);
+                            final int value = lChunk.getState(blockX, blockY, blockZ, i);
                             block.put(i, value);
                         }
                     }
@@ -193,11 +214,7 @@ public final class LazyWorld implements AutomataWorld {
                             ChunkUtils.getChunkCoordinate(x),
                             ChunkUtils.getChunkCoordinate(z)));
                     if (lChunk == null) yield 0;
-                    final int localX = ChunkUtils.toSectionRelativeCoordinate(x);
-                    final int localY = ChunkUtils.toSectionRelativeCoordinate(y);
-                    final int localZ = ChunkUtils.toSectionRelativeCoordinate(z);
-                    final Palette palette = lChunk.states[stateIndex - 1];
-                    yield palette.get(localX, localY, localZ);
+                    yield lChunk.getState(x, y, z, stateIndex);
                 }
             }
             case Rule.Expression.NeighborIndex index -> expression(
@@ -238,12 +255,9 @@ public final class LazyWorld implements AutomataWorld {
         LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
                 ChunkUtils.getChunkCoordinate(x),
                 ChunkUtils.getChunkCoordinate(z)));
-        final int localX = ChunkUtils.toSectionRelativeCoordinate(x);
-        final int localZ = ChunkUtils.toSectionRelativeCoordinate(z);
         for (int i = 1; i < stateCount; i++) {
-            Palette palette = lChunk.states[i - 1];
             final int value = properties.getOrDefault(i, 0);
-            palette.set(localX, y, localZ, value);
+            lChunk.setState(x, y, z, i, value);
         }
         register(x, y, z);
     }
@@ -297,14 +311,10 @@ public final class LazyWorld implements AutomataWorld {
         final int chunkX = ChunkUtils.getChunkCoordinate(x);
         final int chunkZ = ChunkUtils.getChunkCoordinate(z);
         final LChunk lChunk = this.loadedChunks.get(ChunkUtils.getChunkIndex(chunkX, chunkZ));
-        final int localX = ChunkUtils.toSectionRelativeCoordinate(x);
-        final int localY = y - minY;
-        final int localZ = ChunkUtils.toSectionRelativeCoordinate(z);
         Map<Integer, Integer> indexes = new HashMap<>();
         indexes.put(0, (int) instance.getBlock(x, y, z).stateId());
         for (int i = 1; i < stateCount; i++) {
-            Palette palette = lChunk.states[i - 1];
-            final int value = palette.get(localX, localY, localZ);
+            final int value = lChunk.getState(x, y, z, i);
             indexes.put(i, value);
         }
         return Map.copyOf(indexes);
