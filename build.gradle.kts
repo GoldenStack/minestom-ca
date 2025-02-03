@@ -22,7 +22,7 @@ repositories {
 }
 
 dependencies {
-    val minestom = "dev.hollowcube:minestom-ce:e146a9393e"
+    val minestom = "net.minestom:minestom-snapshots:87f6524aeb"
 
     implementation(minestom)
 

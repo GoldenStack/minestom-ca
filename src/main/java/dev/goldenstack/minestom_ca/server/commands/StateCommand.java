@@ -27,14 +27,13 @@ public final class StateCommand extends Command {
 
         addSyntax((sender, context) -> {
             Player player = ((Player) sender);
-            PlayerInventory inventory = player.getInventory();
-            ItemStack itemStack = inventory.getItemInMainHand();
+            ItemStack itemStack = player.getItemInMainHand();
             for (CommandContext states : context.get(loop)) {
                 final String stateName = states.get("state_name");
                 final int stateValue = states.get("state_value");
                 itemStack = itemStack.withTag(Tag.Integer(stateName), stateValue);
             }
-            inventory.setItemInMainHand(itemStack);
+            player.setItemInMainHand(itemStack);
             player.sendMessage("States applied to item! " + itemStack.toItemNBT());
         }, loop);
     }

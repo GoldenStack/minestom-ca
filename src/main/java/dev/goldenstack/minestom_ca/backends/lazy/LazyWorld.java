@@ -1,6 +1,7 @@
 package dev.goldenstack.minestom_ca.backends.lazy;
 
 import dev.goldenstack.minestom_ca.*;
+import net.minestom.server.coordinate.CoordConversion;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Chunk;
@@ -37,17 +38,17 @@ public final class LazyWorld implements AutomataWorld {
         int getState(int x, int y, int z, int stateIndex) {
             final LSection section = sections[(y - minY) / 16];
             final Palette palette = section.states[stateIndex - 1];
-            return palette.get(ChunkUtils.toSectionRelativeCoordinate(x),
-                    ChunkUtils.toSectionRelativeCoordinate(y),
-                    ChunkUtils.toSectionRelativeCoordinate(z));
+            return palette.get(CoordConversion.globalToSectionRelative(x),
+                    CoordConversion.globalToSectionRelative(y),
+                    CoordConversion.globalToSectionRelative(z));
         }
 
         void setState(int x, int y, int z, int stateIndex, int value) {
             final LSection section = sections[(y - minY) / 16];
             final Palette palette = section.states[stateIndex - 1];
-            palette.set(ChunkUtils.toSectionRelativeCoordinate(x),
-                    ChunkUtils.toSectionRelativeCoordinate(y),
-                    ChunkUtils.toSectionRelativeCoordinate(z),
+            palette.set(CoordConversion.globalToSectionRelative(x),
+                    CoordConversion.globalToSectionRelative(y),
+                    CoordConversion.globalToSectionRelative(z),
                     value);
         }
 
@@ -64,8 +65,8 @@ public final class LazyWorld implements AutomataWorld {
         this.instance = instance;
         this.program = program;
         this.rules = program.rules();
-        this.sectionCount = instance.getDimensionType().getHeight() / 16;
-        this.minY = instance.getDimensionType().getMinY();
+        this.sectionCount = instance.getCachedDimensionType().height() / 16;
+        this.minY = instance.getCachedDimensionType().minY();
 
         this.stateCount = RuleAnalysis.stateCount(rules);
         for (Rule rule : rules) {
@@ -90,12 +91,12 @@ public final class LazyWorld implements AutomataWorld {
         for (var entry : loadedChunks.entrySet()) {
             final long chunkIndex = entry.getKey();
             final LChunk lChunk = entry.getValue();
-            final int chunkX = ChunkUtils.getChunkCoordX(chunkIndex);
-            final int chunkZ = ChunkUtils.getChunkCoordZ(chunkIndex);
+            final int chunkX = CoordConversion.chunkIndexGetX(chunkIndex);
+            final int chunkZ = CoordConversion.chunkIndexGetZ(chunkIndex);
             for (int blockIndex : lChunk.trackedBlocks) {
-                final int localX = ChunkUtils.blockIndexToChunkPositionX(blockIndex);
-                final int localY = ChunkUtils.blockIndexToChunkPositionY(blockIndex);
-                final int localZ = ChunkUtils.blockIndexToChunkPositionZ(blockIndex);
+                final int localX = CoordConversion.chunkBlockIndexGetX(blockIndex);
+                final int localY = CoordConversion.chunkBlockIndexGetY(blockIndex);
+                final int localZ = CoordConversion.chunkBlockIndexGetZ(blockIndex);
                 final int x = localX + chunkX * 16;
                 final int y = localY;
                 final int z = localZ + chunkZ * 16;
@@ -118,9 +119,9 @@ public final class LazyWorld implements AutomataWorld {
                     } catch (IllegalStateException ignored) {
                     }
                 } else {
-                    final LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
-                            ChunkUtils.getChunkCoordinate(point.blockX()),
-                            ChunkUtils.getChunkCoordinate(point.blockZ())));
+                    final LChunk lChunk = loadedChunks.get(CoordConversion.chunkIndex(
+                            CoordConversion.globalToChunk(point.blockX()),
+                            CoordConversion.globalToChunk(point.blockZ())));
                     if (lChunk == null) continue;
                     lChunk.setState(point.blockX(), point.blockY(), point.blockZ(),
                             stateIndex, value);
@@ -157,9 +158,9 @@ public final class LazyWorld implements AutomataWorld {
                         final int stateId = targetBlock.stateId();
                         block.put(0, stateId);
                         // Copy other states
-                        LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
-                                ChunkUtils.getChunkCoordinate(blockX),
-                                ChunkUtils.getChunkCoordinate(blockZ)));
+                        LChunk lChunk = loadedChunks.get(CoordConversion.chunkIndex(
+                                CoordConversion.globalToChunk(blockX),
+                                CoordConversion.globalToChunk(blockZ)));
                         for (int i = 1; i < stateCount; i++) {
                             final int value = lChunk.getState(blockX, blockY, blockZ, i);
                             block.put(i, value);
@@ -210,9 +211,9 @@ public final class LazyWorld implements AutomataWorld {
                         yield 0;
                     }
                 } else {
-                    final LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
-                            ChunkUtils.getChunkCoordinate(x),
-                            ChunkUtils.getChunkCoordinate(z)));
+                    final LChunk lChunk = loadedChunks.get(CoordConversion.chunkIndex(
+                            CoordConversion.globalToChunk(x),
+                            CoordConversion.globalToChunk(z)));
                     if (lChunk == null) yield 0;
                     yield lChunk.getState(x, y, z, stateIndex);
                 }
@@ -252,9 +253,9 @@ public final class LazyWorld implements AutomataWorld {
 
     @Override
     public void handlePlacement(int x, int y, int z, Map<Integer, Integer> properties) {
-        LChunk lChunk = loadedChunks.get(ChunkUtils.getChunkIndex(
-                ChunkUtils.getChunkCoordinate(x),
-                ChunkUtils.getChunkCoordinate(z)));
+        LChunk lChunk = loadedChunks.get(CoordConversion.chunkIndex(
+                CoordConversion.globalToChunk(x),
+                CoordConversion.globalToChunk(z)));
         for (int i = 1; i < stateCount; i++) {
             final int value = properties.getOrDefault(i, 0);
             lChunk.setState(x, y, z, i, value);
@@ -287,30 +288,30 @@ public final class LazyWorld implements AutomataWorld {
             final int nY = y + offset.blockY();
             final int nZ = z + offset.blockZ();
 
-            final int chunkX = ChunkUtils.getChunkCoordinate(nX);
-            final int chunkZ = ChunkUtils.getChunkCoordinate(nZ);
-            final long chunkIndex = ChunkUtils.getChunkIndex(chunkX, chunkZ);
+            final int chunkX = CoordConversion.globalToChunk(nX);
+            final int chunkZ = CoordConversion.globalToChunk(nZ);
+            final long chunkIndex = CoordConversion.chunkIndex(chunkX, chunkZ);
             LChunk lChunk = this.loadedChunks.computeIfAbsent(chunkIndex,
                     k -> new LChunk());
 
-            final int localX = ChunkUtils.toSectionRelativeCoordinate(nX);
-            final int localZ = ChunkUtils.toSectionRelativeCoordinate(nZ);
-            final int blockIndex = ChunkUtils.getBlockIndex(localX, nY, localZ);
+            final int localX = CoordConversion.globalToSectionRelative(nX);
+            final int localZ = CoordConversion.globalToSectionRelative(nZ);
+            final int blockIndex = CoordConversion.chunkBlockIndex(localX, nY, localZ);
             lChunk.trackedBlocks.add(blockIndex);
         }
     }
 
     @Override
     public void handleChunkUnload(int chunkX, int chunkZ) {
-        final long chunkIndex = ChunkUtils.getChunkIndex(chunkX, chunkZ);
+        final long chunkIndex = CoordConversion.chunkIndex(chunkX, chunkZ);
         this.loadedChunks.remove(chunkIndex);
     }
 
     @Override
     public Map<Integer, Integer> queryIndexes(int x, int y, int z) {
-        final int chunkX = ChunkUtils.getChunkCoordinate(x);
-        final int chunkZ = ChunkUtils.getChunkCoordinate(z);
-        final LChunk lChunk = this.loadedChunks.get(ChunkUtils.getChunkIndex(chunkX, chunkZ));
+        final int chunkX = CoordConversion.globalToChunk(x);
+        final int chunkZ = CoordConversion.globalToChunk(z);
+        final LChunk lChunk = this.loadedChunks.get(CoordConversion.chunkIndex(chunkX, chunkZ));
         Map<Integer, Integer> indexes = new HashMap<>();
         indexes.put(0, (int) instance.getBlock(x, y, z).stateId());
         for (int i = 1; i < stateCount; i++) {

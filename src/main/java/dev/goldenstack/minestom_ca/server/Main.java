@@ -6,6 +6,7 @@ import dev.goldenstack.minestom_ca.backends.lazy.LazyWorld;
 import dev.goldenstack.minestom_ca.server.commands.StartCommand;
 import dev.goldenstack.minestom_ca.server.commands.StateCommand;
 import dev.goldenstack.minestom_ca.server.commands.StopCommand;
+import net.kyori.adventure.nbt.NumberBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.adventure.audience.Audiences;
@@ -17,19 +18,17 @@ import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.instance.InstanceChunkLoadEvent;
 import net.minestom.server.event.instance.InstanceChunkUnloadEvent;
 import net.minestom.server.event.instance.InstanceTickEvent;
+import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
-import net.minestom.server.event.player.PlayerLoginEvent;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.PlayerInventory;
+import net.minestom.server.item.ItemComponent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import org.jglrxavpok.hephaistos.nbt.NBT;
-import org.jglrxavpok.hephaistos.nbt.NBTCompound;
-import org.jglrxavpok.hephaistos.nbt.NBTInt;
 
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -65,7 +64,7 @@ public final class Main {
         //AutomataWorld.register(new CLCellularInstance(instance, MOVING_OAK));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
-        globalEventHandler.addListener(PlayerLoginEvent.class, event -> {
+        globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {
             Player player = event.getPlayer();
             PlayerInventory inventory = player.getInventory();
             player.setPermissionLevel(2);
@@ -87,15 +86,13 @@ public final class Main {
                     AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
 
                     Map<Integer, Integer> properties = new HashMap<>();
-                    properties.put(0, (int) block.stateId());
+                    properties.put(0, block.stateId());
                     final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
-                    final NBTCompound nbt = item.meta().toNBT();
-                    for (Map.Entry<String, NBT> entry : nbt.getEntries()) {
-                        if (entry.getValue() instanceof NBTInt nbtInt) {
+                    for (var entry : item.get(ItemComponent.CUSTOM_DATA).nbt()) {
+                        if (entry.getValue() instanceof NumberBinaryTag number) {
                             final String name = entry.getKey();
-                            final int value = nbtInt.getValue();
                             final Integer index = world.program().variables().get(name);
-                            if (index != null) properties.put(index, value);
+                            if (index != null) properties.put(index, number.intValue());
                         }
                     }
                     world.handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);

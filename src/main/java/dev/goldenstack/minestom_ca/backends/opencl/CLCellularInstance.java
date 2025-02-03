@@ -40,7 +40,7 @@ public final class CLCellularInstance implements AutomataWorld {
         CL.clSetKernelArg(caKernel, 0, Sizeof.cl_mem, Pointer.to(blockDataBufferIn));
         CL.clSetKernelArg(caKernel, 1, Sizeof.cl_mem, Pointer.to(blockDataBufferOut));
 
-        this.minY = instance.getDimensionType().getMinY();
+        this.minY = instance.getCachedDimensionType().minY();
 
         // Register loaded chunks
         for (Chunk c : instance.getChunks()) {
