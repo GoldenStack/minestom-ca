@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class Main {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
-    private static final Program FILE_PROGRAM = Program.fromFile(Path.of("rules/piston"));
+    private static final Program FILE_PROGRAM = Program.fromFile(Path.of("rules/game_of_life"));
 
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
