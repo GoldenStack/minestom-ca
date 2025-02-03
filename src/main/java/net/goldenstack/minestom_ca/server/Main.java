@@ -29,6 +29,7 @@ import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemComponent;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.item.component.CustomData;
 
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -88,7 +89,7 @@ public final class Main {
                     Map<Integer, Integer> properties = new HashMap<>();
                     properties.put(0, block.stateId());
                     final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
-                    for (var entry : item.get(ItemComponent.CUSTOM_DATA).nbt()) {
+                    for (var entry : item.get(ItemComponent.CUSTOM_DATA, CustomData.EMPTY).nbt()) {
                         if (entry.getValue() instanceof NumberBinaryTag number) {
                             final String name = entry.getKey();
                             final Integer index = world.program().variables().get(name);
