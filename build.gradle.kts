@@ -26,9 +26,6 @@ dependencies {
 
     implementation(minestom)
 
-    // Parser combinator functions - https://github.com/typemeta/funcj/tree/master/parser
-    implementation("org.typemeta:funcj-parser:0.6.18")
-
     // https://mvnrepository.com/artifact/org.jocl/jocl
     implementation("org.jocl:jocl:2.0.5")
 
