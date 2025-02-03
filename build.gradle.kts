@@ -3,7 +3,7 @@ plugins {
     `maven-publish`
 }
 
-group = "dev.goldenstack.minestom_ca"
+group = "net.goldenstack.minestom_ca"
 version = "1.0"
 description = "Implementing vanilla Minecraft with cellular automata"
 
