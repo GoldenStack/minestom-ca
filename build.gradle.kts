@@ -22,7 +22,7 @@ repositories {
 }
 
 dependencies {
-    val minestom = "net.minestom:minestom-snapshots:1_21_4-7599413490"
+    val minestom = "net.minestom:minestom-snapshots:1_21_5-c4814c2270"
 
     implementation(minestom)
 
