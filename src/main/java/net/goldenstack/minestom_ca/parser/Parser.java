@@ -59,7 +59,7 @@ public final class Parser {
             // Self block check not
             advance();
             final Token.Constant constant = consume(Token.Constant.class, "Expected constant");
-            final Block block = Block.fromNamespaceId(constant.value());
+            final Block block = Block.fromKey(constant.value());
             if (block == null) throw error("Unknown block " + constant.value());
             return new Rule.Condition.Not(new Rule.Condition.Equal(block));
         } else if (peek() instanceof Token.Identifier identifier) {
@@ -212,7 +212,7 @@ public final class Parser {
 
     private Block nextBlock() {
         final Token.Constant constant = consume(Token.Constant.class, "Expected constant");
-        Block block = Block.fromNamespaceId(constant.value());
+        Block block = Block.fromKey(constant.value());
         if (block == null) throw error("Unknown block: " + constant.value());
         if (peek() instanceof Token.LeftBracket && peekNext() instanceof Token.Identifier) {
             // Block has properties
