@@ -40,7 +40,7 @@ public final class Parser {
             }
             consume(Token.Arrow.class, "Expected '->'");
             while (!(peek() instanceof Token.EOF)) results.add(nextResult());
-            this.rules.add(new Rule(conditions.size() == 1 ? conditions.get(0) :
+            this.rules.add(new Rule(conditions.size() == 1 ? conditions.getFirst() :
                     new Rule.Condition.And(conditions), results));
         }
     }
@@ -62,11 +62,11 @@ public final class Parser {
             final Block block = Block.fromKey(constant.value());
             if (block == null) throw error("Unknown block " + constant.value());
             return new Rule.Condition.Not(new Rule.Condition.Equal(block));
-        } else if (peek() instanceof Token.Identifier identifier) {
+        } else if (peek() instanceof Token.Identifier(String value)) {
             advance();
             if (!(peek() instanceof Token.At)) {
                 // Self identifier
-                final int index = getIndex(identifier.value());
+                final int index = getIndex(value);
                 return switch (advance()) {
                     case Token.Equals ignored -> new Rule.Condition.Equal(
                             new Rule.Expression.Index(index),
@@ -82,7 +82,7 @@ public final class Parser {
             } else {
                 // Neighbor block check
                 consume(Token.At.class, "Expected '@'");
-                final List<Point> targets = NAMED.get(identifier.value());
+                final List<Point> targets = NAMED.get(value);
                 Rule.Expression neighborsCount = new Rule.Expression.NeighborsCount(targets, nextCondition());
                 if (countPredicate.compare) {
                     return new Rule.Condition.Equal(
@@ -108,29 +108,29 @@ public final class Parser {
 
     private CountPredicate nextCountPredicate() {
         consume(Token.LeftBracket.class, "Expected '['");
-        if (peek() instanceof Token.Number number && peekNext() instanceof Token.RightBracket) {
+        if (peek() instanceof Token.Number(long value) && peekNext() instanceof Token.RightBracket) {
             // Constant
             advance();
             consume(Token.RightBracket.class, "Expected ']'");
-            return new CountPredicate((int) number.value(), false, false, 0);
-        } else if (peek() instanceof Token.Exclamation && peekNext() instanceof Token.Number number) {
+            return new CountPredicate((int) value, false, false, 0);
+        } else if (peek() instanceof Token.Exclamation && peekNext() instanceof Token.Number(long value)) {
             // Not
             advance();
             advance();
             consume(Token.RightBracket.class, "Expected ']'");
-            return new CountPredicate((int) number.value(), false, true, 0);
-        } else if (peek() instanceof Token.GreaterThan && peekNext() instanceof Token.Number number) {
+            return new CountPredicate((int) value, false, true, 0);
+        } else if (peek() instanceof Token.GreaterThan && peekNext() instanceof Token.Number(long value)) {
             // Greater than
             advance();
             advance();
             consume(Token.RightBracket.class, "Expected ']'");
-            return new CountPredicate(1, true, false, (int) number.value());
-        } else if (peek() instanceof Token.LessThan && peekNext() instanceof Token.Number number) {
+            return new CountPredicate(1, true, false, (int) value);
+        } else if (peek() instanceof Token.LessThan && peekNext() instanceof Token.Number(long value)) {
             // Lesser than
             advance();
             advance();
             consume(Token.RightBracket.class, "Expected ']'");
-            return new CountPredicate(-1, true, false, (int) number.value());
+            return new CountPredicate(-1, true, false, (int) value);
         }
         throw error("Expected count predicate");
     }
@@ -158,7 +158,7 @@ public final class Parser {
                 Token.Identifier identifier = consume(Token.Identifier.class, "Expected identifier");
                 final List<Point> targets = NAMED.get(identifier.value());
                 if (targets.size() > 1) throw error("Block copy can only be used with a single target");
-                final Point first = targets.get(0);
+                final Point first = targets.getFirst();
                 return new Rule.Result.BlockCopy(first.blockX(), first.blockY(), first.blockZ());
             }
             case Token.Dollar _ -> {
@@ -199,7 +199,7 @@ public final class Parser {
                     // Neighbor state
                     advance();
                     final List<Point> targets = NAMED.get(identifier.value());
-                    final Point first = targets.get(0);
+                    final Point first = targets.getFirst();
                     final Token.Identifier identifier2 = consume(Token.Identifier.class, "Expected identifier");
                     final int index = getIndex(identifier2.value());
                     expression = new Rule.Expression.NeighborIndex(
@@ -234,12 +234,12 @@ public final class Parser {
                 final Token.Identifier propertyName = consume(Token.Identifier.class, "Expected property name");
                 consume(Token.Equals.class, "Expected '='");
                 String propertyValue;
-                if (peek() instanceof Token.Identifier identifier) {
+                if (peek() instanceof Token.Identifier(String value)) {
                     advance();
-                    propertyValue = identifier.value();
-                } else if (peek() instanceof Token.Number number) {
+                    propertyValue = value;
+                } else if (peek() instanceof Token.Number(long value)) {
                     advance();
-                    propertyValue = String.valueOf(number.value());
+                    propertyValue = String.valueOf(value);
                 } else {
                     throw error("Expected property value");
                 }
@@ -257,7 +257,7 @@ public final class Parser {
 
     int getIndex(String identifier) {
         return this.properties.computeIfAbsent(identifier,
-                s -> stateCounter.incrementAndGet());
+                _ -> stateCounter.incrementAndGet());
     }
 
     <T extends Token> T consume(Class<T> type, String message) {
