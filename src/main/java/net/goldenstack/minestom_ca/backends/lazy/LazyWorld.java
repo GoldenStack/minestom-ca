@@ -30,7 +30,7 @@ public final class LazyWorld implements AutomataWorld {
         private final LSection[] sections = new LSection[sectionCount];
 
         {
-            Arrays.setAll(sections, i -> new LSection());
+            Arrays.setAll(sections, _ -> new LSection());
         }
 
         int getState(int x, int y, int z, int stateIndex) {
@@ -139,9 +139,10 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     private Map<Integer, Integer> executeRules(int x, int y, int z) {
-        Map<Integer, Integer> block = new HashMap<>();
+        Map<Integer, Integer> block = null;
         for (Rule rule : rules) {
             if (!verifyCondition(x, y, z, rule.condition())) continue;
+            if (block == null) block = new HashMap<>(stateCount);
             for (Rule.Result result : rule.results()) {
                 switch (result) {
                     case Rule.Result.SetIndex set -> {
@@ -154,12 +155,12 @@ public final class LazyWorld implements AutomataWorld {
                         final int blockY = y + blockCopy.y();
                         final int blockZ = z + blockCopy.z();
                         // Copy block state
-                        final int stateId = blockState(blockX, blockY, blockZ);
-                        block.put(0, stateId);
+                        block.put(0, blockState(blockX, blockY, blockZ));
                         // Copy other states
                         LChunk lChunk = loadedChunks.get(CoordConversion.chunkIndex(
                                 CoordConversion.globalToChunk(blockX),
                                 CoordConversion.globalToChunk(blockZ)));
+                        if (lChunk == null) break;
                         for (int i = 1; i < stateCount; i++) {
                             final int value = lChunk.getState(blockX, blockY, blockZ, i);
                             block.put(i, value);
@@ -178,7 +179,6 @@ public final class LazyWorld implements AutomataWorld {
                 }
             }
         }
-        if (block.isEmpty()) return null;
         return block;
     }
 
@@ -286,8 +286,7 @@ public final class LazyWorld implements AutomataWorld {
             final int chunkX = CoordConversion.globalToChunk(nX);
             final int chunkZ = CoordConversion.globalToChunk(nZ);
             final long chunkIndex = CoordConversion.chunkIndex(chunkX, chunkZ);
-            LChunk lChunk = this.loadedChunks.computeIfAbsent(chunkIndex,
-                    _ -> new LChunk());
+            LChunk lChunk = this.loadedChunks.computeIfAbsent(chunkIndex, _ -> new LChunk());
 
             final int localX = CoordConversion.globalToSectionRelative(nX);
             final int localZ = CoordConversion.globalToSectionRelative(nZ);
