@@ -139,62 +139,75 @@ public final class Parser {
     }
 
     private Rule.Result nextResult() {
-        if (peek() instanceof Token.Constant) {
-            // Change block
-            final Block block = nextBlock();
-            return new Rule.Result.SetIndex(0, new Rule.Expression.Literal(block));
-        } else if (peek() instanceof Token.Identifier identifier) {
-            // Change state
-            advance();
-            consume(Token.Equals.class, "Expected '='");
-            final int index = getIndex(identifier.value());
-            return new Rule.Result.SetIndex(index, nextExpression());
-        } else if (peek() instanceof Token.Tilde) {
-            // Block copy
-            advance();
-            Token.Identifier identifier = consume(Token.Identifier.class, "Expected identifier");
-            final List<Point> targets = NAMED.get(identifier.value());
-            if (targets.size() > 1) throw error("Block copy can only be used with a single target");
-            final Point first = targets.get(0);
-            return new Rule.Result.BlockCopy(first.blockX(), first.blockY(), first.blockZ());
-        } else if (peek() instanceof Token.Dollar) {
-            // Event triggering
-            advance();
-            final Token.Identifier identifier = consume(Token.Identifier.class, "Expected identifier");
-            Rule.Expression expression = null;
-            if (peek() instanceof Token.Equals) {
-                consume(Token.Equals.class, "Expected '='");
-                expression = nextExpression();
+        switch (peek()) {
+            case Token.Constant _ -> {
+                // Change block
+                final Block block = nextBlock();
+                return new Rule.Result.SetIndex(0, new Rule.Expression.Literal(block));
             }
-            return new Rule.Result.TriggerEvent(identifier.value(), expression);
+            case Token.Identifier identifier -> {
+                // Change state
+                advance();
+                consume(Token.Equals.class, "Expected '='");
+                final int index = getIndex(identifier.value());
+                return new Rule.Result.SetIndex(index, nextExpression());
+            }
+            case Token.Tilde _ -> {
+                // Block copy
+                advance();
+                Token.Identifier identifier = consume(Token.Identifier.class, "Expected identifier");
+                final List<Point> targets = NAMED.get(identifier.value());
+                if (targets.size() > 1) throw error("Block copy can only be used with a single target");
+                final Point first = targets.get(0);
+                return new Rule.Result.BlockCopy(first.blockX(), first.blockY(), first.blockZ());
+            }
+            case Token.Dollar _ -> {
+                // Event triggering
+                advance();
+                final Token.Identifier identifier = consume(Token.Identifier.class, "Expected identifier");
+                Rule.Expression expression = null;
+                if (peek() instanceof Token.Equals) {
+                    consume(Token.Equals.class, "Expected '='");
+                    expression = nextExpression();
+                }
+                return new Rule.Result.TriggerEvent(identifier.value(), expression);
+            }
+            default -> {
+            }
         }
         throw error("Expected result");
     }
 
     private Rule.Expression nextExpression() {
         Rule.Expression expression = null;
-        if (peek() instanceof Token.Number number) {
-            advance();
-            expression = new Rule.Expression.Literal((int) number.value());
-        } else if (peek() instanceof Token.Constant) {
-            final Block block = nextBlock();
-            expression = new Rule.Expression.Literal(block);
-        } else if (peek() instanceof Token.Identifier identifier) {
-            advance();
-            if (!(peek() instanceof Token.At)) {
-                // Self state
-                final int index = getIndex(identifier.value());
-                expression = new Rule.Expression.Index(index);
-            } else {
-                // Neighbor state
+        switch (peek()) {
+            case Token.Number number -> {
                 advance();
-                final List<Point> targets = NAMED.get(identifier.value());
-                final Point first = targets.get(0);
-                final Token.Identifier identifier2 = consume(Token.Identifier.class, "Expected identifier");
-                final int index = getIndex(identifier2.value());
-                expression = new Rule.Expression.NeighborIndex(
-                        first.blockX(), first.blockY(), first.blockZ(),
-                        index);
+                expression = new Rule.Expression.Literal((int) number.value());
+            }
+            case Token.Constant _ -> {
+                final Block block = nextBlock();
+                expression = new Rule.Expression.Literal(block);
+            }
+            case Token.Identifier identifier -> {
+                advance();
+                if (!(peek() instanceof Token.At)) {
+                    // Self state
+                    final int index = getIndex(identifier.value());
+                    expression = new Rule.Expression.Index(index);
+                } else {
+                    // Neighbor state
+                    advance();
+                    final List<Point> targets = NAMED.get(identifier.value());
+                    final Point first = targets.get(0);
+                    final Token.Identifier identifier2 = consume(Token.Identifier.class, "Expected identifier");
+                    final int index = getIndex(identifier2.value());
+                    expression = new Rule.Expression.NeighborIndex(
+                            first.blockX(), first.blockY(), first.blockZ(),
+                            index);
+                }
+            }
+            default -> {
             }
         }
         if (expression == null) throw error("Expected number");

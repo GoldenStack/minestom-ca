@@ -3,7 +3,6 @@ package net.goldenstack.minestom_ca.backends.lazy;
 import net.goldenstack.minestom_ca.*;
 import net.minestom.server.coordinate.CoordConversion;
 import net.minestom.server.coordinate.Point;
-import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
@@ -88,7 +87,7 @@ public final class LazyWorld implements AutomataWorld {
 
     @Override
     public void tick() {
-        Queue<BlockChange> changesToProcess = new LinkedList<>();
+        Queue<BlockChange> changesToProcess = new ArrayDeque<>();
         // Retrieve changes
         for (var entry : loadedChunks.entrySet()) {
             final long chunkIndex = entry.getKey();
@@ -103,7 +102,7 @@ public final class LazyWorld implements AutomataWorld {
                 final int y = localY;
                 final int z = localZ + chunkZ * 16;
                 final Map<Integer, Integer> updatedStates = executeRules(x, y, z);
-                if (updatedStates != null) changesToProcess.add(new BlockChange(x, y, z, updatedStates));
+                if (updatedStates != null) changesToProcess.offer(new BlockChange(x, y, z, updatedStates));
             }
             lChunk.trackedBlocks.clear();
         }

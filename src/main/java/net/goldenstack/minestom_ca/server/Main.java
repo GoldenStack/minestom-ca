@@ -3,9 +3,6 @@ package net.goldenstack.minestom_ca.server;
 import net.goldenstack.minestom_ca.AutomataWorld;
 import net.goldenstack.minestom_ca.Program;
 import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
-import net.goldenstack.minestom_ca.server.commands.StartCommand;
-import net.goldenstack.minestom_ca.server.commands.StateCommand;
-import net.goldenstack.minestom_ca.server.commands.StopCommand;
 import net.kyori.adventure.nbt.NumberBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
@@ -44,9 +41,9 @@ public final class Main {
         MinecraftServer minecraftServer = MinecraftServer.init();
 
         // Register commands
-        MinecraftServer.getCommandManager().register(new StartCommand());
-        MinecraftServer.getCommandManager().register(new StopCommand());
-        MinecraftServer.getCommandManager().register(new StateCommand());
+        MinecraftServer.getCommandManager().register(new CACommands.Start());
+        MinecraftServer.getCommandManager().register(new CACommands.Stop());
+        MinecraftServer.getCommandManager().register(new CACommands.State());
 
         // Create an instance
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
