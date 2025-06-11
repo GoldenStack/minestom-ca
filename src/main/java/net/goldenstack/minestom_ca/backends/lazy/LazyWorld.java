@@ -316,9 +316,13 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     private int blockState(int x, int y, int z) {
-        final Block block = instance.getBlock(x, y, z, Block.Getter.Condition.TYPE);
-        assert block != null;
-        return block.stateId();
+        try {
+            final Block block = instance.getBlock(x, y, z, Block.Getter.Condition.TYPE);
+            assert block != null;
+            return block.stateId();
+        } catch (NullPointerException e) {
+            return 0;
+        }
     }
 
     @Override
