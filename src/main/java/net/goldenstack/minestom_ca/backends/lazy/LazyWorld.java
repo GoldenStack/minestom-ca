@@ -115,7 +115,7 @@ public final class LazyWorld implements AutomataWorld {
             final int y = currentChange.y();
             final int z = currentChange.z();
             final Map<Integer, Integer> blockData = currentChange.blockData();
-
+            // Set states
             for (Map.Entry<Integer, Integer> changeEntry : blockData.entrySet()) {
                 final int stateIndex = changeEntry.getKey();
                 final int value = changeEntry.getValue();
@@ -123,7 +123,7 @@ public final class LazyWorld implements AutomataWorld {
                     try {
                         final Block block = Block.fromStateId(value);
                         assert block != null;
-                        this.instance.setBlock(x, y, z, block);
+                        this.instance.setBlock(x, y, z, block, false);
                     } catch (IllegalStateException ignored) {
                     }
                 } else {
