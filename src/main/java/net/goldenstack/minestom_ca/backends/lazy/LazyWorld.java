@@ -13,6 +13,7 @@ import java.util.*;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class LazyWorld implements AutomataWorld {
+    private static final int LIGHT_SPEED = 1;
     private final Instance instance;
     private final Program program;
     private final List<Rule> rules;
@@ -87,6 +88,12 @@ public final class LazyWorld implements AutomataWorld {
 
     @Override
     public void tick() {
+        for (int i = 0; i < LIGHT_SPEED; i++) {
+            singleTick();
+        }
+    }
+
+    private void singleTick() {
         Queue<BlockChange> changesToProcess = new ArrayDeque<>();
         // Retrieve changes
         for (var entry : loadedChunks.entrySet()) {
