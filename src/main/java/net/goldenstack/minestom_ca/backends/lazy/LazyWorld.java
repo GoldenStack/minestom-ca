@@ -55,9 +55,12 @@ public final class LazyWorld implements AutomataWorld {
             private final Palette[] states = new Palette[stateCount - 1];
 
             {
-                Arrays.setAll(states, i -> Palette.blocks());
+                Arrays.setAll(states, _ -> Palette.blocks());
             }
         }
+    }
+
+    private record BlockChange(int x, int y, int z, Map<Integer, Integer> blockData) {
     }
 
     public LazyWorld(Instance instance, Program program) {
@@ -85,7 +88,7 @@ public final class LazyWorld implements AutomataWorld {
 
     @Override
     public void tick() {
-        Map<Point, Map<Integer, Integer>> changes = new HashMap<>();
+        Queue<BlockChange> changesToProcess = new LinkedList<>();
         // Retrieve changes
         for (var entry : loadedChunks.entrySet()) {
             final long chunkIndex = entry.getKey();
@@ -99,41 +102,40 @@ public final class LazyWorld implements AutomataWorld {
                 final int x = localX + chunkX * 16;
                 final int y = localY;
                 final int z = localZ + chunkZ * 16;
-                final Map<Integer, Integer> updated = executeRules(x, y, z);
-                if (updated != null) changes.put(new Vec(x, y, z), updated);
+                final Map<Integer, Integer> updatedStates = executeRules(x, y, z);
+                if (updatedStates != null) changesToProcess.add(new BlockChange(x, y, z, updatedStates));
             }
+            lChunk.trackedBlocks.clear();
         }
-        // Apply changes
-        for (Map.Entry<Point, Map<Integer, Integer>> entry : changes.entrySet()) {
-            final Point point = entry.getKey();
-            final Map<Integer, Integer> blockChange = entry.getValue();
-            for (Map.Entry<Integer, Integer> changeEntry : blockChange.entrySet()) {
+
+        // Apply changes and register affected blocks for the next tick
+        while (!changesToProcess.isEmpty()) {
+            final BlockChange currentChange = changesToProcess.poll();
+            final int x = currentChange.x();
+            final int y = currentChange.y();
+            final int z = currentChange.z();
+            final Map<Integer, Integer> blockData = currentChange.blockData();
+
+            for (Map.Entry<Integer, Integer> changeEntry : blockData.entrySet()) {
                 final int stateIndex = changeEntry.getKey();
                 final int value = changeEntry.getValue();
                 if (stateIndex == 0) {
                     try {
-                        final Block block = Block.fromStateId((short) value);
+                        final Block block = Block.fromStateId(value);
                         assert block != null;
-                        this.instance.setBlock(point, block);
+                        this.instance.setBlock(x, y, z, block);
                     } catch (IllegalStateException ignored) {
                     }
                 } else {
                     final LChunk lChunk = loadedChunks.get(CoordConversion.chunkIndex(
-                            CoordConversion.globalToChunk(point.blockX()),
-                            CoordConversion.globalToChunk(point.blockZ())));
+                            CoordConversion.globalToChunk(x),
+                            CoordConversion.globalToChunk(z)));
                     if (lChunk == null) continue;
-                    lChunk.setState(point.blockX(), point.blockY(), point.blockZ(),
-                            stateIndex, value);
+                    lChunk.setState(x, y, z, stateIndex, value);
                 }
             }
-        }
-        // Prepare for next tick
-        for (LChunk lchunk : loadedChunks.values()) lchunk.trackedBlocks.clear();
-        for (Point point : changes.keySet()) {
-            final int blockX = point.blockX();
-            final int blockY = point.blockY();
-            final int blockZ = point.blockZ();
-            register(blockX, blockY, blockZ);
+            // Register the point for the next tick
+            register(x, y, z);
         }
     }
 
@@ -291,7 +293,7 @@ public final class LazyWorld implements AutomataWorld {
             final int chunkZ = CoordConversion.globalToChunk(nZ);
             final long chunkIndex = CoordConversion.chunkIndex(chunkX, chunkZ);
             LChunk lChunk = this.loadedChunks.computeIfAbsent(chunkIndex,
-                    k -> new LChunk());
+                    _ -> new LChunk());
 
             final int localX = CoordConversion.globalToSectionRelative(nX);
             final int localZ = CoordConversion.globalToSectionRelative(nZ);
@@ -312,7 +314,7 @@ public final class LazyWorld implements AutomataWorld {
         final int chunkZ = CoordConversion.globalToChunk(z);
         final LChunk lChunk = this.loadedChunks.get(CoordConversion.chunkIndex(chunkX, chunkZ));
         Map<Integer, Integer> indexes = new HashMap<>();
-        indexes.put(0, (int) instance.getBlock(x, y, z).stateId());
+        indexes.put(0, instance.getBlock(x, y, z).stateId());
         for (int i = 1; i < stateCount; i++) {
             final int value = lChunk.getState(x, y, z, i);
             indexes.put(i, value);
