@@ -154,8 +154,7 @@ public final class LazyWorld implements AutomataWorld {
                         final int blockY = y + blockCopy.y();
                         final int blockZ = z + blockCopy.z();
                         // Copy block state
-                        final Block targetBlock = instance.getBlock(blockX, blockY, blockZ);
-                        final int stateId = targetBlock.stateId();
+                        final int stateId = blockState(blockX, blockY, blockZ);
                         block.put(0, stateId);
                         // Copy other states
                         LChunk lChunk = loadedChunks.get(CoordConversion.chunkIndex(
@@ -205,11 +204,7 @@ public final class LazyWorld implements AutomataWorld {
             case Rule.Expression.Index index -> {
                 final int stateIndex = index.stateIndex();
                 if (stateIndex == 0) {
-                    try {
-                        yield instance.getBlock(x, y, z).stateId();
-                    } catch (NullPointerException e) {
-                        yield 0;
-                    }
+                    yield blockState(x, y, z);
                 } else {
                     final LChunk lChunk = loadedChunks.get(CoordConversion.chunkIndex(
                             CoordConversion.globalToChunk(x),
@@ -313,12 +308,18 @@ public final class LazyWorld implements AutomataWorld {
         final int chunkZ = CoordConversion.globalToChunk(z);
         final LChunk lChunk = this.loadedChunks.get(CoordConversion.chunkIndex(chunkX, chunkZ));
         Map<Integer, Integer> indexes = new HashMap<>();
-        indexes.put(0, instance.getBlock(x, y, z).stateId());
+        indexes.put(0, blockState(x, y, z));
         for (int i = 1; i < stateCount; i++) {
             final int value = lChunk.getState(x, y, z, i);
             indexes.put(i, value);
         }
         return Map.copyOf(indexes);
+    }
+
+    private int blockState(int x, int y, int z) {
+        final Block block = instance.getBlock(x, y, z, Block.Getter.Condition.TYPE);
+        assert block != null;
+        return block.stateId();
     }
 
     @Override
