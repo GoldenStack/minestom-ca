@@ -26,6 +26,7 @@ public final class LazyWorld implements AutomataWorld {
     private final boolean[] trackedStates = new boolean[Short.MAX_VALUE];
 
     private final Map<Long, LSection> loadedSections = new HashMap<>();
+    private final Queue<LSection> trackedSections = new ArrayDeque<>();
 
     private static int floorDiv(int x, int y) {
         int r = x / y;
@@ -72,11 +73,13 @@ public final class LazyWorld implements AutomataWorld {
 
     private final class LSection {
         private static final long BLOCKS_PER_SECTION = 16 * 16 * 16;
+        private final long index;
         private final MemorySegment states;
         // Block indexes to track next tick
         private final Set<Integer> trackedBlocks = new HashSet<>();
 
-        LSection() {
+        LSection(final long index) {
+            this.index = index;
             final long singleBlockSize = (long) stateCount * Integer.BYTES;
             final long totalSize = BLOCKS_PER_SECTION * singleBlockSize;
             this.states = Arena.ofAuto().allocate(totalSize);
@@ -113,7 +116,7 @@ public final class LazyWorld implements AutomataWorld {
 
     LSection sectionGlobalCompute(int x, int y, int z) {
         final long sectionIndex = sectionIndexGlobal(x, y, z);
-        return loadedSections.computeIfAbsent(sectionIndex, _ -> new LSection());
+        return loadedSections.computeIfAbsent(sectionIndex, LSection::new);
     }
 
     private record BlockChange(int x, int y, int z, Map<Integer, Integer> blockData) {
@@ -152,9 +155,8 @@ public final class LazyWorld implements AutomataWorld {
     private void singleTick() {
         Queue<BlockChange> changesToProcess = new ArrayDeque<>();
         // Retrieve changes
-        for (var entry : loadedSections.entrySet()) {
-            final long sectionIndex = entry.getKey();
-            final LSection section = entry.getValue();
+        for (LSection section : trackedSections) {
+            final long sectionIndex = section.index;
             final int sectionX = unpackSectionX(sectionIndex);
             final int sectionZ = unpackSectionZ(sectionIndex);
             for (int blockIndex : section.trackedBlocks) {
@@ -169,6 +171,7 @@ public final class LazyWorld implements AutomataWorld {
             }
             section.trackedBlocks.clear();
         }
+        trackedSections.clear();
 
         // Apply changes and register affected blocks for the next tick
         while (!changesToProcess.isEmpty()) {
@@ -353,6 +356,7 @@ public final class LazyWorld implements AutomataWorld {
             final int nY = y + offset.blockY();
             final int nZ = z + offset.blockZ();
             LSection section = sectionGlobalCompute(nX, nY, nZ);
+            trackedSections.offer(section);
             final int localX = CoordConversion.globalToSectionRelative(nX);
             final int localZ = CoordConversion.globalToSectionRelative(nZ);
             final int blockIndex = CoordConversion.chunkBlockIndex(localX, nY, localZ);
