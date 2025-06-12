@@ -2,8 +2,9 @@ package net.goldenstack.minestom_ca.backends.opencl;
 
 import net.goldenstack.minestom_ca.AutomataWorld;
 import net.goldenstack.minestom_ca.Program;
-import net.minestom.server.instance.*;
-import net.minestom.server.network.packet.server.CachedPacket;
+import net.minestom.server.instance.Chunk;
+import net.minestom.server.instance.Instance;
+import net.minestom.server.instance.Section;
 import org.jocl.*;
 
 import java.nio.ByteBuffer;
@@ -107,18 +108,7 @@ public final class CLCellularInstance implements AutomataWorld {
                 });
             }
             // Send packet
-            try {
-                var blockCacheField = DynamicChunk.class.getDeclaredField("chunkCache");
-                blockCacheField.setAccessible(true);
-                var lightCacheField = LightingChunk.class.getDeclaredField("lightCache");
-                lightCacheField.setAccessible(true);
-                //noinspection UnstableApiUsage
-                ((CachedPacket) lightCacheField.get(chunk)).invalidate();
-                //noinspection UnstableApiUsage
-                ((CachedPacket) blockCacheField.get(chunk)).invalidate();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
+            chunk.invalidate();
             chunk.sendChunk();
         }
     }
@@ -168,7 +158,7 @@ public final class CLCellularInstance implements AutomataWorld {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
-    final class Region {
+    static final class Region {
         final IntBuffer blockData = ByteBuffer.allocateDirect(512 * 512 * 512 * 4)
                 .order(ByteOrder.nativeOrder())
                 .asIntBuffer();
