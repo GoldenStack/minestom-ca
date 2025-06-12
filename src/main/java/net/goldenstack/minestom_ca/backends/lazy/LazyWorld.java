@@ -227,7 +227,7 @@ public final class LazyWorld implements AutomataWorld {
                 }
             }
             // Register the point for the next tick
-            register(x, y, z, false);
+            register(x, y, z, section);
         }
         trackedSections.offer(section);
         if (palette != null) {
@@ -363,7 +363,7 @@ public final class LazyWorld implements AutomataWorld {
             final int value = properties.getOrDefault(i, 0);
             section.setState(localX, localY, localZ, i, value);
         }
-        register(x, y, z, true);
+        register(x, y, z, null);
     }
 
     @Override
@@ -375,24 +375,27 @@ public final class LazyWorld implements AutomataWorld {
         final int localZ = chunk.getChunkZ() * 16;
         for (Section section : chunk.getSections()) {
             final int localY = sectionY++ * 16 - minY;
-            trackedSections.offer(sectionGlobalCompute(localX, localY, localZ));
+            LSection startSection = sectionGlobalCompute(localX, localY, localZ);
+            trackedSections.offer(startSection);
             section.blockPalette().getAllPresent((x, y, z, value) -> {
                 if (!trackedStates[value]) return;
                 final int blockX = localX + x;
                 final int blockY = localY + y;
                 final int blockZ = localZ + z;
-                register(blockX, blockY, blockZ, false);
+                register(blockX, blockY, blockZ, startSection);
             });
         }
     }
 
-    private void register(int x, int y, int z, boolean registerSection) {
+    private void register(int x, int y, int z, LSection startSection) {
         for (Point offset : Neighbors.MOORE_3D_SELF) {
             final int nX = x + offset.blockX();
             final int nY = y + offset.blockY();
             final int nZ = z + offset.blockZ();
             LSection section = sectionGlobalCompute(nX, nY, nZ);
-            if (registerSection) trackedSections.offer(section);
+            if (startSection == null || startSection.index != section.index) {
+                trackedSections.offer(section);
+            }
             final int localX = CoordConversion.globalToSectionRelative(nX);
             final int localZ = CoordConversion.globalToSectionRelative(nZ);
             final int blockIndex = CoordConversion.chunkBlockIndex(localX, nY, localZ);
