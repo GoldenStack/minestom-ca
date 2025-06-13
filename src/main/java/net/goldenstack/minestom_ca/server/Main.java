@@ -4,6 +4,7 @@ import net.goldenstack.minestom_ca.AutomataWorld;
 import net.goldenstack.minestom_ca.CellRule;
 import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
 import net.goldenstack.minestom_ca.lang.Program;
+import net.goldenstack.minestom_ca.rules.RuleSamples;
 import net.kyori.adventure.nbt.NumberBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
@@ -60,8 +61,10 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        AutomataWorld.register(new LazyWorld(instance, FILE_PROGRAM.makeCellRule()));
-        //AutomataWorld.register(new CLCellularInstance(instance, MOVING_OAK));
+        final CellRule rules = new RuleSamples.GameOfLife();
+        //final CellRule rules = FILE_PROGRAM.makeCellRule();
+
+        AutomataWorld.register(new LazyWorld(instance, rules));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {

@@ -2,7 +2,6 @@ package net.goldenstack.minestom_ca;
 
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,33 +11,33 @@ import java.util.Map;
  * Stores lists of neighbors.
  */
 public final class Neighbors {
-    public static final @NotNull Point SELF = Vec.ZERO;
+    public static final Point SELF = Vec.ZERO;
 
-    public static final @NotNull Point UP = new Vec(0, 1, 0);
+    public static final Point UP = new Vec(0, 1, 0);
 
-    public static final @NotNull Point DOWN = new Vec(0, -1, 0);
+    public static final Point DOWN = new Vec(0, -1, 0);
 
-    public static final @NotNull Point NORTH = new Vec(0, 0, -1);
-    public static final @NotNull Point EAST = new Vec(1, 0, 0);
-    public static final @NotNull Point SOUTH = new Vec(0, 0, 1);
-    public static final @NotNull Point WEST = new Vec(-1, 0, 0);
+    public static final Point NORTH = new Vec(0, 0, -1);
+    public static final Point EAST = new Vec(1, 0, 0);
+    public static final Point SOUTH = new Vec(0, 0, 1);
+    public static final Point WEST = new Vec(-1, 0, 0);
 
-    public static final @NotNull Point NORTHEAST = NORTH.add(EAST);
-    public static final @NotNull Point SOUTHEAST = SOUTH.add(EAST);
-    public static final @NotNull Point NORTHWEST = NORTH.add(WEST);
-    public static final @NotNull Point SOUTHWEST = SOUTH.add(WEST);
+    public static final Point NORTHEAST = NORTH.add(EAST);
+    public static final Point SOUTHEAST = SOUTH.add(EAST);
+    public static final Point NORTHWEST = NORTH.add(WEST);
+    public static final Point SOUTHWEST = SOUTH.add(WEST);
 
-    public static final @NotNull List<Point> MOORE_2D_SELF = List.of(SELF, NORTH, EAST, SOUTH, WEST, NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST);
-    public static final @NotNull List<Point> MOORE_2D = List.of(NORTH, EAST, SOUTH, WEST, NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST);
+    public static final List<Point> MOORE_2D_SELF = List.of(SELF, NORTH, EAST, SOUTH, WEST, NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST);
+    public static final List<Point> MOORE_2D = List.of(NORTH, EAST, SOUTH, WEST, NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST);
 
-    public static final @NotNull List<Point> MOORE_3D_SELF;
-    public static final @NotNull List<Point> MOORE_3D;
+    public static final List<Point> MOORE_3D_SELF;
+    public static final List<Point> MOORE_3D;
 
-    public static final @NotNull List<Point> NEUMANN_2D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST);
-    public static final @NotNull List<Point> NEUMANN_2D = List.of(NORTH, SOUTH, EAST, WEST);
+    public static final List<Point> NEUMANN_2D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST);
+    public static final List<Point> NEUMANN_2D = List.of(NORTH, SOUTH, EAST, WEST);
 
-    public static final @NotNull List<Point> NEUMANN_3D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST, UP, DOWN);
-    public static final @NotNull List<Point> NEUMANN_3D = List.of(NORTH, SOUTH, EAST, WEST, UP, DOWN);
+    public static final List<Point> NEUMANN_3D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST, UP, DOWN);
+    public static final List<Point> NEUMANN_3D = List.of(NORTH, SOUTH, EAST, WEST, UP, DOWN);
 
     static {
         List<Point> points3d = new ArrayList<>();
@@ -56,7 +55,7 @@ public final class Neighbors {
         MOORE_3D = List.copyOf(points3d);
     }
 
-    public static final @NotNull Map<String, List<Point>> NAMED = Map.ofEntries(
+    public static final Map<String, List<Point>> NAMED = Map.ofEntries(
             Map.entry("up", List.of(UP)),
             Map.entry("down", List.of(DOWN)),
             Map.entry("north", List.of(NORTH)),
