@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface CellRule {
-    Map<Integer, Integer> process(int x, int y, int z, AutomataQuery query);
+    Map<Integer, Long> process(int x, int y, int z, AutomataQuery query);
 
     boolean tracked(int state);
 

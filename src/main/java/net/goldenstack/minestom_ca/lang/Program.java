@@ -55,8 +55,8 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
         }
         return new CellRule() {
             @Override
-            public Map<Integer, Integer> process(int x, int y, int z, AutomataQuery query) {
-                Map<Integer, Integer> block = null;
+            public Map<Integer, Long> process(int x, int y, int z, AutomataQuery query) {
+                Map<Integer, Long> block = null;
                 for (Rule rule : rules) {
                     if (!verifyCondition(x, y, z, query, rule.condition())) continue;
                     if (block == null) block = new HashMap<>(stateCount);
@@ -64,7 +64,7 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                         switch (result) {
                             case Rule.Result.SetIndex set -> {
                                 final int index = set.stateIndex();
-                                final int value = expression(x, y, z, query, set.expression());
+                                final long value = expression(x, y, z, query, set.expression());
                                 block.put(index, value);
                             }
                             case Rule.Result.BlockCopy blockCopy -> {
@@ -72,10 +72,10 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                                 final int blockY = y + blockCopy.y();
                                 final int blockZ = z + blockCopy.z();
                                 // Copy block state
-                                Map<Integer, Integer> queryIndexes = query.queryIndexes(blockX, blockY, blockZ);
-                                for (Map.Entry<Integer, Integer> entry : queryIndexes.entrySet()) {
+                                Map<Integer, Long> queryIndexes = query.queryIndexes(blockX, blockY, blockZ);
+                                for (Map.Entry<Integer, Long> entry : queryIndexes.entrySet()) {
                                     final int index = entry.getKey();
-                                    final int value = entry.getValue();
+                                    final long value = entry.getValue();
                                     block.put(index, value);
                                 }
                             }
@@ -83,7 +83,7 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                                 final String eventName = triggerEvent.event();
                                 final Rule.Expression eventExpression = triggerEvent.expression();
                                 if (eventExpression != null) {
-                                    final int value = expression(x, y, z, query, eventExpression);
+                                    final long value = expression(x, y, z, query, eventExpression);
                                     System.out.println("Event: " + eventName + "=" + value);
                                 } else {
                                     System.out.println("Event: " + eventName);
@@ -116,15 +116,15 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                 yield true;
             }
             case Rule.Condition.Equal equal -> {
-                final int first = expression(x, y, z, query, equal.first());
-                final int second = expression(x, y, z, query, equal.second());
+                final long first = expression(x, y, z, query, equal.first());
+                final long second = expression(x, y, z, query, equal.second());
                 yield first == second;
             }
             case Rule.Condition.Not not -> !verifyCondition(x, y, z, query, not.condition());
         };
     }
 
-    private int expression(int x, int y, int z, AutomataQuery query, Rule.Expression expression) {
+    private long expression(int x, int y, int z, AutomataQuery query, Rule.Expression expression) {
         return switch (expression) {
             case Rule.Expression.Index index -> {
                 final int stateIndex = index.stateIndex();
@@ -146,13 +146,13 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                 yield count;
             }
             case Rule.Expression.Compare compare -> {
-                final int first = expression(x, y, z, query, compare.first());
-                final int second = expression(x, y, z, query, compare.second());
-                yield (int) Math.signum(first - second);
+                final long first = expression(x, y, z, query, compare.first());
+                final long second = expression(x, y, z, query, compare.second());
+                yield (long) Math.signum(first - second);
             }
             case Rule.Expression.Operation operation -> {
-                final int first = expression(x, y, z, query, operation.first());
-                final int second = expression(x, y, z, query, operation.second());
+                final long first = expression(x, y, z, query, operation.first());
+                final long second = expression(x, y, z, query, operation.second());
                 yield switch (operation.type()) {
                     case ADD -> first + second;
                     case SUBTRACT -> first - second;

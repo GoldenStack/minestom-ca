@@ -112,7 +112,7 @@ public final class Main {
                     final Player player = event.getPlayer();
                     final Point point = event.getBlockPosition();
                     AutomataWorld world = AutomataWorld.get(player.getInstance());
-                    final Map<String, Integer> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
+                    final Map<String, Long> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
                     player.sendMessage(Component.text("States: " + indexes));
                 })
                 .addListener(InstanceChunkLoadEvent.class, event -> {
