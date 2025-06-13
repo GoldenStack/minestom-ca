@@ -1,7 +1,7 @@
 package net.goldenstack.minestom_ca.server;
 
 import net.goldenstack.minestom_ca.AutomataWorld;
-import net.goldenstack.minestom_ca.lang.Program;
+import net.goldenstack.minestom_ca.CellRule;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
@@ -13,10 +13,9 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
 
-import java.util.Map;
+import java.util.List;
 
 import static net.minestom.server.command.builder.arguments.ArgumentType.*;
-import static net.minestom.server.command.builder.arguments.ArgumentType.Integer;
 
 public final class CACommands {
 
@@ -76,10 +75,9 @@ public final class CACommands {
             return (sender, context, suggestion) -> {
                 if (!(sender instanceof Player player)) return;
                 final AutomataWorld world = AutomataWorld.get(player.getInstance());
-                final Program program = world.program();
-                final Map<String, Integer> variables = program.variables();
-                for (String name : variables.keySet()) {
-                    suggestion.addEntry(new SuggestionEntry(name, Component.empty()));
+                final List<CellRule.State> states = world.rules().states();
+                for (CellRule.State state : states) {
+                    suggestion.addEntry(new SuggestionEntry(state.name(), Component.empty()));
                 }
             };
         }

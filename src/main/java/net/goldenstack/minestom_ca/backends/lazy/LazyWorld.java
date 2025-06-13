@@ -1,9 +1,9 @@
 package net.goldenstack.minestom_ca.backends.lazy;
 
-import net.goldenstack.minestom_ca.*;
-import net.goldenstack.minestom_ca.lang.Program;
-import net.goldenstack.minestom_ca.lang.Rule;
-import net.goldenstack.minestom_ca.lang.RuleAnalysis;
+import net.goldenstack.minestom_ca.AutomataQuery;
+import net.goldenstack.minestom_ca.AutomataWorld;
+import net.goldenstack.minestom_ca.CellRule;
+import net.goldenstack.minestom_ca.Neighbors;
 import net.minestom.server.coordinate.CoordConversion;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;
@@ -22,13 +22,10 @@ import java.util.*;
 public final class LazyWorld implements AutomataWorld {
     private static final int LIGHT_SPEED = 1;
     private final Instance instance;
-    private final Program program;
-    private final List<Rule> rules;
+    private final CellRule rules;
+    private final AutomataQuery query = new QueryImpl();
     private final int sectionCount;
     private final int minY;
-
-    private final int stateCount;
-    private final boolean[] trackedStates = new boolean[Short.MAX_VALUE];
 
     private final Map<Long, LSection> loadedSections = new HashMap<>();
     private final Queue<LSection> trackedSections = new ArrayDeque<>();
@@ -85,20 +82,20 @@ public final class LazyWorld implements AutomataWorld {
 
         LSection(final long index) {
             this.index = index;
-            final long singleBlockSize = (long) stateCount * Integer.BYTES;
+            final long singleBlockSize = (long) rules.states().size() * Integer.BYTES;
             final long totalSize = BLOCKS_PER_SECTION * singleBlockSize;
             this.states = Arena.ofAuto().allocate(totalSize);
         }
 
         int getState(int x, int y, int z, int stateIndex) {
             final int blockIndex = index(x, y, z);
-            final long offset = ((long) blockIndex * stateCount + (stateIndex - 1)) * Integer.BYTES;
+            final long offset = ((long) blockIndex * rules.states().size() + (stateIndex - 1)) * Integer.BYTES;
             return states.get(ValueLayout.JAVA_INT, offset);
         }
 
         void setState(int x, int y, int z, int stateIndex, int value) {
             final int blockIndex = index(x, y, z);
-            final long offset = ((long) blockIndex * stateCount + (stateIndex - 1)) * Integer.BYTES;
+            final long offset = ((long) blockIndex * rules.states().size() + (stateIndex - 1)) * Integer.BYTES;
             states.set(ValueLayout.JAVA_INT, offset, value);
         }
 
@@ -114,6 +111,57 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
+    private final class QueryImpl implements AutomataQuery {
+        @Override
+        public int stateAt(int x, int y, int z, int index) {
+            if (index == 0) {
+                return blockState(x, y, z);
+            }
+            final LSection section = sectionGlobal(x, y, z);
+            if (section == null) return 0;
+            final int localX = CoordConversion.globalToSectionRelative(x);
+            final int localY = CoordConversion.globalToSectionRelative(y);
+            final int localZ = CoordConversion.globalToSectionRelative(z);
+            return section.getState(localX, localY, localZ, index);
+        }
+
+        @Override
+        public Map<Integer, Integer> queryIndexes(int x, int y, int z) {
+            final LSection section = sectionGlobal(x, y, z);
+            if (section == null) {
+                return Map.of(0, blockState(x, y, z));
+            }
+            final int localX = CoordConversion.globalToSectionRelative(x);
+            final int localY = CoordConversion.globalToSectionRelative(y);
+            final int localZ = CoordConversion.globalToSectionRelative(z);
+            Map<Integer, Integer> indexes = new HashMap<>();
+            indexes.put(0, blockState(x, y, z));
+            for (int i = 1; i < rules.states().size(); i++) {
+                final int value = section.getState(localX, localY, localZ, i);
+                indexes.put(i, value);
+            }
+            return Map.copyOf(indexes);
+        }
+
+        public Map<String, Integer> queryNames(int x, int y, int z) {
+            Map<Integer, String> variables = new HashMap<>();
+            List<CellRule.State> states = rules().states();
+            for (int i = 0; i < states.size(); i++) {
+                final CellRule.State state = states.get(i);
+                final String name = state.name();
+                variables.put(i, name);
+            }
+            final Map<Integer, Integer> indexes = queryIndexes(x, y, z);
+            Map<String, Integer> names = new HashMap<>();
+            for (Map.Entry<Integer, Integer> entry : indexes.entrySet()) {
+                final String name = variables.get(entry.getKey());
+                if (name != null) names.put(name, entry.getValue());
+                else names.put("var" + entry.getKey(), entry.getValue());
+            }
+            return Map.copyOf(names);
+        }
+    }
+
     LSection sectionGlobal(int x, int y, int z) {
         final long sectionIndex = sectionIndexGlobal(x, y, z);
         return loadedSections.get(sectionIndex);
@@ -124,20 +172,11 @@ public final class LazyWorld implements AutomataWorld {
         return loadedSections.computeIfAbsent(sectionIndex, LSection::new);
     }
 
-    public LazyWorld(Instance instance, Program program) {
+    public LazyWorld(Instance instance, CellRule rules) {
         this.instance = instance;
-        this.program = program;
-        this.rules = program.rules();
+        this.rules = rules;
         this.sectionCount = instance.getCachedDimensionType().height() / 16;
         this.minY = instance.getCachedDimensionType().minY();
-
-        this.stateCount = RuleAnalysis.stateCount(rules);
-        for (Rule rule : rules) {
-            RuleAnalysis.queryExpression(rule.condition(), Rule.Expression.Literal.class, literal -> {
-                if (literal.value() < 0 || literal.value() >= trackedStates.length) return;
-                this.trackedStates[literal.value()] = true;
-            });
-        }
 
         // Register loaded chunks
         System.out.println("Registering loaded chunks...");
@@ -181,7 +220,7 @@ public final class LazyWorld implements AutomataWorld {
                 final int x = localX + sectionX * 16;
                 final int y = localY;
                 final int z = localZ + sectionZ * 16;
-                final Map<Integer, Integer> updatedStates = executeRules(x, y, z);
+                final Map<Integer, Integer> updatedStates = rules.process(x, y, z, query);
                 if (updatedStates != null) blockChanges.add(new BlockChange(x, y, z, updatedStates));
             }
             if (!blockChanges.isEmpty()) {
@@ -250,116 +289,6 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    private Map<Integer, Integer> executeRules(int x, int y, int z) {
-        Map<Integer, Integer> block = null;
-        for (Rule rule : rules) {
-            if (!verifyCondition(x, y, z, rule.condition())) continue;
-            if (block == null) block = new HashMap<>(stateCount);
-            for (Rule.Result result : rule.results()) {
-                switch (result) {
-                    case Rule.Result.SetIndex set -> {
-                        final int index = set.stateIndex();
-                        final int value = expression(x, y, z, set.expression());
-                        block.put(index, value);
-                    }
-                    case Rule.Result.BlockCopy blockCopy -> {
-                        final int blockX = x + blockCopy.x();
-                        final int blockY = y + blockCopy.y();
-                        final int blockZ = z + blockCopy.z();
-                        // Copy block state
-                        block.put(0, blockState(blockX, blockY, blockZ));
-                        // Copy other states
-                        LSection section = sectionGlobal(blockX, blockY, blockZ);
-                        if (section == null) break;
-                        final int localX = CoordConversion.globalToSectionRelative(blockX);
-                        final int localY = CoordConversion.globalToSectionRelative(blockY);
-                        final int localZ = CoordConversion.globalToSectionRelative(blockZ);
-                        for (int i = 1; i < stateCount; i++) {
-                            final int value = section.getState(localX, localY, localZ, i);
-                            block.put(i, value);
-                        }
-                    }
-                    case Rule.Result.TriggerEvent triggerEvent -> {
-                        final String eventName = triggerEvent.event();
-                        final Rule.Expression eventExpression = triggerEvent.expression();
-                        if (eventExpression != null) {
-                            final int value = expression(x, y, z, eventExpression);
-                            System.out.println("Event: " + eventName + "=" + value);
-                        } else {
-                            System.out.println("Event: " + eventName);
-                        }
-                    }
-                }
-            }
-        }
-        return block;
-    }
-
-    private boolean verifyCondition(int x, int y, int z, Rule.Condition condition) {
-        return switch (condition) {
-            case Rule.Condition.And and -> {
-                for (Rule.Condition c : and.conditions()) {
-                    if (!verifyCondition(x, y, z, c)) yield false;
-                }
-                yield true;
-            }
-            case Rule.Condition.Equal equal -> {
-                final int first = expression(x, y, z, equal.first());
-                final int second = expression(x, y, z, equal.second());
-                yield first == second;
-            }
-            case Rule.Condition.Not not -> !verifyCondition(x, y, z, not.condition());
-        };
-    }
-
-    private int expression(int x, int y, int z, Rule.Expression expression) {
-        return switch (expression) {
-            case Rule.Expression.Index index -> {
-                final int stateIndex = index.stateIndex();
-                if (stateIndex == 0) {
-                    yield blockState(x, y, z);
-                } else {
-                    final LSection section = sectionGlobal(x, y, z);
-                    if (section == null) yield 0;
-                    final int localX = CoordConversion.globalToSectionRelative(x);
-                    final int localY = CoordConversion.globalToSectionRelative(y);
-                    final int localZ = CoordConversion.globalToSectionRelative(z);
-                    yield section.getState(localX, localY, localZ, stateIndex);
-                }
-            }
-            case Rule.Expression.NeighborIndex index -> expression(
-                    x + index.x(), y + index.y(), z + index.z(),
-                    new Rule.Expression.Index(index.stateIndex()));
-            case Rule.Expression.Literal literal -> literal.value();
-            case Rule.Expression.NeighborsCount neighborsCount -> {
-                int count = 0;
-                for (Point offset : neighborsCount.offsets()) {
-                    final int nX = x + offset.blockX();
-                    final int nY = y + offset.blockY();
-                    final int nZ = z + offset.blockZ();
-                    if (verifyCondition(nX, nY, nZ, neighborsCount.condition())) count++;
-                }
-                yield count;
-            }
-            case Rule.Expression.Compare compare -> {
-                final int first = expression(x, y, z, compare.first());
-                final int second = expression(x, y, z, compare.second());
-                yield (int) Math.signum(first - second);
-            }
-            case Rule.Expression.Operation operation -> {
-                final int first = expression(x, y, z, operation.first());
-                final int second = expression(x, y, z, operation.second());
-                yield switch (operation.type()) {
-                    case ADD -> first + second;
-                    case SUBTRACT -> first - second;
-                    case MULTIPLY -> first * second;
-                    case DIVIDE -> first / second;
-                    case MODULO -> first % second;
-                };
-            }
-        };
-    }
-
     @Override
     public void handlePlacement(int x, int y, int z, Map<Integer, Integer> properties) {
         LSection section = sectionGlobalCompute(x, y, z);
@@ -367,7 +296,7 @@ public final class LazyWorld implements AutomataWorld {
         final int localX = CoordConversion.globalToSectionRelative(x);
         final int localY = CoordConversion.globalToSectionRelative(y);
         final int localZ = CoordConversion.globalToSectionRelative(z);
-        for (int i = 1; i < stateCount; i++) {
+        for (int i = 1; i < rules.states().size(); i++) {
             final int value = properties.getOrDefault(i, 0);
             section.setState(localX, localY, localZ, i, value);
         }
@@ -387,7 +316,7 @@ public final class LazyWorld implements AutomataWorld {
             LSection startSection = sectionGlobalCompute(globalX, globalY, globalZ);
             trackedSections.offer(startSection);
             section.blockPalette().getAllPresent((x, y, z, value) -> {
-                if (!trackedStates[value]) return;
+                if (!rules.tracked(value)) return;
                 final int blockX = globalX + x;
                 final int blockY = globalY + y;
                 final int blockZ = globalZ + z;
@@ -420,24 +349,6 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    @Override
-    public Map<Integer, Integer> queryIndexes(int x, int y, int z) {
-        final LSection section = sectionGlobal(x, y, z);
-        if (section == null) {
-            return Map.of(0, blockState(x, y, z));
-        }
-        final int localX = CoordConversion.globalToSectionRelative(x);
-        final int localY = CoordConversion.globalToSectionRelative(y);
-        final int localZ = CoordConversion.globalToSectionRelative(z);
-        Map<Integer, Integer> indexes = new HashMap<>();
-        indexes.put(0, blockState(x, y, z));
-        for (int i = 1; i < stateCount; i++) {
-            final int value = section.getState(localX, localY, localZ, i);
-            indexes.put(i, value);
-        }
-        return Map.copyOf(indexes);
-    }
-
     private int blockState(int x, int y, int z) {
         try {
             final Block block = instance.getBlock(x, y, z, Block.Getter.Condition.TYPE);
@@ -454,7 +365,12 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     @Override
-    public Program program() {
-        return program;
+    public CellRule rules() {
+        return rules;
+    }
+
+    @Override
+    public AutomataQuery query() {
+        return query;
     }
 }

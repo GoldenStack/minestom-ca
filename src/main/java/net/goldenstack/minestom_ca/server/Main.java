@@ -1,8 +1,9 @@
 package net.goldenstack.minestom_ca.server;
 
 import net.goldenstack.minestom_ca.AutomataWorld;
-import net.goldenstack.minestom_ca.lang.Program;
+import net.goldenstack.minestom_ca.CellRule;
 import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
+import net.goldenstack.minestom_ca.lang.Program;
 import net.kyori.adventure.nbt.NumberBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
@@ -30,6 +31,7 @@ import net.minestom.server.item.component.CustomData;
 
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -58,7 +60,7 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        AutomataWorld.register(new LazyWorld(instance, FILE_PROGRAM));
+        AutomataWorld.register(new LazyWorld(instance, FILE_PROGRAM.makeCellRule()));
         //AutomataWorld.register(new CLCellularInstance(instance, MOVING_OAK));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
@@ -89,8 +91,14 @@ public final class Main {
                     for (var entry : item.get(DataComponents.CUSTOM_DATA, CustomData.EMPTY).nbt()) {
                         if (entry.getValue() instanceof NumberBinaryTag number) {
                             final String name = entry.getKey();
-                            final Integer index = world.program().variables().get(name);
-                            if (index != null) properties.put(index, number.intValue());
+                            final List<CellRule.State> states = world.rules().states();
+                            for (int i = 0; i < states.size(); i++) {
+                                final CellRule.State state = states.get(i);
+                                if (state.name().equals(name)) {
+                                    properties.put(i, number.intValue());
+                                    break;
+                                }
+                            }
                         }
                     }
                     world.handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
@@ -104,7 +112,7 @@ public final class Main {
                     final Player player = event.getPlayer();
                     final Point point = event.getBlockPosition();
                     AutomataWorld world = AutomataWorld.get(player.getInstance());
-                    final Map<String, Integer> indexes = world.queryNames(point.blockX(), point.blockY(), point.blockZ());
+                    final Map<String, Integer> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
                     player.sendMessage(Component.text("States: " + indexes));
                 })
                 .addListener(InstanceChunkLoadEvent.class, event -> {

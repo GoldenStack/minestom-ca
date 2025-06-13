@@ -1,6 +1,5 @@
 package net.goldenstack.minestom_ca;
 
-import net.goldenstack.minestom_ca.lang.Program;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
@@ -46,23 +45,6 @@ public interface AutomataWorld {
 
     void handleChunkUnload(int chunkX, int chunkZ);
 
-    Map<Integer, Integer> queryIndexes(int x, int y, int z);
-
-    default Map<String, Integer> queryNames(int x, int y, int z) {
-        Map<Integer, String> variables = new HashMap<>();
-        for (var entry : program().variables().entrySet()) {
-            variables.put(entry.getValue(), entry.getKey());
-        }
-        final Map<Integer, Integer> indexes = queryIndexes(x, y, z);
-        Map<String, Integer> names = new HashMap<>();
-        for (Map.Entry<Integer, Integer> entry : indexes.entrySet()) {
-            final String name = variables.get(entry.getKey());
-            if (name != null) names.put(name, entry.getValue());
-            else names.put("var" + entry.getKey(), entry.getValue());
-        }
-        return Map.copyOf(names);
-    }
-
     /**
      * Gets the instance that is being ticked
      *
@@ -70,5 +52,7 @@ public interface AutomataWorld {
      */
     Instance instance();
 
-    Program program();
+    CellRule rules();
+
+    AutomataQuery query();
 }
