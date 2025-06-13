@@ -7,10 +7,7 @@ import net.minestom.server.coordinate.Point;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public record Program(List<Rule> rules, Map<String, Integer> variables) {
     public Program {
@@ -41,9 +38,9 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
     public CellRule makeCellRule() {
         final int stateCount = RuleAnalysis.stateCount(rules);
 
-        List<CellRule.State> states = new ArrayList<>();
+        List<CellRule.State> states = new ArrayList<>(Collections.nCopies(variables.size(), null));
         for (Map.Entry<String, Integer> entry : variables.entrySet()) {
-            states.add(new CellRule.State(entry.getKey()));
+            states.set(entry.getValue() - 1, new CellRule.State(entry.getKey()));
         }
 
         boolean[] trackedStates = new boolean[Short.MAX_VALUE];

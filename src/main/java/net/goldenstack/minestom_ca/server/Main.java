@@ -4,7 +4,6 @@ import net.goldenstack.minestom_ca.AutomataWorld;
 import net.goldenstack.minestom_ca.CellRule;
 import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
 import net.goldenstack.minestom_ca.lang.Program;
-import net.goldenstack.minestom_ca.rules.RuleSamples;
 import net.kyori.adventure.nbt.NumberBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
@@ -60,8 +59,8 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        final CellRule rules = new RuleSamples.GrassGrow();
-        //final CellRule rules = Program.fromFile(Path.of("rules/piston")).makeCellRule();
+        //final CellRule rules = new RuleSamples.GameOfLife();
+        final CellRule rules = Program.fromFile(Path.of("rules/piston")).makeCellRule();
 
         // Print variables
         System.out.println("Variables: " + rules.states().stream()
@@ -102,7 +101,7 @@ public final class Main {
                             for (int i = 0; i < states.size(); i++) {
                                 final CellRule.State state = states.get(i);
                                 if (state.name().equals(name)) {
-                                    properties.put(i, number.intValue());
+                                    properties.put(i + 1, number.intValue());
                                     break;
                                 }
                             }
