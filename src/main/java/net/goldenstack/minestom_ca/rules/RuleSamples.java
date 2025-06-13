@@ -16,7 +16,7 @@ public final class RuleSamples {
 
         @Override
         public Action process(AutomataQuery query) {
-            final int neighbors = query.predicateNeighborsState(0, Neighbors.MOORE_2D,
+            final int neighbors = query.countNeighborsStateLimit(0, 4, Neighbors.MOORE_2D,
                     state -> state == ALIVE_STATE);
             final long currentState = query.stateAt(0, 0, 0, 0);
             if (currentState == ALIVE_STATE && (neighbors < 2 || neighbors > 3)) {
