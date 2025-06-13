@@ -316,7 +316,8 @@ public final class LazyWorld implements AutomataWorld {
                     int tick, Map<Integer, Long> conditionStates, Map<Integer, Long> updatedStates
             )) {
                 wheelTimer.schedule(() -> {
-                    Map<Integer, Long> currentStates = query.queryIndexes(x, y, z);
+                    query.updateLocal(x, y, z);
+                    Map<Integer, Long> currentStates = query.queryIndexes(0, 0, 0);
                     boolean matches = true;
                     for (Map.Entry<Integer, Long> entry : conditionStates.entrySet()) {
                         if (!Objects.equals(currentStates.get(entry.getKey()), entry.getValue())) {
