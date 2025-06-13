@@ -114,9 +114,7 @@ public final class LazyWorld implements AutomataWorld {
     private final class QueryImpl implements AutomataQuery {
         @Override
         public int stateAt(int x, int y, int z, int index) {
-            if (index == 0) {
-                return blockState(x, y, z);
-            }
+            if (index == 0) return blockState(x, y, z);
             final LSection section = sectionGlobal(x, y, z);
             if (section == null) return 0;
             final int localX = CoordConversion.globalToSectionRelative(x);
@@ -128,17 +126,15 @@ public final class LazyWorld implements AutomataWorld {
         @Override
         public Map<Integer, Integer> queryIndexes(int x, int y, int z) {
             final LSection section = sectionGlobal(x, y, z);
-            if (section == null) {
-                return Map.of(0, blockState(x, y, z));
-            }
+            if (section == null) return Map.of(0, blockState(x, y, z));
             final int localX = CoordConversion.globalToSectionRelative(x);
             final int localY = CoordConversion.globalToSectionRelative(y);
             final int localZ = CoordConversion.globalToSectionRelative(z);
             Map<Integer, Integer> indexes = new HashMap<>();
             indexes.put(0, blockState(x, y, z));
-            for (int i = 1; i < rules.states().size(); i++) {
+            for (int i = 0; i < rules.states().size(); i++) {
                 final int value = section.getState(localX, localY, localZ, i);
-                indexes.put(i, value);
+                indexes.put(i + 1, value);
             }
             return Map.copyOf(indexes);
         }
@@ -149,7 +145,7 @@ public final class LazyWorld implements AutomataWorld {
             for (int i = 0; i < states.size(); i++) {
                 final CellRule.State state = states.get(i);
                 final String name = state.name();
-                variables.put(i, name);
+                variables.put(i + 1, name);
             }
             final Map<Integer, Integer> indexes = queryIndexes(x, y, z);
             Map<String, Integer> names = new HashMap<>();
@@ -248,6 +244,7 @@ public final class LazyWorld implements AutomataWorld {
     private void applySectionChanges(SectionChange sectionChange) {
         final long sectionIndex = sectionChange.index;
         final LSection section = loadedSections.get(sectionIndex);
+        Palette palette = sectionChange.palette();
         List<Long> blockChanges = new ArrayList<>();
         for (BlockChange currentChange : sectionChange.blockChanges()) {
             final int x = currentChange.x();
@@ -262,7 +259,7 @@ public final class LazyWorld implements AutomataWorld {
                 final int stateIndex = changeEntry.getKey();
                 final int value = changeEntry.getValue();
                 if (stateIndex == 0) {
-                    sectionChange.palette().set(localX, localY, localZ, value);
+                    if (palette != null) palette.set(localX, localY, localZ, value);
                     // Encode block change for packet
                     final long blockState = ((long) value) << 12;
                     final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
@@ -296,7 +293,7 @@ public final class LazyWorld implements AutomataWorld {
         final int localX = CoordConversion.globalToSectionRelative(x);
         final int localY = CoordConversion.globalToSectionRelative(y);
         final int localZ = CoordConversion.globalToSectionRelative(z);
-        for (int i = 1; i < rules.states().size(); i++) {
+        for (int i = 0; i < rules.states().size(); i++) {
             final int value = properties.getOrDefault(i, 0);
             section.setState(localX, localY, localZ, i, value);
         }

@@ -42,7 +42,6 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
         final int stateCount = RuleAnalysis.stateCount(rules);
 
         List<CellRule.State> states = new ArrayList<>();
-        states.add(new CellRule.State("block"));
         for (Map.Entry<String, Integer> entry : variables.entrySet()) {
             states.add(new CellRule.State(entry.getKey()));
         }
