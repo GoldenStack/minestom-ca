@@ -8,6 +8,7 @@ import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.palette.Palette;
+import net.minestom.server.network.packet.server.play.MultiBlockChangePacket;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -153,7 +154,7 @@ public final class LazyWorld implements AutomataWorld {
     private record BlockChange(int x, int y, int z, Map<Integer, Integer> blockData) {
     }
 
-    private record SectionChange(long index, List<BlockChange> blockChanges) {
+    private record SectionChange(long index, Palette palette, List<BlockChange> blockChanges) {
     }
 
     private void singleTick() {
@@ -167,7 +168,9 @@ public final class LazyWorld implements AutomataWorld {
             List<BlockChange> blockChanges = new ArrayList<>();
             final long sectionIndex = section.index;
             final int sectionX = unpackSectionX(sectionIndex);
+            final int sectionY = unpackSectionY(sectionIndex);
             final int sectionZ = unpackSectionZ(sectionIndex);
+            Palette palette = palette(sectionX, sectionY, sectionZ);
             for (int blockIndex : section.trackedBlocks) {
                 final int localX = CoordConversion.chunkBlockIndexGetX(blockIndex);
                 final int localY = CoordConversion.chunkBlockIndexGetY(blockIndex);
@@ -179,7 +182,7 @@ public final class LazyWorld implements AutomataWorld {
                 if (updatedStates != null) blockChanges.add(new BlockChange(x, y, z, updatedStates));
             }
             if (!blockChanges.isEmpty()) {
-                changes.offer(new SectionChange(sectionIndex, blockChanges));
+                changes.offer(new SectionChange(sectionIndex, palette, blockChanges));
             }
             section.trackedBlocks.clear();
         }
@@ -193,34 +196,35 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    Palette paletteAt(int x, int y, int z) {
-        final Chunk chunk = instance.getChunkAt(x, z);
+    Palette palette(int sectionX, int sectionY, int sectionZ) {
+        final Chunk chunk = instance.getChunk(sectionX, sectionZ);
         if (chunk == null) return null;
-        final Section section = chunk.getSectionAt(y);
+        final Section section = chunk.getSection(sectionY);
         return section.blockPalette();
     }
 
     private void applySectionChanges(SectionChange sectionChange) {
         final long sectionIndex = sectionChange.index;
         final LSection section = loadedSections.get(sectionIndex);
-        Palette palette = null;
+        List<Long> blockChanges = new ArrayList<>();
         for (BlockChange currentChange : sectionChange.blockChanges()) {
             final int x = currentChange.x();
             final int y = currentChange.y();
             final int z = currentChange.z();
-            final Map<Integer, Integer> blockData = currentChange.blockData();
 
             final int localX = CoordConversion.globalToSectionRelative(x);
             final int localY = CoordConversion.globalToSectionRelative(y);
             final int localZ = CoordConversion.globalToSectionRelative(z);
             // Set states
-            for (Map.Entry<Integer, Integer> changeEntry : blockData.entrySet()) {
+            for (Map.Entry<Integer, Integer> changeEntry : currentChange.blockData().entrySet()) {
                 final int stateIndex = changeEntry.getKey();
                 final int value = changeEntry.getValue();
                 if (stateIndex == 0) {
-                    if (palette == null) palette = paletteAt(x, y, z);
-                    assert palette != null;
-                    palette.set(localX, localY, localZ, value);
+                    sectionChange.palette().set(localX, localY, localZ, value);
+                    // Encode block change for packet
+                    final long blockState = ((long) value) << 12;
+                    final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
+                    blockChanges.add(blockState | pos);
                 } else {
                     if (section == null) continue;
                     section.setState(localX, localY, localZ, stateIndex, value);
@@ -230,14 +234,15 @@ public final class LazyWorld implements AutomataWorld {
             register(x, y, z, section);
         }
         trackedSections.offer(section);
-        if (palette != null) {
-            // Invalidate packet
-            final int chunkX = unpackSectionX(sectionIndex);
-            final int chunkZ = unpackSectionZ(sectionIndex);
-            final Chunk chunk = instance.getChunk(chunkX, chunkZ);
+        if (!blockChanges.isEmpty()) {
+            final int sectionX = unpackSectionX(sectionIndex);
+            final int sectionY = unpackSectionY(sectionIndex);
+            final int sectionZ = unpackSectionZ(sectionIndex);
+            final Chunk chunk = instance.getChunk(sectionX, sectionZ);
             if (chunk != null) {
                 chunk.invalidate();
-                chunk.sendChunk();
+                final long[] blocksArray = blockChanges.stream().mapToLong(Long::longValue).toArray();
+                chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
             }
         }
     }
@@ -370,18 +375,19 @@ public final class LazyWorld implements AutomataWorld {
     public void handleChunkLoad(int chunkX, int chunkZ) {
         final Chunk chunk = instance.getChunk(chunkX, chunkZ);
         assert chunk != null;
-        int sectionY = 0;
-        final int localX = chunk.getChunkX() * 16;
-        final int localZ = chunk.getChunkZ() * 16;
-        for (Section section : chunk.getSections()) {
-            final int localY = sectionY++ * 16 - minY;
-            LSection startSection = sectionGlobalCompute(localX, localY, localZ);
+        final int globalX = chunk.getChunkX() * 16;
+        final int globalZ = chunk.getChunkZ() * 16;
+        final int startSectionY = minY / 16;
+        for (int i = startSectionY; i < sectionCount + startSectionY; i++) {
+            final int globalY = i * 16;
+            final Section section = chunk.getSection(i);
+            LSection startSection = sectionGlobalCompute(globalX, globalY, globalZ);
             trackedSections.offer(startSection);
             section.blockPalette().getAllPresent((x, y, z, value) -> {
                 if (!trackedStates[value]) return;
-                final int blockX = localX + x;
-                final int blockY = localY + y;
-                final int blockZ = localZ + z;
+                final int blockX = globalX + x;
+                final int blockY = globalY + y;
+                final int blockZ = globalZ + z;
                 register(blockX, blockY, blockZ, startSection);
             });
         }
