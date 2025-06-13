@@ -61,7 +61,7 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        final CellRule rules = new RuleSamples.GameOfLife();
+        final CellRule rules = new RuleSamples.GrassGrow();
         //final CellRule rules = FILE_PROGRAM.makeCellRule();
 
         AutomataWorld.register(new LazyWorld(instance, rules));

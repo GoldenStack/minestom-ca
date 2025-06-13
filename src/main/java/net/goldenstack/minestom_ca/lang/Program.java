@@ -55,7 +55,7 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
         }
         return new CellRule() {
             @Override
-            public Map<Integer, Long> process(int x, int y, int z, AutomataQuery query) {
+            public Action process(int x, int y, int z, AutomataQuery query) {
                 Map<Integer, Long> block = null;
                 for (Rule rule : rules) {
                     if (!verifyCondition(x, y, z, query, rule.condition())) continue;
@@ -92,7 +92,8 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                         }
                     }
                 }
-                return block;
+                if (block == null) return null;
+                return new CellRule.Action.UpdateState(block);
             }
 
             @Override
