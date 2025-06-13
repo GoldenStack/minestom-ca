@@ -46,7 +46,7 @@ public final class LazyWorld implements AutomataWorld {
         return r;
     }
 
-    public static long packSectionIndex(int sectionX, int sectionY, int sectionZ) {
+    public static long sectionIndex(int sectionX, int sectionY, int sectionZ) {
         // Use 21 bits for each, with sign extension
         long x = sectionX & 0x1FFFFF;
         long y = sectionY & 0x1FFFFF;
@@ -54,30 +54,30 @@ public final class LazyWorld implements AutomataWorld {
         return (x << 42) | (y << 21) | z;
     }
 
-    public static int unpackSectionX(long packed) {
-        int x = (int) (packed >> 42) & 0x1FFFFF;
+    public static int sectionIndexGetX(long index) {
+        int x = (int) (index >> 42) & 0x1FFFFF;
         // Sign extension for 21 bits
         if ((x & 0x100000) != 0) x |= ~0x1FFFFF;
         return x;
     }
 
-    public static int unpackSectionY(long packed) {
-        int y = (int) (packed >> 21) & 0x1FFFFF;
+    public static int sectionIndexGetY(long index) {
+        int y = (int) (index >> 21) & 0x1FFFFF;
         if ((y & 0x100000) != 0) y |= ~0x1FFFFF;
         return y;
     }
 
-    public static int unpackSectionZ(long packed) {
-        int z = (int) packed & 0x1FFFFF;
+    public static int sectionIndexGetZ(long index) {
+        int z = (int) index & 0x1FFFFF;
         if ((z & 0x100000) != 0) z |= ~0x1FFFFF;
         return z;
     }
 
     long sectionIndexGlobal(int x, int y, int z) {
-        final int sectionX = floorDiv(x, 16);
-        final int sectionY = floorDiv(y, 16);
-        final int sectionZ = floorDiv(z, 16);
-        return packSectionIndex(sectionX, sectionY, sectionZ);
+        final int sectionX = CoordConversion.globalToChunk(x);
+        final int sectionY = CoordConversion.globalToChunk(y);
+        final int sectionZ = CoordConversion.globalToChunk(z);
+        return sectionIndex(sectionX, sectionY, sectionZ);
     }
 
     private final class LSection {
@@ -247,9 +247,9 @@ public final class LazyWorld implements AutomataWorld {
         for (LSection section : trackedSections) {
             List<BlockChange> blockChanges = new ArrayList<>();
             final long sectionIndex = section.index;
-            final int sectionX = unpackSectionX(sectionIndex);
-            final int sectionY = unpackSectionY(sectionIndex);
-            final int sectionZ = unpackSectionZ(sectionIndex);
+            final int sectionX = sectionIndexGetX(sectionIndex);
+            final int sectionY = sectionIndexGetY(sectionIndex);
+            final int sectionZ = sectionIndexGetZ(sectionIndex);
             Palette palette = paletteAtSection(sectionX, sectionY, sectionZ);
             BitSet trackedBlocks = section.trackedBlocks;
             for (int blockIndex = trackedBlocks.nextSetBit(0);
@@ -288,9 +288,9 @@ public final class LazyWorld implements AutomataWorld {
                     .findFirst()
                     .orElse(null);
             if (sectionChange == null) {
-                final int sectionX = unpackSectionX(sectionIndex);
-                final int sectionY = unpackSectionY(sectionIndex);
-                final int sectionZ = unpackSectionZ(sectionIndex);
+                final int sectionX = sectionIndexGetX(sectionIndex);
+                final int sectionY = sectionIndexGetY(sectionIndex);
+                final int sectionZ = sectionIndexGetZ(sectionIndex);
                 sectionChange = new SectionChange(section, paletteAtSection(sectionX, sectionY, sectionZ), new ArrayList<>());
                 changes.offer(sectionChange);
             }
@@ -361,9 +361,9 @@ public final class LazyWorld implements AutomataWorld {
         trackedSections.add(section);
         if (!blockChanges.isEmpty()) {
             final long sectionIndex = section.index;
-            final int sectionX = unpackSectionX(sectionIndex);
-            final int sectionY = unpackSectionY(sectionIndex);
-            final int sectionZ = unpackSectionZ(sectionIndex);
+            final int sectionX = sectionIndexGetX(sectionIndex);
+            final int sectionY = sectionIndexGetY(sectionIndex);
+            final int sectionZ = sectionIndexGetZ(sectionIndex);
             final Chunk chunk = instance.getChunk(sectionX, sectionZ);
             if (chunk != null) {
                 chunk.invalidate();
@@ -429,7 +429,7 @@ public final class LazyWorld implements AutomataWorld {
     @Override
     public void handleChunkUnload(int chunkX, int chunkZ) {
         for (int sectionY = 0; sectionY < sectionCount; sectionY++) {
-            final long sectionIndex = packSectionIndex(chunkX, sectionY, chunkZ);
+            final long sectionIndex = sectionIndex(chunkX, sectionY, chunkZ);
             this.loadedSections.remove(sectionIndex);
         }
     }
