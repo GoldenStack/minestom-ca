@@ -95,22 +95,21 @@ public final class LazyWorld implements AutomataWorld {
         }
 
         long getState(int x, int y, int z, int stateIndex) {
-            final int blockIndex = index(x, y, z);
-            final long offset = ((long) blockIndex * rules.states().size() + stateIndex) * Long.BYTES;
-            return states.get(ValueLayout.JAVA_LONG, offset);
+            final long index = index(x, y, z, stateIndex);
+            return states.get(ValueLayout.JAVA_LONG, index);
         }
 
         void setState(int x, int y, int z, int stateIndex, long value) {
-            final int blockIndex = index(x, y, z);
-            final long offset = ((long) blockIndex * rules.states().size() + stateIndex) * Long.BYTES;
-            states.set(ValueLayout.JAVA_LONG, offset, value);
+            final long index = index(x, y, z, stateIndex);
+            states.set(ValueLayout.JAVA_LONG, index, value);
         }
 
-        int index(int x, int y, int z) {
+        long index(int x, int y, int z, int stateIndex) {
             if (x < 0 || x >= 16 || y < 0 || y >= 16 || z < 0 || z >= 16) {
                 throw new IndexOutOfBoundsException("Coordinates out of bounds for section: " + x + ", " + y + ", " + z);
             }
-            return (y * 16 + z) * 16 + x;
+            final int blockIndex = (y * 16 + z) * 16 + x;
+            return ((long) blockIndex * rules.states().size() + stateIndex) * Long.BYTES;
         }
     }
 
