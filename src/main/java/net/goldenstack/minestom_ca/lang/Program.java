@@ -55,22 +55,22 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
         }
         return new CellRule() {
             @Override
-            public Action process(int x, int y, int z, AutomataQuery query) {
+            public Action process(AutomataQuery query) {
                 Map<Integer, Long> block = null;
                 for (Rule rule : rules) {
-                    if (!verifyCondition(x, y, z, query, rule.condition())) continue;
+                    if (!verifyCondition(0, 0, 0, query, rule.condition())) continue;
                     if (block == null) block = new HashMap<>(stateCount);
                     for (Rule.Result result : rule.results()) {
                         switch (result) {
                             case Rule.Result.SetIndex set -> {
                                 final int index = set.stateIndex();
-                                final long value = expression(x, y, z, query, set.expression());
+                                final long value = expression(0, 0, 0, query, set.expression());
                                 block.put(index, value);
                             }
                             case Rule.Result.BlockCopy blockCopy -> {
-                                final int blockX = x + blockCopy.x();
-                                final int blockY = y + blockCopy.y();
-                                final int blockZ = z + blockCopy.z();
+                                final int blockX = blockCopy.x();
+                                final int blockY = blockCopy.y();
+                                final int blockZ = blockCopy.z();
                                 final Map<Integer, Long> queryIndexes = query.queryIndexes(blockX, blockY, blockZ);
                                 block.putAll(queryIndexes);
                             }
@@ -78,7 +78,7 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                                 final String eventName = triggerEvent.event();
                                 final Rule.Expression eventExpression = triggerEvent.expression();
                                 if (eventExpression != null) {
-                                    final long value = expression(x, y, z, query, eventExpression);
+                                    final long value = expression(0, 0, 0, query, eventExpression);
                                     System.out.println("Event: " + eventName + "=" + value);
                                 } else {
                                     System.out.println("Event: " + eventName);

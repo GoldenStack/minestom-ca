@@ -15,10 +15,10 @@ public final class RuleSamples {
         private static final long ALIVE_STATE = Block.WHITE_WOOL.stateId();
 
         @Override
-        public Action process(int x, int y, int z, AutomataQuery query) {
-            final int neighbors = query.predicateNeighborsState(x, y, z, 0, Neighbors.MOORE_2D,
+        public Action process(AutomataQuery query) {
+            final int neighbors = query.predicateNeighborsState(0, Neighbors.MOORE_2D,
                     state -> state == ALIVE_STATE);
-            final long currentState = query.stateAt(x, y, z, 0);
+            final long currentState = query.stateAt(0, 0, 0, 0);
             if (currentState == ALIVE_STATE && (neighbors < 2 || neighbors > 3)) {
                 // Underpopulation or overpopulation
                 return new Action.UpdateState(Map.of(0, VOID_STATE));
@@ -45,8 +45,8 @@ public final class RuleSamples {
         private static final long GRASS_STATE = Block.GRASS_BLOCK.stateId();
 
         @Override
-        public Action process(int x, int y, int z, AutomataQuery query) {
-            final long currentState = query.stateAt(x, y, z, 0);
+        public Action process(AutomataQuery query) {
+            final long currentState = query.stateAt(0, 0, 0, 0);
             if (currentState == DIRT_STATE) {
                 return new Action.ConditionalSchedule(25, Map.of(0, DIRT_STATE), Map.of(0, GRASS_STATE));
             }

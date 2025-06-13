@@ -23,7 +23,7 @@ public final class LazyWorld implements AutomataWorld {
     private static final int LIGHT_SPEED = 1;
     private final Instance instance;
     private final CellRule rules;
-    private final AutomataQuery query = new QueryImpl();
+    private final QueryImpl query = new QueryImpl();
     private final int sectionCount;
     private final int minY;
 
@@ -109,8 +109,19 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     private final class QueryImpl implements AutomataQuery {
+        int localX, localY, localZ;
+
+        void updateLocal(int x, int y, int z) {
+            this.localX = x;
+            this.localY = y;
+            this.localZ = z;
+        }
+
         @Override
         public long stateAt(int x, int y, int z, int index) {
+            x += localX;
+            y += localY;
+            z += localZ;
             if (index == 0) return blockState(x, y, z);
             final LSection section = sectionGlobal(x, y, z);
             if (section == null) return 0;
@@ -122,6 +133,9 @@ public final class LazyWorld implements AutomataWorld {
 
         @Override
         public Map<Integer, Long> queryIndexes(int x, int y, int z) {
+            x += localX;
+            y += localY;
+            z += localZ;
             final LSection section = sectionGlobal(x, y, z);
             if (section == null) return Map.of(0, (long) blockState(x, y, z));
             final int localX = CoordConversion.globalToSectionRelative(x);
@@ -137,6 +151,9 @@ public final class LazyWorld implements AutomataWorld {
         }
 
         public Map<String, Long> queryNames(int x, int y, int z) {
+            x += localX;
+            y += localY;
+            z += localZ;
             Map<Integer, String> variables = new HashMap<>();
             List<CellRule.State> states = rules().states();
             for (int i = 0; i < states.size(); i++) {
@@ -214,7 +231,8 @@ public final class LazyWorld implements AutomataWorld {
                 final int x = localX + sectionX * 16;
                 final int y = localY;
                 final int z = localZ + sectionZ * 16;
-                final CellRule.Action action = rules.process(x, y, z, query);
+                query.updateLocal(x, y, z);
+                final CellRule.Action action = rules.process(query);
                 if (action != null) blockChanges.add(new BlockChange(x, y, z, action));
             }
             if (!blockChanges.isEmpty()) {

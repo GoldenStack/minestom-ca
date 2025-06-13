@@ -4,8 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface CellRule {
-    Action process(int x, int y, int z,
-                   AutomataQuery query);
+    Action process(AutomataQuery query);
 
     boolean tracked(int state);
 
@@ -19,11 +18,13 @@ public interface CellRule {
         }
 
         // Update state after X ticks no matter what
-        record Schedule(int tick, Map<Integer, Long> updatedStates) implements Action {
+        record Schedule(int tick,
+                        Map<Integer, Long> updatedStates) implements Action {
         }
 
         // Update state after X ticks if specified states are equal
-        record ConditionalSchedule(int tick, Map<Integer, Long> conditionStates,
+        record ConditionalSchedule(int tick,
+                                   Map<Integer, Long> conditionStates,
                                    Map<Integer, Long> updatedStates) implements Action {
         }
     }

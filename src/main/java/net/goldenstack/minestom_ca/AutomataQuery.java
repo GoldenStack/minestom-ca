@@ -19,13 +19,13 @@ public interface AutomataQuery {
 
     Map<String, Long> queryNames(int x, int y, int z);
 
-    default int predicateNeighborsState(int x, int y, int z, int index,
-                                        List<Point> points, LongPredicate predicate) {
+    default int predicateNeighborsState(int index, List<Point> points,
+                                        LongPredicate predicate) {
         int count = 0;
         for (Point point : points) {
-            final int blockX = x + point.blockX();
-            final int blockY = y + point.blockY();
-            final int blockZ = z + point.blockZ();
+            final int blockX = point.blockX();
+            final int blockY = point.blockY();
+            final int blockZ = point.blockZ();
             final long state = stateAt(blockX, blockY, blockZ, index);
             if (predicate.test(state)) count++;
         }
