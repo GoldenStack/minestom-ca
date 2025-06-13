@@ -24,6 +24,8 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.*;
 
+import static net.goldenstack.minestom_ca.CoordConversionPro.*;
+
 @SuppressWarnings("UnstableApiUsage")
 public final class LazyWorld implements AutomataWorld {
     private static final int LIGHT_SPEED = 1;
@@ -36,49 +38,6 @@ public final class LazyWorld implements AutomataWorld {
     private final HashedWheelTimer<BlockChange> wheelTimer = new HashedWheelTimer<>(255);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
     private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
-
-    private static int floorDiv(int x, int y) {
-        int r = x / y;
-        // if the signs are different and modulo not zero, round down
-        if ((x ^ y) < 0 && (x % y != 0)) {
-            r--;
-        }
-        return r;
-    }
-
-    public static long sectionIndex(int sectionX, int sectionY, int sectionZ) {
-        // Use 21 bits for each, with sign extension
-        long x = sectionX & 0x1FFFFF;
-        long y = sectionY & 0x1FFFFF;
-        long z = sectionZ & 0x1FFFFF;
-        return (x << 42) | (y << 21) | z;
-    }
-
-    public static int sectionIndexGetX(long index) {
-        int x = (int) (index >> 42) & 0x1FFFFF;
-        // Sign extension for 21 bits
-        if ((x & 0x100000) != 0) x |= ~0x1FFFFF;
-        return x;
-    }
-
-    public static int sectionIndexGetY(long index) {
-        int y = (int) (index >> 21) & 0x1FFFFF;
-        if ((y & 0x100000) != 0) y |= ~0x1FFFFF;
-        return y;
-    }
-
-    public static int sectionIndexGetZ(long index) {
-        int z = (int) index & 0x1FFFFF;
-        if ((z & 0x100000) != 0) z |= ~0x1FFFFF;
-        return z;
-    }
-
-    long sectionIndexGlobal(int x, int y, int z) {
-        final int sectionX = CoordConversion.globalToChunk(x);
-        final int sectionY = CoordConversion.globalToChunk(y);
-        final int sectionZ = CoordConversion.globalToChunk(z);
-        return sectionIndex(sectionX, sectionY, sectionZ);
-    }
 
     private final class LSection {
         private static final long BLOCKS_PER_SECTION = 16 * 16 * 16;
@@ -255,16 +214,9 @@ public final class LazyWorld implements AutomataWorld {
             for (int blockIndex = trackedBlocks.nextSetBit(0);
                  blockIndex >= 0;
                  blockIndex = trackedBlocks.nextSetBit(blockIndex + 1)) {
-
-                // Convert blockIndex back to local coordinates
-                final int localX = blockIndex % 16;
-                final int temp = blockIndex / 16;
-                final int localZ = temp % 16;
-                final int localY = temp / 16;
-
-                final int x = localX + sectionX * 16;
-                final int y = localY + sectionY * 16;
-                final int z = localZ + sectionZ * 16;
+                final int x = sectionBlockIndexGetX(blockIndex) + sectionX * 16;
+                final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
+                final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
                 query.updateLocal(x, y, z);
                 final CellRule.Action action = rules.process(query);
                 if (action != null) blockChanges.add(new BlockChange(x, y, z, action));
@@ -410,18 +362,26 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     private void register(int x, int y, int z, LSection startSection) {
+        if (startSection == null) {
+            startSection = sectionGlobalCompute(x, y, z);
+            trackedSections.add(startSection);
+        }
+        final boolean boundary = globalSectionBoundary(x, y, z);
         for (Point offset : Neighbors.MOORE_3D_SELF) {
             final int nX = x + offset.blockX();
             final int nY = y + offset.blockY();
             final int nZ = z + offset.blockZ();
-            LSection section = sectionGlobalCompute(nX, nY, nZ);
-            if (startSection == null || startSection.index != section.index) {
+            LSection section;
+            if (!boundary) {
+                section = startSection;
+            } else {
+                section = sectionGlobalCompute(nX, nY, nZ);
                 trackedSections.add(section);
             }
             final int localX = CoordConversion.globalToSectionRelative(nX);
             final int localY = CoordConversion.globalToSectionRelative(nY);
             final int localZ = CoordConversion.globalToSectionRelative(nZ);
-            final int blockIndex = (localY * 16 + localZ) * 16 + localX;
+            final int blockIndex = sectionBlockIndex(localX, localY, localZ);
             section.trackedBlocks.set(blockIndex);
         }
     }
