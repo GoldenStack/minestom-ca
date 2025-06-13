@@ -2,6 +2,7 @@ package net.goldenstack.minestom_ca;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 
@@ -17,10 +18,17 @@ public interface AutomataWorld {
     Map<UUID, AutomataWorld> WORLDS = new HashMap<>();
 
     static void register(AutomataWorld world) {
-        final AutomataWorld prev = WORLDS.put(world.instance().getUuid(), world);
+        final Instance instance = world.instance();
+        final AutomataWorld prev = WORLDS.put(instance.getUuid(), world);
         if (prev != null) {
-            throw new IllegalStateException("An AutomataWorld is already registered for the instance " + world.instance());
+            throw new IllegalStateException("An AutomataWorld is already registered for the instance " + instance);
         }
+        // Register loaded chunks
+        System.out.println("Registering loaded chunks...");
+        for (Chunk c : instance.getChunks()) {
+            world.handleChunkLoad(c.getChunkX(), c.getChunkZ());
+        }
+        System.out.println("Loaded chunks registered");
     }
 
     static AutomataWorld get(Instance instance) {

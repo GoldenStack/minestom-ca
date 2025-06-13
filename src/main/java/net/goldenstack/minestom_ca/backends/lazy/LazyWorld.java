@@ -223,13 +223,6 @@ public final class LazyWorld implements AutomataWorld {
         this.rules = rules;
         this.sectionCount = instance.getCachedDimensionType().height() / 16;
         this.minY = instance.getCachedDimensionType().minY();
-
-        // Register loaded chunks
-        System.out.println("Registering loaded chunks...");
-        for (Chunk c : instance.getChunks()) {
-            handleChunkLoad(c.getChunkX(), c.getChunkZ());
-        }
-        System.out.println("Loaded chunks registered");
     }
 
     @Override
