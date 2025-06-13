@@ -1,7 +1,7 @@
 package net.goldenstack.minestom_ca;
 
-import it.unimi.dsi.fastutil.ints.Int2LongArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
+import it.unimi.dsi.fastutil.ints.Int2LongMaps;
 
 import java.util.List;
 
@@ -31,6 +31,6 @@ public interface CellRule {
     }
 
     static Int2LongMap stateMap(int key, long value) {
-        return new Int2LongArrayMap(new int[]{key}, new long[]{value});
+        return Int2LongMaps.singleton(key, value);
     }
 }
