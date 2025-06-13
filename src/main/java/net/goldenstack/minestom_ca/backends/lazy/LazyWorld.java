@@ -216,7 +216,7 @@ public final class LazyWorld implements AutomataWorld {
     private record BlockChange(int x, int y, int z, CellRule.Action action) {
     }
 
-    private record SectionChange(long index, Palette palette, List<BlockChange> blockChanges) {
+    private record SectionChange(LSection section, Palette palette, List<BlockChange> blockChanges) {
     }
 
     private void singleTick() {
@@ -246,7 +246,7 @@ public final class LazyWorld implements AutomataWorld {
                 if (action != null) blockChanges.add(new BlockChange(x, y, z, action));
             }
             if (!blockChanges.isEmpty()) {
-                changes.offer(new SectionChange(sectionIndex, palette, blockChanges));
+                changes.offer(new SectionChange(section, palette, blockChanges));
             }
             section.trackedBlocks.clear();
         }
@@ -260,14 +260,14 @@ public final class LazyWorld implements AutomataWorld {
             // Find section in changes
             final long sectionIndex = section.index;
             SectionChange sectionChange = changes.stream()
-                    .filter(change -> change.index() == sectionIndex)
+                    .filter(change -> change.section().index == sectionIndex)
                     .findFirst()
                     .orElse(null);
             if (sectionChange == null) {
                 final int sectionX = unpackSectionX(sectionIndex);
                 final int sectionY = unpackSectionY(sectionIndex);
                 final int sectionZ = unpackSectionZ(sectionIndex);
-                sectionChange = new SectionChange(sectionIndex, palette(sectionX, sectionY, sectionZ), new ArrayList<>());
+                sectionChange = new SectionChange(section, palette(sectionX, sectionY, sectionZ), new ArrayList<>());
                 changes.offer(sectionChange);
             }
             sectionChange.blockChanges.add(blockChange);
@@ -289,8 +289,7 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     private void applySectionChanges(SectionChange sectionChange) {
-        final long sectionIndex = sectionChange.index;
-        final LSection section = loadedSections.get(sectionIndex);
+        final LSection section = sectionChange.section();
         Palette palette = sectionChange.palette();
         LongList blockChanges = new LongArrayList();
         for (BlockChange currentChange : sectionChange.blockChanges()) {
@@ -344,6 +343,7 @@ public final class LazyWorld implements AutomataWorld {
         }
         trackedSections.offer(section);
         if (!blockChanges.isEmpty()) {
+            final long sectionIndex = section.index;
             final int sectionX = unpackSectionX(sectionIndex);
             final int sectionY = unpackSectionY(sectionIndex);
             final int sectionZ = unpackSectionZ(sectionIndex);
