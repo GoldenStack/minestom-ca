@@ -35,7 +35,7 @@ public final class LazyWorld implements AutomataWorld {
 
     private final HashedWheelTimer<BlockChange> wheelTimer = new HashedWheelTimer<>(255);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
-    private final Queue<LSection> trackedSections = new ArrayDeque<>();
+    private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private static int floorDiv(int x, int y) {
         int r = x / y;
@@ -358,7 +358,7 @@ public final class LazyWorld implements AutomataWorld {
                 }, tick);
             }
         }
-        trackedSections.offer(section);
+        trackedSections.add(section);
         if (!blockChanges.isEmpty()) {
             final long sectionIndex = section.index;
             final int sectionX = unpackSectionX(sectionIndex);
@@ -398,7 +398,7 @@ public final class LazyWorld implements AutomataWorld {
             final int globalY = i * 16;
             final Section section = chunk.getSection(i);
             LSection startSection = sectionGlobalCompute(globalX, globalY, globalZ);
-            trackedSections.offer(startSection);
+            trackedSections.add(startSection);
             section.blockPalette().getAllPresent((x, y, z, value) -> {
                 if (!rules.tracked(value)) return;
                 final int blockX = globalX + x;
@@ -416,7 +416,7 @@ public final class LazyWorld implements AutomataWorld {
             final int nZ = z + offset.blockZ();
             LSection section = sectionGlobalCompute(nX, nY, nZ);
             if (startSection == null || startSection.index != section.index) {
-                trackedSections.offer(section);
+                trackedSections.add(section);
             }
             final int localX = CoordConversion.globalToSectionRelative(nX);
             final int localY = CoordConversion.globalToSectionRelative(nY);
