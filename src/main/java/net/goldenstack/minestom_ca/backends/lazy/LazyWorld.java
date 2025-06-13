@@ -2,8 +2,6 @@ package net.goldenstack.minestom_ca.backends.lazy;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArraySet;
-import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -87,7 +85,7 @@ public final class LazyWorld implements AutomataWorld {
         private final long index;
         private final MemorySegment states;
         // Block indexes to track next tick
-        private final IntSet trackedBlocks = new IntArraySet();
+        private final BitSet trackedBlocks = new BitSet((int) BLOCKS_PER_SECTION);
 
         LSection(final long index) {
             this.index = index;
@@ -254,12 +252,19 @@ public final class LazyWorld implements AutomataWorld {
             final int sectionY = unpackSectionY(sectionIndex);
             final int sectionZ = unpackSectionZ(sectionIndex);
             Palette palette = paletteAtSection(sectionX, sectionY, sectionZ);
-            for (int blockIndex : section.trackedBlocks) {
-                final int localX = CoordConversion.chunkBlockIndexGetX(blockIndex);
-                final int localY = CoordConversion.chunkBlockIndexGetY(blockIndex);
-                final int localZ = CoordConversion.chunkBlockIndexGetZ(blockIndex);
+            BitSet trackedBlocks = section.trackedBlocks;
+            for (int blockIndex = trackedBlocks.nextSetBit(0);
+                 blockIndex >= 0;
+                 blockIndex = trackedBlocks.nextSetBit(blockIndex + 1)) {
+
+                // Convert blockIndex back to local coordinates
+                final int localX = blockIndex % 16;
+                final int temp = blockIndex / 16;
+                final int localZ = temp % 16;
+                final int localY = temp / 16;
+
                 final int x = localX + sectionX * 16;
-                final int y = localY;
+                final int y = localY + sectionY * 16;
                 final int z = localZ + sectionZ * 16;
                 query.updateLocal(x, y, z);
                 final CellRule.Action action = rules.process(query);
@@ -268,7 +273,7 @@ public final class LazyWorld implements AutomataWorld {
             if (!blockChanges.isEmpty()) {
                 changes.offer(new SectionChange(section, palette, blockChanges));
             }
-            section.trackedBlocks.clear();
+            trackedBlocks.clear();
         }
         trackedSections.clear();
     }
@@ -415,9 +420,10 @@ public final class LazyWorld implements AutomataWorld {
                 trackedSections.offer(section);
             }
             final int localX = CoordConversion.globalToSectionRelative(nX);
+            final int localY = CoordConversion.globalToSectionRelative(nY);
             final int localZ = CoordConversion.globalToSectionRelative(nZ);
-            final int blockIndex = CoordConversion.chunkBlockIndex(localX, nY, localZ);
-            section.trackedBlocks.add(blockIndex);
+            final int blockIndex = (localY * 16 + localZ) * 16 + localX;
+            section.trackedBlocks.set(blockIndex);
         }
     }
 
