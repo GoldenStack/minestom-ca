@@ -1,5 +1,6 @@
 package net.goldenstack.minestom_ca;
 
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 
@@ -15,7 +16,7 @@ public interface AutomataQuery {
         return Block.fromStateId((int) blockState);
     }
 
-    Map<Integer, Long> queryIndexes(int x, int y, int z);
+    Int2LongMap queryIndexes(int x, int y, int z);
 
     Map<String, Long> queryNames(int x, int y, int z);
 
@@ -30,7 +31,7 @@ public interface AutomataQuery {
     }
 
     default int countNeighborsStateLimit(int index, int limit, List<Point> points,
-                                    LongPredicate predicate) {
+                                         LongPredicate predicate) {
         int count = 0;
         for (Point point : points) {
             final long state = stateAt(point.blockX(), point.blockY(), point.blockZ(), index);

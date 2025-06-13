@@ -6,7 +6,6 @@ import net.goldenstack.minestom_ca.Neighbors;
 import net.minestom.server.instance.block.Block;
 
 import java.util.List;
-import java.util.Map;
 
 public final class RuleSamples {
 
@@ -21,10 +20,10 @@ public final class RuleSamples {
             final long currentState = query.stateAt(0, 0, 0, 0);
             if (currentState == ALIVE_STATE && (neighbors < 2 || neighbors > 3)) {
                 // Underpopulation or overpopulation
-                return new Action.UpdateState(Map.of(0, VOID_STATE));
+                return new Action.UpdateState(CellRule.stateMap(0, VOID_STATE));
             } else if (currentState == VOID_STATE && neighbors == 3) {
                 // Reproduction
-                return new Action.UpdateState(Map.of(0, ALIVE_STATE));
+                return new Action.UpdateState(CellRule.stateMap(0, ALIVE_STATE));
             }
             return null;
         }
@@ -48,7 +47,7 @@ public final class RuleSamples {
         public Action process(AutomataQuery query) {
             final long currentState = query.stateAt(0, 0, 0, 0);
             if (currentState == DIRT_STATE) {
-                return new Action.ConditionalSchedule(25, Map.of(0, DIRT_STATE), Map.of(0, GRASS_STATE));
+                return new Action.ConditionalSchedule(25, CellRule.stateMap(0, DIRT_STATE), CellRule.stateMap(0, GRASS_STATE));
             }
             return null;
         }

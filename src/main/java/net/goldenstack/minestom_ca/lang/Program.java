@@ -1,5 +1,7 @@
 package net.goldenstack.minestom_ca.lang;
 
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.goldenstack.minestom_ca.AutomataQuery;
 import net.goldenstack.minestom_ca.CellRule;
 import net.minestom.server.coordinate.Point;
@@ -7,7 +9,10 @@ import net.minestom.server.coordinate.Point;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public record Program(List<Rule> rules, Map<String, Integer> variables) {
     public Program {
@@ -53,10 +58,10 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
         return new CellRule() {
             @Override
             public Action process(AutomataQuery query) {
-                Map<Integer, Long> block = null;
+                Int2LongMap block = null;
                 for (Rule rule : rules) {
                     if (!verifyCondition(0, 0, 0, query, rule.condition())) continue;
-                    if (block == null) block = new HashMap<>(stateCount);
+                    if (block == null) block = new Int2LongOpenHashMap(stateCount);
                     for (Rule.Result result : rule.results()) {
                         switch (result) {
                             case Rule.Result.SetIndex set -> {
@@ -68,7 +73,7 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                                 final int blockX = blockCopy.x();
                                 final int blockY = blockCopy.y();
                                 final int blockZ = blockCopy.z();
-                                final Map<Integer, Long> queryIndexes = query.queryIndexes(blockX, blockY, blockZ);
+                                final Int2LongMap queryIndexes = query.queryIndexes(blockX, blockY, blockZ);
                                 block.putAll(queryIndexes);
                             }
                             case Rule.Result.TriggerEvent triggerEvent -> {

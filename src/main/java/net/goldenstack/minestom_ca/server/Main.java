@@ -1,9 +1,11 @@
 package net.goldenstack.minestom_ca.server;
 
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.goldenstack.minestom_ca.AutomataWorld;
 import net.goldenstack.minestom_ca.CellRule;
 import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
-import net.goldenstack.minestom_ca.lang.Program;
+import net.goldenstack.minestom_ca.rules.RuleSamples;
 import net.kyori.adventure.nbt.NumberBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
@@ -29,8 +31,6 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 import net.minestom.server.item.component.CustomData;
 
-import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -59,8 +59,8 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        //final CellRule rules = new RuleSamples.GameOfLife();
-        final CellRule rules = Program.fromFile(Path.of("rules/piston")).makeCellRule();
+        final CellRule rules = new RuleSamples.GameOfLife();
+        //final CellRule rules = Program.fromFile(Path.of("rules/piston")).makeCellRule();
 
         // Print variables
         System.out.println("Variables: " + rules.states().stream()
@@ -91,7 +91,7 @@ public final class Main {
                     final Block block = event.getBlock();
                     AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
 
-                    Map<Integer, Integer> properties = new HashMap<>();
+                    Int2LongMap properties = new Int2LongOpenHashMap();
                     properties.put(0, block.stateId());
                     final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
                     for (var entry : item.get(DataComponents.CUSTOM_DATA, CustomData.EMPTY).nbt()) {

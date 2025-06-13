@@ -1,5 +1,13 @@
 package net.goldenstack.minestom_ca.backends.lazy;
 
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArraySet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongList;
 import net.goldenstack.minestom_ca.AutomataQuery;
 import net.goldenstack.minestom_ca.AutomataWorld;
 import net.goldenstack.minestom_ca.CellRule;
@@ -28,7 +36,7 @@ public final class LazyWorld implements AutomataWorld {
     private final int minY;
 
     private final HashedWheelTimer<BlockChange> wheelTimer = new HashedWheelTimer<>(255);
-    private final Map<Long, LSection> loadedSections = new HashMap<>();
+    private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
     private final Queue<LSection> trackedSections = new ArrayDeque<>();
 
     private static int floorDiv(int x, int y) {
@@ -79,7 +87,7 @@ public final class LazyWorld implements AutomataWorld {
         private final long index;
         private final MemorySegment states;
         // Block indexes to track next tick
-        private final Set<Integer> trackedBlocks = new HashSet<>();
+        private final IntSet trackedBlocks = new IntArraySet();
 
         LSection(final long index) {
             this.index = index;
@@ -132,22 +140,22 @@ public final class LazyWorld implements AutomataWorld {
         }
 
         @Override
-        public Map<Integer, Long> queryIndexes(int x, int y, int z) {
+        public Int2LongMap queryIndexes(int x, int y, int z) {
             x += localX;
             y += localY;
             z += localZ;
             final LSection section = sectionGlobal(x, y, z);
-            if (section == null) return Map.of(0, (long) blockState(x, y, z));
+            if (section == null) return CellRule.stateMap(0, blockState(x, y, z));
             final int localX = CoordConversion.globalToSectionRelative(x);
             final int localY = CoordConversion.globalToSectionRelative(y);
             final int localZ = CoordConversion.globalToSectionRelative(z);
-            Map<Integer, Long> indexes = new HashMap<>();
-            indexes.put(0, (long) blockState(x, y, z));
+            Int2LongMap indexes = new Int2LongOpenHashMap();
+            indexes.put(0, blockState(x, y, z));
             for (int i = 0; i < rules.states().size(); i++) {
                 final long value = section.getState(localX, localY, localZ, i);
                 indexes.put(i + 1, value);
             }
-            return Map.copyOf(indexes);
+            return indexes;
         }
 
         public Map<String, Long> queryNames(int x, int y, int z) {
@@ -161,12 +169,14 @@ public final class LazyWorld implements AutomataWorld {
                 final String name = state.name();
                 variables.put(i + 1, name);
             }
-            final Map<Integer, Long> indexes = queryIndexes(x, y, z);
+            final Int2LongMap indexes = queryIndexes(x, y, z);
             Map<String, Long> names = new HashMap<>();
-            for (Map.Entry<Integer, Long> entry : indexes.entrySet()) {
-                final String name = variables.get(entry.getKey());
-                if (name != null) names.put(name, entry.getValue());
-                else names.put("var" + entry.getKey(), entry.getValue());
+            for (Int2LongMap.Entry entry : indexes.int2LongEntrySet()) {
+                final int key = entry.getIntKey();
+                final long value = entry.getLongValue();
+                final String name = variables.get(key);
+                if (name != null) names.put(name, value);
+                else names.put("var" + key, value);
             }
             return Map.copyOf(names);
         }
@@ -282,19 +292,19 @@ public final class LazyWorld implements AutomataWorld {
         final long sectionIndex = sectionChange.index;
         final LSection section = loadedSections.get(sectionIndex);
         Palette palette = sectionChange.palette();
-        List<Long> blockChanges = new ArrayList<>();
+        LongList blockChanges = new LongArrayList();
         for (BlockChange currentChange : sectionChange.blockChanges()) {
             final int x = currentChange.x();
             final int y = currentChange.y();
             final int z = currentChange.z();
-            if (currentChange.action() instanceof CellRule.Action.UpdateState(Map<Integer, Long> states)) {
+            if (currentChange.action() instanceof CellRule.Action.UpdateState(Int2LongMap states)) {
                 final int localX = CoordConversion.globalToSectionRelative(x);
                 final int localY = CoordConversion.globalToSectionRelative(y);
                 final int localZ = CoordConversion.globalToSectionRelative(z);
                 // Set states
-                for (Map.Entry<Integer, Long> changeEntry : states.entrySet()) {
-                    final int stateIndex = changeEntry.getKey();
-                    final long value = changeEntry.getValue();
+                for (Int2LongMap.Entry changeEntry : states.int2LongEntrySet()) {
+                    final int stateIndex = changeEntry.getIntKey();
+                    final long value = changeEntry.getLongValue();
                     if (stateIndex == 0) {
                         if (palette != null) palette.set(localX, localY, localZ, (int) value);
                         // Encode block change for packet
@@ -309,18 +319,18 @@ public final class LazyWorld implements AutomataWorld {
                 // Register the point for the next tick
                 register(x, y, z, section);
             } else if (currentChange.action() instanceof CellRule.Action.Schedule(
-                    int tick, Map<Integer, Long> updatedStates
+                    int tick, Int2LongMap updatedStates
             )) {
                 wheelTimer.schedule(() -> new BlockChange(x, y, z, new CellRule.Action.UpdateState(updatedStates)), tick);
             } else if (currentChange.action() instanceof CellRule.Action.ConditionalSchedule(
-                    int tick, Map<Integer, Long> conditionStates, Map<Integer, Long> updatedStates
+                    int tick, Int2LongMap conditionStates, Int2LongMap updatedStates
             )) {
                 wheelTimer.schedule(() -> {
                     query.updateLocal(x, y, z);
-                    Map<Integer, Long> currentStates = query.queryIndexes(0, 0, 0);
+                    final Int2LongMap currentStates = query.queryIndexes(0, 0, 0);
                     boolean matches = true;
-                    for (Map.Entry<Integer, Long> entry : conditionStates.entrySet()) {
-                        if (!Objects.equals(currentStates.get(entry.getKey()), entry.getValue())) {
+                    for (Int2LongMap.Entry entry : conditionStates.int2LongEntrySet()) {
+                        if (!Objects.equals(currentStates.get(entry.getIntKey()), entry.getLongValue())) {
                             matches = false;
                             break;
                         }
@@ -340,21 +350,21 @@ public final class LazyWorld implements AutomataWorld {
             final Chunk chunk = instance.getChunk(sectionX, sectionZ);
             if (chunk != null) {
                 chunk.invalidate();
-                final long[] blocksArray = blockChanges.stream().mapToLong(Long::longValue).toArray();
+                final long[] blocksArray = blockChanges.toLongArray();
                 chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
             }
         }
     }
 
     @Override
-    public void handlePlacement(int x, int y, int z, Map<Integer, Integer> properties) {
+    public void handlePlacement(int x, int y, int z, Int2LongMap properties) {
         LSection section = sectionGlobalCompute(x, y, z);
         assert section != null;
         final int localX = CoordConversion.globalToSectionRelative(x);
         final int localY = CoordConversion.globalToSectionRelative(y);
         final int localZ = CoordConversion.globalToSectionRelative(z);
         for (int i = 0; i < rules.states().size(); i++) {
-            final int value = properties.getOrDefault(i + 1, 0);
+            final long value = properties.getOrDefault(i + 1, 0);
             section.setState(localX, localY, localZ, i, value);
         }
         register(x, y, z, null);

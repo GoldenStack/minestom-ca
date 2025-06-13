@@ -1,5 +1,6 @@
 package net.goldenstack.minestom_ca;
 
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
@@ -34,11 +35,11 @@ public interface AutomataWorld {
     /**
      * Handles an external block change (e.g. block place or break)
      */
-    void handlePlacement(int x, int y, int z, Map<Integer, Integer> properties);
+    void handlePlacement(int x, int y, int z, Int2LongMap properties);
 
     default void handlePlacement(Point point, Block block) {
         handlePlacement(point.blockX(), point.blockY(), point.blockZ(),
-                Map.of(0, block.stateId()));
+                CellRule.stateMap(0, block.stateId()));
     }
 
     void handleChunkLoad(int chunkX, int chunkZ);

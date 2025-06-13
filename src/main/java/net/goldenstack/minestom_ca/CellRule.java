@@ -1,7 +1,9 @@
 package net.goldenstack.minestom_ca;
 
+import it.unimi.dsi.fastutil.ints.Int2LongArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
+
 import java.util.List;
-import java.util.Map;
 
 public interface CellRule {
     Action process(AutomataQuery query);
@@ -14,18 +16,21 @@ public interface CellRule {
     }
 
     sealed interface Action {
-        record UpdateState(Map<Integer, Long> states) implements Action {
+        record UpdateState(Int2LongMap states) implements Action {
         }
 
         // Update state after X ticks no matter what
-        record Schedule(int tick,
-                        Map<Integer, Long> updatedStates) implements Action {
+        record Schedule(int tick, Int2LongMap updatedStates) implements Action {
         }
 
         // Update state after X ticks if specified states are equal
         record ConditionalSchedule(int tick,
-                                   Map<Integer, Long> conditionStates,
-                                   Map<Integer, Long> updatedStates) implements Action {
+                                   Int2LongMap conditionStates,
+                                   Int2LongMap updatedStates) implements Action {
         }
+    }
+
+    static Int2LongMap stateMap(int key, long value) {
+        return new Int2LongArrayMap(new int[]{key}, new long[]{value});
     }
 }
