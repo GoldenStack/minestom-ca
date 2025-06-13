@@ -126,21 +126,22 @@ public final class LazyWorld implements AutomataWorld {
     private final class QueryImpl implements AutomataQuery {
         Palette palette;
         int localX, localY, localZ;
+        int localChunkX, localChunkY, localChunkZ;
 
         void updateLocal(int x, int y, int z) {
             this.localX = x;
             this.localY = y;
             this.localZ = z;
-            palette = paletteAtSection(
-                    CoordConversion.globalToChunk(x),
-                    CoordConversion.globalToChunk(y),
-                    CoordConversion.globalToChunk(z));
+            this.localChunkX = CoordConversion.globalToChunk(x);
+            this.localChunkY = CoordConversion.globalToChunk(y);
+            this.localChunkZ = CoordConversion.globalToChunk(z);
+            this.palette = paletteAtSection(localChunkX, localChunkY, localChunkZ);
         }
 
         int queryBlockState(int x, int y, int z) {
-            if (CoordConversion.globalToChunk(x) != CoordConversion.globalToChunk(localX) ||
-                    CoordConversion.globalToChunk(y) != CoordConversion.globalToChunk(localY) ||
-                    CoordConversion.globalToChunk(z) != CoordConversion.globalToChunk(localZ)) {
+            if (CoordConversion.globalToChunk(x) != localChunkX ||
+                    CoordConversion.globalToChunk(y) != localChunkY ||
+                    CoordConversion.globalToChunk(z) != localChunkZ) {
                 return globalBlockState(x, y, z);
             }
             if (palette == null) return 0;
