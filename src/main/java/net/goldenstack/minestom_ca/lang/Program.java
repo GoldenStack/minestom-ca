@@ -1,7 +1,4 @@
-package net.goldenstack.minestom_ca;
-
-import net.goldenstack.minestom_ca.parser.Parser;
-import net.goldenstack.minestom_ca.parser.Scanner;
+package net.goldenstack.minestom_ca.lang;
 
 import java.io.IOException;
 import java.nio.file.Files;

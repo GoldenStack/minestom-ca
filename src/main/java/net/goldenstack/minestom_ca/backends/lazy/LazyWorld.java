@@ -1,6 +1,9 @@
 package net.goldenstack.minestom_ca.backends.lazy;
 
 import net.goldenstack.minestom_ca.*;
+import net.goldenstack.minestom_ca.lang.Program;
+import net.goldenstack.minestom_ca.lang.Rule;
+import net.goldenstack.minestom_ca.lang.RuleAnalysis;
 import net.minestom.server.coordinate.CoordConversion;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;

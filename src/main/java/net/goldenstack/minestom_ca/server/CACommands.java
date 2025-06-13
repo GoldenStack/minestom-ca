@@ -1,7 +1,7 @@
 package net.goldenstack.minestom_ca.server;
 
 import net.goldenstack.minestom_ca.AutomataWorld;
-import net.goldenstack.minestom_ca.Program;
+import net.goldenstack.minestom_ca.lang.Program;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;

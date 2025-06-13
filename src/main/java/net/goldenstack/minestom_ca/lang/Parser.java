@@ -1,8 +1,6 @@
-package net.goldenstack.minestom_ca.parser;
+package net.goldenstack.minestom_ca.lang;
 
-import net.goldenstack.minestom_ca.Program;
-import net.goldenstack.minestom_ca.Rule;
-import net.goldenstack.minestom_ca.parser.Scanner.Token;
+import net.goldenstack.minestom_ca.lang.Scanner.Token;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 

@@ -1,7 +1,7 @@
 package net.goldenstack.minestom_ca.backends.opencl;
 
 import net.goldenstack.minestom_ca.AutomataWorld;
-import net.goldenstack.minestom_ca.Program;
+import net.goldenstack.minestom_ca.lang.Program;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;

@@ -1,4 +1,4 @@
-package net.goldenstack.minestom_ca.parser;
+package net.goldenstack.minestom_ca.lang;
 
 import java.util.ArrayList;
 import java.util.List;

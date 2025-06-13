@@ -1,6 +1,6 @@
 package net.goldenstack.minestom_ca.backends.opencl;
 
-import net.goldenstack.minestom_ca.Rule;
+import net.goldenstack.minestom_ca.lang.Rule;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 import org.jocl.cl_kernel;

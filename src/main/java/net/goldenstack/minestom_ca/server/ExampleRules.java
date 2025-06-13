@@ -1,15 +1,15 @@
 package net.goldenstack.minestom_ca.server;
 
 import net.goldenstack.minestom_ca.Neighbors;
-import net.goldenstack.minestom_ca.Rule;
-import net.goldenstack.minestom_ca.Rule.Expression;
+import net.goldenstack.minestom_ca.lang.Rule;
+import net.goldenstack.minestom_ca.lang.Rule.Expression;
 import net.minestom.server.instance.block.Block;
 
 import java.util.List;
 
 import static net.goldenstack.minestom_ca.Neighbors.*;
-import static net.goldenstack.minestom_ca.Rule.Condition;
-import static net.goldenstack.minestom_ca.Rule.Result;
+import static net.goldenstack.minestom_ca.lang.Rule.Condition;
+import static net.goldenstack.minestom_ca.lang.Rule.Result;
 
 /**
  * Example rules for simple behaviour.

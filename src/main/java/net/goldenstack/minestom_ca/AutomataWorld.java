@@ -1,5 +1,6 @@
 package net.goldenstack.minestom_ca;
 
+import net.goldenstack.minestom_ca.lang.Program;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;

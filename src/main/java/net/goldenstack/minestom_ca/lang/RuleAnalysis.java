@@ -1,4 +1,4 @@
-package net.goldenstack.minestom_ca;
+package net.goldenstack.minestom_ca.lang;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;

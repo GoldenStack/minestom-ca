@@ -1,4 +1,4 @@
-package net.goldenstack.minestom_ca;
+package net.goldenstack.minestom_ca.lang;
 
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;

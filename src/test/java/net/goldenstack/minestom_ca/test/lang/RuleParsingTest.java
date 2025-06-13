@@ -1,14 +1,14 @@
-package net.goldenstack.minestom_ca.test.parser;
+package net.goldenstack.minestom_ca.test.lang;
 
-import net.goldenstack.minestom_ca.Rule;
-import net.goldenstack.minestom_ca.Rule.Expression;
-import net.goldenstack.minestom_ca.Rule.Result.SetIndex;
+import net.goldenstack.minestom_ca.lang.Rule;
+import net.goldenstack.minestom_ca.lang.Rule.Expression;
+import net.goldenstack.minestom_ca.lang.Rule.Result.SetIndex;
 import net.minestom.server.instance.block.Block;
 import org.junit.jupiter.api.Test;
 
 import static net.goldenstack.minestom_ca.Neighbors.*;
-import static net.goldenstack.minestom_ca.Rule.Condition.*;
-import static net.goldenstack.minestom_ca.test.parser.TestUtils.assertRule;
+import static net.goldenstack.minestom_ca.lang.Rule.Condition.*;
+import static net.goldenstack.minestom_ca.test.lang.TestUtils.assertRule;
 
 @SuppressWarnings("DuplicateExpressions")
 public final class RuleParsingTest {

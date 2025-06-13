@@ -1,7 +1,7 @@
 package net.goldenstack.minestom_ca.server;
 
 import net.goldenstack.minestom_ca.AutomataWorld;
-import net.goldenstack.minestom_ca.Program;
+import net.goldenstack.minestom_ca.lang.Program;
 import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
 import net.kyori.adventure.nbt.NumberBinaryTag;
 import net.kyori.adventure.text.Component;
