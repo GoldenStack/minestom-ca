@@ -71,13 +71,8 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                                 final int blockX = x + blockCopy.x();
                                 final int blockY = y + blockCopy.y();
                                 final int blockZ = z + blockCopy.z();
-                                // Copy block state
-                                Map<Integer, Long> queryIndexes = query.queryIndexes(blockX, blockY, blockZ);
-                                for (Map.Entry<Integer, Long> entry : queryIndexes.entrySet()) {
-                                    final int index = entry.getKey();
-                                    final long value = entry.getValue();
-                                    block.put(index, value);
-                                }
+                                final Map<Integer, Long> queryIndexes = query.queryIndexes(blockX, blockY, blockZ);
+                                block.putAll(queryIndexes);
                             }
                             case Rule.Result.TriggerEvent triggerEvent -> {
                                 final String eventName = triggerEvent.event();

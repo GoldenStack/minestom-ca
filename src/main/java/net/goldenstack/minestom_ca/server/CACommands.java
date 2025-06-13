@@ -63,10 +63,11 @@ public final class CACommands {
                 for (CommandContext states : context.get(loop)) {
                     final String stateName = states.get("state_name");
                     final int stateValue = states.get("state_value");
+                    player.sendMessage(Component.text(" * Applying: " + stateName + " = " + stateValue));
                     itemStack = itemStack.withTag(Tag.Integer(stateName), stateValue);
                 }
                 player.setItemInMainHand(itemStack);
-                player.sendMessage("States applied to item! " + itemStack.toItemNBT());
+                player.sendMessage("States applied to item!");
             }, loop);
         }
 

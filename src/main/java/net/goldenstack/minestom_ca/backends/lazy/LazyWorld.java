@@ -90,25 +90,21 @@ public final class LazyWorld implements AutomataWorld {
 
         long getState(int x, int y, int z, int stateIndex) {
             final int blockIndex = index(x, y, z);
-            final long offset = ((long) blockIndex * rules.states().size() + (stateIndex - 1)) * Long.BYTES;
+            final long offset = ((long) blockIndex * rules.states().size() + stateIndex) * Long.BYTES;
             return states.get(ValueLayout.JAVA_LONG, offset);
         }
 
         void setState(int x, int y, int z, int stateIndex, long value) {
             final int blockIndex = index(x, y, z);
-            final long offset = ((long) blockIndex * rules.states().size() + (stateIndex - 1)) * Long.BYTES;
+            final long offset = ((long) blockIndex * rules.states().size() + stateIndex) * Long.BYTES;
             states.set(ValueLayout.JAVA_LONG, offset, value);
         }
 
         int index(int x, int y, int z) {
-            assertLocal(x, y, z);
-            return (y * 16 + z) * 16 + x;
-        }
-
-        void assertLocal(int x, int y, int z) {
             if (x < 0 || x >= 16 || y < 0 || y >= 16 || z < 0 || z >= 16) {
                 throw new IndexOutOfBoundsException("Coordinates out of bounds for section: " + x + ", " + y + ", " + z);
             }
+            return (y * 16 + z) * 16 + x;
         }
     }
 
@@ -121,7 +117,7 @@ public final class LazyWorld implements AutomataWorld {
             final int localX = CoordConversion.globalToSectionRelative(x);
             final int localY = CoordConversion.globalToSectionRelative(y);
             final int localZ = CoordConversion.globalToSectionRelative(z);
-            return section.getState(localX, localY, localZ, index);
+            return section.getState(localX, localY, localZ, index - 1);
         }
 
         @Override
@@ -289,7 +285,7 @@ public final class LazyWorld implements AutomataWorld {
                         blockChanges.add(blockState | pos);
                     } else {
                         if (section == null) continue;
-                        section.setState(localX, localY, localZ, stateIndex, value);
+                        section.setState(localX, localY, localZ, stateIndex - 1, value);
                     }
                 }
                 // Register the point for the next tick
@@ -339,7 +335,7 @@ public final class LazyWorld implements AutomataWorld {
         final int localY = CoordConversion.globalToSectionRelative(y);
         final int localZ = CoordConversion.globalToSectionRelative(z);
         for (int i = 0; i < rules.states().size(); i++) {
-            final int value = properties.getOrDefault(i, 0);
+            final int value = properties.getOrDefault(i + 1, 0);
             section.setState(localX, localY, localZ, i, value);
         }
         register(x, y, z, null);

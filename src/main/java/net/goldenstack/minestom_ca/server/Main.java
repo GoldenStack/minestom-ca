@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class Main {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
-    private static final Program FILE_PROGRAM = Program.fromFile(Path.of("rules/game_of_life"));
 
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
@@ -62,7 +61,12 @@ public final class Main {
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
         final CellRule rules = new RuleSamples.GrassGrow();
-        //final CellRule rules = FILE_PROGRAM.makeCellRule();
+        //final CellRule rules = Program.fromFile(Path.of("rules/piston")).makeCellRule();
+
+        // Print variables
+        System.out.println("Variables: " + rules.states().stream()
+                .map(CellRule.State::name)
+                .toList());
 
         AutomataWorld.register(new LazyWorld(instance, rules));
 
