@@ -116,13 +116,38 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
+    Palette paletteAtSection(int sectionX, int sectionY, int sectionZ) {
+        final Chunk chunk = instance.getChunk(sectionX, sectionZ);
+        if (chunk == null) return null;
+        final Section section = chunk.getSection(sectionY);
+        return section.blockPalette();
+    }
+
     private final class QueryImpl implements AutomataQuery {
+        Palette palette;
         int localX, localY, localZ;
 
         void updateLocal(int x, int y, int z) {
             this.localX = x;
             this.localY = y;
             this.localZ = z;
+            palette = paletteAtSection(
+                    CoordConversion.globalToChunk(x),
+                    CoordConversion.globalToChunk(y),
+                    CoordConversion.globalToChunk(z));
+        }
+
+        int queryBlockState(int x, int y, int z) {
+            if (CoordConversion.globalToChunk(x) != CoordConversion.globalToChunk(localX) ||
+                    CoordConversion.globalToChunk(y) != CoordConversion.globalToChunk(localY) ||
+                    CoordConversion.globalToChunk(z) != CoordConversion.globalToChunk(localZ)) {
+                return globalBlockState(x, y, z);
+            }
+            if (palette == null) return 0;
+            final int localX = CoordConversion.globalToSectionRelative(x);
+            final int localY = CoordConversion.globalToSectionRelative(y);
+            final int localZ = CoordConversion.globalToSectionRelative(z);
+            return palette.get(localX, localY, localZ);
         }
 
         @Override
@@ -130,7 +155,7 @@ public final class LazyWorld implements AutomataWorld {
             x += localX;
             y += localY;
             z += localZ;
-            if (index == 0) return blockState(x, y, z);
+            if (index == 0) return queryBlockState(x, y, z);
             final LSection section = sectionGlobal(x, y, z);
             if (section == null) return 0;
             final int localX = CoordConversion.globalToSectionRelative(x);
@@ -145,12 +170,13 @@ public final class LazyWorld implements AutomataWorld {
             y += localY;
             z += localZ;
             final LSection section = sectionGlobal(x, y, z);
-            if (section == null) return CellRule.stateMap(0, blockState(x, y, z));
+            final int blockState = queryBlockState(x, y, z);
+            if (section == null) return CellRule.stateMap(0, blockState);
             final int localX = CoordConversion.globalToSectionRelative(x);
             final int localY = CoordConversion.globalToSectionRelative(y);
             final int localZ = CoordConversion.globalToSectionRelative(z);
             Int2LongMap indexes = new Int2LongOpenHashMap();
-            indexes.put(0, blockState(x, y, z));
+            indexes.put(0, blockState);
             for (int i = 0; i < rules.states().size(); i++) {
                 final long value = section.getState(localX, localY, localZ, i);
                 indexes.put(i + 1, value);
@@ -233,7 +259,7 @@ public final class LazyWorld implements AutomataWorld {
             final int sectionX = unpackSectionX(sectionIndex);
             final int sectionY = unpackSectionY(sectionIndex);
             final int sectionZ = unpackSectionZ(sectionIndex);
-            Palette palette = palette(sectionX, sectionY, sectionZ);
+            Palette palette = paletteAtSection(sectionX, sectionY, sectionZ);
             for (int blockIndex : section.trackedBlocks) {
                 final int localX = CoordConversion.chunkBlockIndexGetX(blockIndex);
                 final int localY = CoordConversion.chunkBlockIndexGetY(blockIndex);
@@ -267,7 +293,7 @@ public final class LazyWorld implements AutomataWorld {
                 final int sectionX = unpackSectionX(sectionIndex);
                 final int sectionY = unpackSectionY(sectionIndex);
                 final int sectionZ = unpackSectionZ(sectionIndex);
-                sectionChange = new SectionChange(section, palette(sectionX, sectionY, sectionZ), new ArrayList<>());
+                sectionChange = new SectionChange(section, paletteAtSection(sectionX, sectionY, sectionZ), new ArrayList<>());
                 changes.offer(sectionChange);
             }
             sectionChange.blockChanges.add(blockChange);
@@ -279,13 +305,6 @@ public final class LazyWorld implements AutomataWorld {
             final SectionChange sectionChange = changes.poll();
             applySectionChanges(sectionChange);
         }
-    }
-
-    Palette palette(int sectionX, int sectionY, int sectionZ) {
-        final Chunk chunk = instance.getChunk(sectionX, sectionZ);
-        if (chunk == null) return null;
-        final Section section = chunk.getSection(sectionY);
-        return section.blockPalette();
     }
 
     private void applySectionChanges(SectionChange sectionChange) {
@@ -416,7 +435,7 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    private int blockState(int x, int y, int z) {
+    private int globalBlockState(int x, int y, int z) {
         try {
             final Block block = instance.getBlock(x, y, z, Block.Getter.Condition.TYPE);
             assert block != null;
