@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public class HashedWheelTimer<T> {
+public final class HashedWheelTimer<T> {
     private final List<Set<ScheduledTask>> wheel;
     private final int wheelSize;
     private int currentTick = 0;
@@ -31,13 +31,13 @@ public class HashedWheelTimer<T> {
     }
 
     public void tick(Consumer<T> consumer) {
-        Set<ScheduledTask> tasks = wheel.get(currentTick);
-        if (!tasks.isEmpty()) {
-            for (ScheduledTask task : new HashSet<>(tasks)) {
+        Set<ScheduledTask> tasksInSlot = wheel.get(currentTick);
+        if (!tasksInSlot.isEmpty()) {
+            for (ScheduledTask task : tasksInSlot) {
                 final T value = task.run();
                 if (value != null) consumer.accept(value);
             }
-            tasks.clear();
+            tasksInSlot.clear();
         }
         currentTick = (currentTick + 1) % wheelSize;
     }
