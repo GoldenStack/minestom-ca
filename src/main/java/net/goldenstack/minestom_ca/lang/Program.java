@@ -2,8 +2,7 @@ package net.goldenstack.minestom_ca.lang;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import net.goldenstack.minestom_ca.AutomataQuery;
-import net.goldenstack.minestom_ca.CellRule;
+import net.goldenstack.minestom_ca.Automata;
 import net.minestom.server.coordinate.Point;
 
 import java.io.IOException;
@@ -40,10 +39,10 @@ public record Program(List<Rule> rules, Set<String> variables) {
         return parser.program();
     }
 
-    public CellRule makeCellRule() {
-        List<CellRule.State> states = new ArrayList<>();
+    public Automata.CellRule makeCellRule() {
+        List<Automata.CellRule.State> states = new ArrayList<>();
         for (String state : variables) {
-            states.add(new CellRule.State(state));
+            states.add(new Automata.CellRule.State(state));
         }
 
         boolean[] trackedStates = new boolean[Short.MAX_VALUE];
@@ -53,13 +52,13 @@ public record Program(List<Rule> rules, Set<String> variables) {
                 trackedStates[literal.value()] = true;
             });
         }
-        return new CellRule() {
+        return new Automata.CellRule() {
             @Override
             public void init(Map<State, Integer> mapping) {
             }
 
             @Override
-            public List<Action> process(AutomataQuery query) {
+            public List<Action> process(Automata.Query query) {
                 Int2LongMap block = null;
                 for (Rule rule : rules) {
                     if (!verifyCondition(0, 0, 0, query, rule.condition())) continue;
@@ -95,7 +94,7 @@ public record Program(List<Rule> rules, Set<String> variables) {
                     }
                 }
                 if (block == null) return null;
-                return List.of(CellRule.Action.UpdateState(block));
+                return List.of(Automata.CellRule.Action.UpdateState(block));
             }
 
             @Override
@@ -110,7 +109,7 @@ public record Program(List<Rule> rules, Set<String> variables) {
         };
     }
 
-    private boolean verifyCondition(int x, int y, int z, AutomataQuery query, Rule.Condition condition) {
+    private boolean verifyCondition(int x, int y, int z, Automata.Query query, Rule.Condition condition) {
         return switch (condition) {
             case Rule.Condition.And and -> {
                 for (Rule.Condition c : and.conditions()) {
@@ -127,7 +126,7 @@ public record Program(List<Rule> rules, Set<String> variables) {
         };
     }
 
-    private long expression(int x, int y, int z, AutomataQuery query, Rule.Expression expression) {
+    private long expression(int x, int y, int z, Automata.Query query, Rule.Expression expression) {
         return switch (expression) {
             case Rule.Expression.State state -> {
                 final String stateName = state.state();

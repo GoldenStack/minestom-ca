@@ -5,10 +5,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
-import net.goldenstack.minestom_ca.AutomataQuery;
-import net.goldenstack.minestom_ca.AutomataWorld;
-import net.goldenstack.minestom_ca.CellRule;
-import net.goldenstack.minestom_ca.Neighbors;
+import net.goldenstack.minestom_ca.*;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
@@ -26,10 +23,10 @@ import static net.goldenstack.minestom_ca.CoordConversionPro.*;
 import static net.minestom.server.coordinate.CoordConversion.globalToSectionRelative;
 
 @SuppressWarnings("UnstableApiUsage")
-public final class LazyWorld implements AutomataWorld {
+public final class LazyWorld implements Automata.World {
     private static final int LIGHT_SPEED = 1;
     private final Instance instance;
-    private final CellRule rules;
+    private final Automata.CellRule rules;
     private final QueryImpl query = new QueryImpl();
     private final int sectionCount;
     private final int minY;
@@ -78,7 +75,7 @@ public final class LazyWorld implements AutomataWorld {
         return section.blockPalette();
     }
 
-    private final class QueryImpl implements AutomataQuery {
+    private final class QueryImpl implements Automata.Query {
         LSection section;
         Palette palette;
         int localX, localY, localZ;
@@ -96,8 +93,8 @@ public final class LazyWorld implements AutomataWorld {
 
         @Override
         public int stateIndex(String state) {
-            if (state.equals(CellRule.BLOCK_STATE.name())) return 0;
-            final List<CellRule.State> states = rules.states();
+            if (state.equals(Automata.CellRule.BLOCK_STATE.name())) return 0;
+            final List<Automata.CellRule.State> states = rules.states();
             for (int i = 0; i < states.size(); i++) {
                 if (states.get(i).name().equals(state)) {
                     return i + 1; // +1 because index 0 is reserved for block state
@@ -123,7 +120,7 @@ public final class LazyWorld implements AutomataWorld {
             final int localY = globalToSectionRelative(this.localY);
             final int localZ = globalToSectionRelative(this.localZ);
             final int blockState = palette.get(localX, localY, localZ);
-            final List<CellRule.State> states = rules.states();
+            final List<Automata.CellRule.State> states = rules.states();
             long[] indexes = new long[states.size() + 1];
             indexes[0] = blockState;
             for (int i = 0; i < states.size(); i++) {
@@ -178,7 +175,7 @@ public final class LazyWorld implements AutomataWorld {
             final int localX = globalToSectionRelative(x);
             final int localY = globalToSectionRelative(y);
             final int localZ = globalToSectionRelative(z);
-            final List<CellRule.State> states = rules.states();
+            final List<Automata.CellRule.State> states = rules.states();
             long[] indexes = new long[states.size() + 1];
             indexes[0] = queryBlockState(x, y, z);
             for (int i = 0; i < states.size(); i++) {
@@ -193,9 +190,9 @@ public final class LazyWorld implements AutomataWorld {
             y += localY;
             z += localZ;
             Map<Integer, String> variables = new HashMap<>();
-            List<CellRule.State> states = rules().states();
+            List<Automata.CellRule.State> states = rules().states();
             for (int i = 0; i < states.size(); i++) {
-                final CellRule.State state = states.get(i);
+                final Automata.CellRule.State state = states.get(i);
                 final String name = state.name();
                 variables.put(i + 1, name);
             }
@@ -221,16 +218,16 @@ public final class LazyWorld implements AutomataWorld {
         return loadedSections.computeIfAbsent(sectionIndex, LSection::new);
     }
 
-    public LazyWorld(Instance instance, CellRule rules) {
+    public LazyWorld(Instance instance, Automata.CellRule rules) {
         this.instance = instance;
         this.rules = rules;
         this.sectionCount = instance.getCachedDimensionType().height() / 16;
         this.minY = instance.getCachedDimensionType().minY();
 
         // Initialize variables id
-        Map<CellRule.State, Integer> mapping = new HashMap<>();
+        Map<Automata.CellRule.State, Integer> mapping = new HashMap<>();
         for (int i = 0; i < rules.states().size(); i++) {
-            final CellRule.State state = rules.states().get(i);
+            final Automata.CellRule.State state = rules.states().get(i);
             mapping.put(state, i + 1); // index 0 is reserved for block state
         }
         rules.init(mapping);
@@ -243,7 +240,7 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    private record BlockChange(int sectionBlockIndex, List<CellRule.Action> actions) {
+    private record BlockChange(int sectionBlockIndex, List<Automata.CellRule.Action> actions) {
     }
 
     private record ScheduledChange(LSection section, BlockChange change) {
@@ -279,7 +276,7 @@ public final class LazyWorld implements AutomataWorld {
                 final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
                 final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
                 query.updateLocal(section, palette, x, y, z);
-                final List<CellRule.Action> actions = rules.process(query);
+                final List<Automata.CellRule.Action> actions = rules.process(query);
                 if (actions != null) blockChanges.add(new BlockChange(blockIndex, actions));
             }
             if (!blockChanges.isEmpty()) {
@@ -324,7 +321,7 @@ public final class LazyWorld implements AutomataWorld {
         Palette palette = sectionChange.palette();
         LongList blockChanges = new LongArrayList();
         for (BlockChange currentChange : sectionChange.blockChanges()) {
-            for (CellRule.Action action : currentChange.actions()) {
+            for (Automata.CellRule.Action action : currentChange.actions()) {
                 processSectionAction(section, palette, currentChange.sectionBlockIndex(), action, blockChanges);
             }
         }
@@ -343,7 +340,7 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    void processSectionAction(LSection section, Palette palette, int sectionBlockIndex, CellRule.Action action, LongList blockChanges) {
+    void processSectionAction(LSection section, Palette palette, int sectionBlockIndex, Automata.CellRule.Action action, LongList blockChanges) {
         if (action.scheduleTick() > 0) {
             wheelTimer.schedule(() -> new ScheduledChange(section, new BlockChange(sectionBlockIndex, List.of(action.immediate()))), action.scheduleTick());
             return;
@@ -373,7 +370,7 @@ public final class LazyWorld implements AutomataWorld {
         register(globalX, globalY, globalZ, section, action.wakePoints());
     }
 
-    boolean actionPredicate(LSection section, Palette palette, int x, int y, int z, CellRule.Action action) {
+    boolean actionPredicate(LSection section, Palette palette, int x, int y, int z, Automata.CellRule.Action action) {
         final Int2LongMap conditionStates = action.conditionStates();
         if (conditionStates == null || conditionStates.isEmpty()) return true;
         query.updateLocal(section, palette, x, y, z);
@@ -470,12 +467,12 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     @Override
-    public CellRule rules() {
+    public Automata.CellRule rules() {
         return rules;
     }
 
     @Override
-    public AutomataQuery query() {
+    public Automata.Query query() {
         return query;
     }
 }

@@ -2,8 +2,7 @@ package net.goldenstack.minestom_ca.server;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import net.goldenstack.minestom_ca.AutomataWorld;
-import net.goldenstack.minestom_ca.CellRule;
+import net.goldenstack.minestom_ca.Automata;
 import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
 import net.goldenstack.minestom_ca.rules.RuleSamples;
 import net.kyori.adventure.nbt.NumberBinaryTag;
@@ -59,7 +58,7 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        final CellRule rules = CellRule.rules(
+        final Automata.CellRule rules = Automata.CellRule.rules(
                 new RuleSamples.GameOfLife(),
                 new RuleSamples.GrassGrow()
         );
@@ -67,10 +66,10 @@ public final class Main {
 
         // Print variables
         System.out.println("Variables: " + rules.states().stream()
-                .map(CellRule.State::name)
+                .map(Automata.CellRule.State::name)
                 .toList());
 
-        AutomataWorld.register(new LazyWorld(instance, rules));
+        Automata.World.register(new LazyWorld(instance, rules));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {
@@ -92,7 +91,7 @@ public final class Main {
                 .addListener(PlayerBlockPlaceEvent.class, event -> {
                     final Point point = event.getBlockPosition();
                     final Block block = event.getBlock();
-                    AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
+                    Automata.World world = Automata.World.get(event.getPlayer().getInstance());
 
                     Int2LongMap properties = new Int2LongOpenHashMap();
                     properties.put(0, block.stateId());
@@ -100,9 +99,9 @@ public final class Main {
                     for (var entry : item.get(DataComponents.CUSTOM_DATA, CustomData.EMPTY).nbt()) {
                         if (entry.getValue() instanceof NumberBinaryTag number) {
                             final String name = entry.getKey();
-                            final List<CellRule.State> states = world.rules().states();
+                            final List<Automata.CellRule.State> states = world.rules().states();
                             for (int i = 0; i < states.size(); i++) {
-                                final CellRule.State state = states.get(i);
+                                final Automata.CellRule.State state = states.get(i);
                                 if (state.name().equals(name)) {
                                     properties.put(i + 1, number.intValue());
                                     break;
@@ -114,22 +113,22 @@ public final class Main {
                 })
                 .addListener(PlayerBlockBreakEvent.class, event -> {
                     final Point point = event.getBlockPosition();
-                    AutomataWorld world = AutomataWorld.get(event.getPlayer().getInstance());
+                    Automata.World world = Automata.World.get(event.getPlayer().getInstance());
                     world.handlePlacement(point, Block.AIR);
                 })
                 .addListener(PlayerBlockInteractEvent.class, event -> {
                     final Player player = event.getPlayer();
                     final Point point = event.getBlockPosition();
-                    AutomataWorld world = AutomataWorld.get(player.getInstance());
+                    Automata.World world = Automata.World.get(player.getInstance());
                     final Map<String, Long> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
                     player.sendMessage(Component.text("States: " + indexes));
                 })
                 .addListener(InstanceChunkLoadEvent.class, event -> {
-                    AutomataWorld world = AutomataWorld.get(event.getInstance());
+                    Automata.World world = Automata.World.get(event.getInstance());
                     world.handleChunkLoad(event.getChunkX(), event.getChunkZ());
                 })
                 .addListener(InstanceChunkUnloadEvent.class, event -> {
-                    AutomataWorld world = AutomataWorld.get(event.getInstance());
+                    Automata.World world = Automata.World.get(event.getInstance());
                     world.handleChunkUnload(event.getChunkX(), event.getChunkZ());
                 });
 
@@ -137,7 +136,7 @@ public final class Main {
             if (!RUNNING.get()) return;
             final long start = System.nanoTime();
 
-            AutomataWorld world = AutomataWorld.get(event.getInstance());
+            Automata.World world = Automata.World.get(event.getInstance());
             world.tick();
 
             final long duration = System.nanoTime() - start;

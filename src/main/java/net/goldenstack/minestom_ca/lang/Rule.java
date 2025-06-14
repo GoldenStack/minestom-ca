@@ -1,6 +1,6 @@
 package net.goldenstack.minestom_ca.lang;
 
-import net.goldenstack.minestom_ca.CellRule;
+import net.goldenstack.minestom_ca.Automata;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
@@ -37,7 +37,7 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
 
         record Equal(@NotNull Expression first, @NotNull Expression second) implements Condition {
             public Equal(Block block) {
-                this(new Expression.State(CellRule.BLOCK_STATE.name()), new Expression.Literal(block.stateId()));
+                this(new Expression.State(Automata.CellRule.BLOCK_STATE.name()), new Expression.Literal(block.stateId()));
             }
         }
     }
@@ -45,7 +45,7 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
     public sealed interface Result {
         record SetState(String state, Expression expression) implements Result {
             public SetState(Expression expression) {
-                this(CellRule.BLOCK_STATE.name(), expression);
+                this(Automata.CellRule.BLOCK_STATE.name(), expression);
             }
         }
 

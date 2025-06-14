@@ -1,7 +1,6 @@
 package net.goldenstack.minestom_ca.server;
 
-import net.goldenstack.minestom_ca.AutomataWorld;
-import net.goldenstack.minestom_ca.CellRule;
+import net.goldenstack.minestom_ca.Automata;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
@@ -75,9 +74,9 @@ public final class CACommands {
             // FIXME: seem to be a problem inside minestom
             return (sender, context, suggestion) -> {
                 if (!(sender instanceof Player player)) return;
-                final AutomataWorld world = AutomataWorld.get(player.getInstance());
-                final List<CellRule.State> states = world.rules().states();
-                for (CellRule.State state : states) {
+                final Automata.World world = Automata.World.get(player.getInstance());
+                final List<Automata.CellRule.State> states = world.rules().states();
+                for (Automata.CellRule.State state : states) {
                     suggestion.addEntry(new SuggestionEntry(state.name(), Component.empty()));
                 }
             };
