@@ -24,7 +24,6 @@ import java.lang.foreign.ValueLayout;
 import java.util.*;
 
 import static net.goldenstack.minestom_ca.CoordConversionPro.*;
-import static net.minestom.server.coordinate.CoordConversion.globalToChunk;
 import static net.minestom.server.coordinate.CoordConversion.globalToSectionRelative;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -81,29 +80,65 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     private final class QueryImpl implements AutomataQuery {
+        LSection section;
         Palette palette;
         int localX, localY, localZ;
-        int localChunkX, localChunkY, localChunkZ;
 
-        void updateLocal(Palette palette, int x, int y, int z) {
+        void updateLocal(LSection section, Palette palette, int x, int y, int z) {
+            this.section = section;
             this.palette = palette;
             this.localX = x;
             this.localY = y;
             this.localZ = z;
-            this.localChunkX = globalToChunk(x);
-            this.localChunkY = globalToChunk(y);
-            this.localChunkZ = globalToChunk(z);
-            if (this.palette == null) {
-                this.palette = paletteAtSection(localChunkX, localChunkY, localChunkZ);
+        }
+
+        @Override
+        public int stateIndex(String state) {
+            if (state.equals(CellRule.BLOCK_STATE.name())) return 0;
+            final List<CellRule.State> states = rules.states();
+            for (int i = 0; i < states.size(); i++) {
+                if (states.get(i).name().equals(state)) {
+                    return i + 1; // +1 because index 0 is reserved for block state
+                }
             }
+            throw new IllegalArgumentException("Unknown state: " + state);
+        }
+
+        @Override
+        public long state(int index) {
+            final int localX = globalToSectionRelative(this.localX);
+            final int localY = globalToSectionRelative(this.localY);
+            final int localZ = globalToSectionRelative(this.localZ);
+            if (index == 0) return palette.get(localX, localY, localZ);
+            return section.getState(localX, localY, localZ, index - 1);
+        }
+
+        @Override
+        public Int2LongMap queryIndexes() {
+            final int localX = globalToSectionRelative(this.localX);
+            final int localY = globalToSectionRelative(this.localY);
+            final int localZ = globalToSectionRelative(this.localZ);
+            final int blockState = palette.get(localX, localY, localZ);
+            Int2LongMap indexes = new Int2LongOpenHashMap();
+            indexes.put(0, blockState);
+            for (int i = 0; i < rules.states().size(); i++) {
+                final long value = section.getState(localX, localY, localZ, i);
+                indexes.put(i + 1, value);
+            }
+            return indexes;
+        }
+
+        boolean sameSection(int x, int y, int z) {
+            if (section == null) return false;
+            return sectionIndexGlobal(x, y, z) == section.index;
+        }
+
+        LSection querySection(int x, int y, int z) {
+            return sameSection(x, y, z) ? this.section : sectionGlobal(x, y, z);
         }
 
         int queryBlockState(int x, int y, int z) {
-            if (globalToChunk(x) != localChunkX ||
-                    globalToChunk(y) != localChunkY ||
-                    globalToChunk(z) != localChunkZ) {
-                return globalBlockState(x, y, z);
-            }
+            if (!sameSection(x, y, z)) return globalBlockState(x, y, z);
             if (palette == null) return 0;
             final int localX = globalToSectionRelative(x);
             final int localY = globalToSectionRelative(y);
@@ -112,21 +147,12 @@ public final class LazyWorld implements AutomataWorld {
         }
 
         @Override
-        public int stateIndex(String state) {
-            return rules.states().stream()
-                    .filter(s -> s.name().equals(state))
-                    .mapToInt(rules.states()::indexOf)
-                    .findFirst()
-                    .orElse(-1) + 1; // +1 because index 0 is reserved for block state
-        }
-
-        @Override
         public long stateAt(int x, int y, int z, int index) {
             x += localX;
             y += localY;
             z += localZ;
             if (index == 0) return queryBlockState(x, y, z);
-            final LSection section = sectionGlobal(x, y, z);
+            final LSection section = querySection(x, y, z);
             if (section == null) return 0;
             final int localX = globalToSectionRelative(x);
             final int localY = globalToSectionRelative(y);
@@ -134,19 +160,20 @@ public final class LazyWorld implements AutomataWorld {
             return section.getState(localX, localY, localZ, index - 1);
         }
 
+        static final Int2LongMap EMPTY_INDEXES = CellRule.stateMap(0, 0);
+
         @Override
         public Int2LongMap queryIndexes(int x, int y, int z) {
             x += localX;
             y += localY;
             z += localZ;
-            final LSection section = sectionGlobal(x, y, z);
-            final int blockState = queryBlockState(x, y, z);
-            if (section == null) return CellRule.stateMap(0, blockState);
+            final LSection section = querySection(x, y, z);
+            if (section == null) return EMPTY_INDEXES;
             final int localX = globalToSectionRelative(x);
             final int localY = globalToSectionRelative(y);
             final int localZ = globalToSectionRelative(z);
             Int2LongMap indexes = new Int2LongOpenHashMap();
-            indexes.put(0, blockState);
+            indexes.put(0, queryBlockState(x, y, z));
             for (int i = 0; i < rules.states().size(); i++) {
                 final long value = section.getState(localX, localY, localZ, i);
                 indexes.put(i + 1, value);
@@ -233,15 +260,19 @@ public final class LazyWorld implements AutomataWorld {
             final int sectionX = sectionIndexGetX(sectionIndex);
             final int sectionY = sectionIndexGetY(sectionIndex);
             final int sectionZ = sectionIndexGetZ(sectionIndex);
-            Palette palette = paletteAtSection(sectionX, sectionY, sectionZ);
             BitSet trackedBlocks = section.trackedBlocks;
+            Palette palette = paletteAtSection(sectionX, sectionY, sectionZ);
+            if (palette == null) {
+                trackedBlocks.clear();
+                continue;
+            }
             for (int blockIndex = trackedBlocks.nextSetBit(0);
                  blockIndex >= 0;
                  blockIndex = trackedBlocks.nextSetBit(blockIndex + 1)) {
                 final int x = sectionBlockIndexGetX(blockIndex) + sectionX * 16;
                 final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
                 final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
-                query.updateLocal(palette, x, y, z);
+                query.updateLocal(section, palette, x, y, z);
                 final List<CellRule.Action> actions = rules.process(query);
                 if (actions != null) blockChanges.add(new BlockChange(blockIndex, actions));
             }
@@ -317,7 +348,7 @@ public final class LazyWorld implements AutomataWorld {
         final int globalX = sectionIndexGetX(section.index) * 16 + localX;
         final int globalY = sectionIndexGetY(section.index) * 16 + localY;
         final int globalZ = sectionIndexGetZ(section.index) * 16 + localZ;
-        if (!actionPredicate(globalX, globalY, globalZ, action)) return;
+        if (!actionPredicate(section, palette, globalX, globalY, globalZ, action)) return;
         // Set states
         for (Int2LongMap.Entry changeEntry : action.updatedStates().int2LongEntrySet()) {
             final int stateIndex = changeEntry.getIntKey();
@@ -336,10 +367,10 @@ public final class LazyWorld implements AutomataWorld {
         register(globalX, globalY, globalZ, section, action.wakePoints());
     }
 
-    boolean actionPredicate(int x, int y, int z, CellRule.Action action) {
+    boolean actionPredicate(LSection section, Palette palette, int x, int y, int z, CellRule.Action action) {
         final Int2LongMap conditionStates = action.conditionStates();
         if (conditionStates == null || conditionStates.isEmpty()) return true;
-        query.updateLocal(null, x, y, z);
+        query.updateLocal(section, palette, x, y, z);
         final Int2LongMap currentStates = query.queryIndexes(0, 0, 0);
         for (Int2LongMap.Entry entry : conditionStates.int2LongEntrySet()) {
             final int stateIndex = entry.getIntKey();

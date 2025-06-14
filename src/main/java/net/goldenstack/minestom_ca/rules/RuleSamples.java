@@ -25,7 +25,7 @@ public final class RuleSamples {
         public List<Action> process(AutomataQuery query) {
             final int neighbors = query.countNeighborsStateLimit(0, 4, Neighbors.MOORE_2D,
                     state -> state == ALIVE_STATE);
-            final long currentState = query.stateAt(0, 0, 0, 0);
+            final long currentState = query.state(0);
             if (currentState == ALIVE_STATE && (neighbors < 2 || neighbors > 3)) {
                 // Underpopulation or overpopulation
                 return KILL_ACTION;
@@ -61,11 +61,8 @@ public final class RuleSamples {
 
         @Override
         public List<Action> process(AutomataQuery query) {
-            final long currentState = query.stateAt(0, 0, 0, 0);
-            if (currentState == DIRT_STATE) {
-                return GROW_ACTION;
-            }
-            return null;
+            final long currentState = query.state(0);
+            return currentState == DIRT_STATE ? GROW_ACTION : null;
         }
 
         @Override

@@ -11,7 +11,16 @@ import java.util.function.LongPredicate;
 public interface AutomataQuery {
     int stateIndex(String state);
 
+    long state(int index);
+
+    default long state(String state) {
+        final int index = stateIndex(state);
+        return state(index);
+    }
+
     long stateAt(int x, int y, int z, int index);
+
+    Int2LongMap queryIndexes();
 
     default long stateAt(int x, int y, int z, String state) {
         final int index = stateIndex(state);
