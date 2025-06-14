@@ -5,10 +5,9 @@ import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Set;
 
 import static net.goldenstack.minestom_ca.Neighbors.NAMED;
 
@@ -17,9 +16,7 @@ public final class Parser {
     private List<Token> tokens;
     private int index;
 
-    private final AtomicInteger stateCounter = new AtomicInteger(0);
-
-    private final Map<String, Integer> properties = new HashMap<>();
+    private final Set<String> properties = new HashSet<>();
     private final List<Rule> rules = new ArrayList<>();
 
     public Parser() {
@@ -64,15 +61,14 @@ public final class Parser {
             advance();
             if (!(peek() instanceof Token.At)) {
                 // Self identifier
-                final int index = getIndex(value);
                 return switch (advance()) {
                     case Token.Equals ignored -> new Rule.Condition.Equal(
-                            new Rule.Expression.Index(index),
+                            new Rule.Expression.State(value),
                             nextExpression()
                     );
                     case Token.Exclamation ignored -> new Rule.Condition.Not(
                             new Rule.Condition.Equal(
-                                    new Rule.Expression.Index(index),
+                                    new Rule.Expression.State(value),
                                     nextExpression()
                             ));
                     default -> throw error("Expected operator");
@@ -141,14 +137,15 @@ public final class Parser {
             case Token.Constant _ -> {
                 // Change block
                 final Block block = nextBlock();
-                return new Rule.Result.SetIndex(0, new Rule.Expression.Literal(block));
+                return new Rule.Result.SetState(new Rule.Expression.Literal(block));
             }
             case Token.Identifier identifier -> {
                 // Change state
                 advance();
                 consume(Token.Equals.class, "Expected '='");
-                final int index = getIndex(identifier.value());
-                return new Rule.Result.SetIndex(index, nextExpression());
+                final String state = identifier.value();
+                registerState(state);
+                return new Rule.Result.SetState(state, nextExpression());
             }
             case Token.Tilde _ -> {
                 // Block copy
@@ -191,18 +188,20 @@ public final class Parser {
                 advance();
                 if (!(peek() instanceof Token.At)) {
                     // Self state
-                    final int index = getIndex(identifier.value());
-                    expression = new Rule.Expression.Index(index);
+                    final String state = identifier.value();
+                    registerState(state);
+                    expression = new Rule.Expression.State(state);
                 } else {
                     // Neighbor state
                     advance();
                     final List<Point> targets = NAMED.get(identifier.value());
                     final Point first = targets.getFirst();
                     final Token.Identifier identifier2 = consume(Token.Identifier.class, "Expected identifier");
-                    final int index = getIndex(identifier2.value());
-                    expression = new Rule.Expression.NeighborIndex(
+                    final String state = identifier2.value();
+                    registerState(state);
+                    expression = new Rule.Expression.NeighborState(
                             first.blockX(), first.blockY(), first.blockZ(),
-                            index);
+                            state);
                 }
             }
             default -> {
@@ -253,9 +252,8 @@ public final class Parser {
         return new Program(rules, properties);
     }
 
-    int getIndex(String identifier) {
-        return this.properties.computeIfAbsent(identifier,
-                _ -> stateCounter.incrementAndGet());
+    void registerState(String identifier) {
+        this.properties.add(identifier);
     }
 
     <T extends Token> T consume(Class<T> type, String message) {

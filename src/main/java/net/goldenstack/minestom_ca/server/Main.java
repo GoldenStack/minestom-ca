@@ -141,7 +141,7 @@ public final class Main {
             world.tick();
 
             final long duration = System.nanoTime() - start;
-            Audiences.all().sendPlayerListHeader(Component.text("Took " + duration / 1.0e6 + "ms"));
+            Audiences.all().sendPlayerListHeader(Component.text("MSPT " + String.format("%.2f", duration / 1.0e6) + "ms"));
         });
 
         minecraftServer.start("0.0.0.0", 25565);

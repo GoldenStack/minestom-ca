@@ -7,8 +7,13 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public interface CellRule {
+    State BLOCK_STATE = new State("block_state");
+
+    void init(Map<State, Integer> mapping);
+
     List<Action> process(AutomataQuery query);
 
     boolean tracked(int state);
@@ -62,6 +67,11 @@ public interface CellRule {
             states.addAll(rule.states());
         }
         return new CellRule() {
+            @Override
+            public void init(Map<State, Integer> mapping) {
+                for (CellRule rule : rules) rule.init(mapping);
+            }
+
             @Override
             public List<Action> process(AutomataQuery query) {
                 List<Action> result = null;

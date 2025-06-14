@@ -6,6 +6,7 @@ import net.goldenstack.minestom_ca.Neighbors;
 import net.minestom.server.instance.block.Block;
 
 import java.util.List;
+import java.util.Map;
 
 public final class RuleSamples {
 
@@ -15,6 +16,10 @@ public final class RuleSamples {
 
         private static final List<Action> KILL_ACTION = List.of(Action.UpdateState(CellRule.stateMap(0, VOID_STATE)));
         private static final List<Action> REPRODUCE_ACTION = List.of(Action.UpdateState(CellRule.stateMap(0, ALIVE_STATE)));
+
+        @Override
+        public void init(Map<State, Integer> mapping) {
+        }
 
         @Override
         public List<Action> process(AutomataQuery query) {
@@ -49,6 +54,10 @@ public final class RuleSamples {
         private static final List<Action> GROW_ACTION = List.of(
                 Action.ConditionalSchedule(25, CellRule.stateMap(0, DIRT_STATE), CellRule.stateMap(0, GRASS_STATE))
         );
+
+        @Override
+        public void init(Map<State, Integer> mapping) {
+        }
 
         @Override
         public List<Action> process(AutomataQuery query) {

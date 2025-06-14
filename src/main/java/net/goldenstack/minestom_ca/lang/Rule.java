@@ -1,5 +1,6 @@
 package net.goldenstack.minestom_ca.lang;
 
+import net.goldenstack.minestom_ca.CellRule;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
@@ -36,15 +37,15 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
 
         record Equal(@NotNull Expression first, @NotNull Expression second) implements Condition {
             public Equal(Block block) {
-                this(new Expression.Index(0), new Expression.Literal(block.stateId()));
+                this(new Expression.State(CellRule.BLOCK_STATE.name()), new Expression.Literal(block.stateId()));
             }
         }
     }
 
     public sealed interface Result {
-        record SetIndex(int stateIndex, Expression expression) implements Result {
-            public SetIndex(Block block) {
-                this(0, new Expression.Literal(block.stateId()));
+        record SetState(String state, Expression expression) implements Result {
+            public SetState(Expression expression) {
+                this(CellRule.BLOCK_STATE.name(), expression);
             }
         }
 
@@ -62,10 +63,10 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
             }
         }
 
-        record Index(int stateIndex) implements Expression {
+        record State(String state) implements Expression {
         }
 
-        record NeighborIndex(int x, int y, int z, int stateIndex) implements Expression {
+        record NeighborState(int x, int y, int z, String state) implements Expression {
         }
 
         record NeighborsCount(@NotNull List<Point> offsets, @NotNull Condition condition) implements Expression {

@@ -1,26 +1,11 @@
 package net.goldenstack.minestom_ca.lang;
 
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
  * Utility functions for tracking information about rules.
  */
 public final class RuleAnalysis {
-
-    /**
-     * Finds the number of state indices used within the given rule.
-     */
-    public static int stateCount(List<Rule> rules) {
-        AtomicInteger max = new AtomicInteger(0);
-        for (Rule rule : rules) {
-            queryExpression(rule.condition(), Rule.Expression.Index.class,
-                    index -> max.set(Math.max(max.get(), index.stateIndex())));
-        }
-        return max.get() + 1;
-    }
-
     public static <T extends Rule.Expression> void queryExpression(Rule.Condition condition, Class<T> type, Consumer<T> consumer) {
         switch (condition) {
             case Rule.Condition.And and -> {
@@ -46,10 +31,10 @@ public final class RuleAnalysis {
                 queryExpression(compare.first(), type, consumer);
                 queryExpression(compare.second(), type, consumer);
             }
-            case Rule.Expression.Index index -> {
+            case Rule.Expression.State state -> {
                 // Empty
             }
-            case Rule.Expression.NeighborIndex neighborIndex -> {
+            case Rule.Expression.NeighborState neighborState -> {
                 // Empty
             }
             case Rule.Expression.Literal literal -> {

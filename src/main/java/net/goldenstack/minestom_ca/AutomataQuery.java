@@ -9,7 +9,14 @@ import java.util.Map;
 import java.util.function.LongPredicate;
 
 public interface AutomataQuery {
+    int stateIndex(String state);
+
     long stateAt(int x, int y, int z, int index);
+
+    default long stateAt(int x, int y, int z, String state) {
+        final int index = stateIndex(state);
+        return stateAt(x, y, z, index);
+    }
 
     default Block blockAt(int x, int y, int z) {
         final long blockState = stateAt(x, y, z, 0);

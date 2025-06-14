@@ -10,14 +10,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-public record Program(List<Rule> rules, Map<String, Integer> variables) {
+public record Program(List<Rule> rules, Set<String> variables) {
     public Program {
         rules = List.copyOf(rules);
-        variables = Map.copyOf(variables);
+        variables = Set.copyOf(variables);
     }
 
     public static Program fromFile(Path path) {
@@ -41,11 +41,9 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
     }
 
     public CellRule makeCellRule() {
-        final int stateCount = RuleAnalysis.stateCount(rules);
-
-        List<CellRule.State> states = new ArrayList<>(Collections.nCopies(variables.size(), null));
-        for (Map.Entry<String, Integer> entry : variables.entrySet()) {
-            states.set(entry.getValue() - 1, new CellRule.State(entry.getKey()));
+        List<CellRule.State> states = new ArrayList<>();
+        for (String state : variables) {
+            states.add(new CellRule.State(state));
         }
 
         boolean[] trackedStates = new boolean[Short.MAX_VALUE];
@@ -57,17 +55,21 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
         }
         return new CellRule() {
             @Override
+            public void init(Map<State, Integer> mapping) {
+            }
+
+            @Override
             public List<Action> process(AutomataQuery query) {
                 Int2LongMap block = null;
                 for (Rule rule : rules) {
                     if (!verifyCondition(0, 0, 0, query, rule.condition())) continue;
-                    if (block == null) block = new Int2LongOpenHashMap(stateCount);
+                    if (block == null) block = new Int2LongOpenHashMap();
                     for (Rule.Result result : rule.results()) {
                         switch (result) {
-                            case Rule.Result.SetIndex set -> {
-                                final int index = set.stateIndex();
+                            case Rule.Result.SetState set -> {
+                                final String state = set.state();
                                 final long value = expression(0, 0, 0, query, set.expression());
-                                block.put(index, value);
+                                block.put(query.stateIndex(state), value);
                             }
                             case Rule.Result.BlockCopy blockCopy -> {
                                 final int blockX = blockCopy.x();
@@ -124,14 +126,14 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
 
     private long expression(int x, int y, int z, AutomataQuery query, Rule.Expression expression) {
         return switch (expression) {
-            case Rule.Expression.Index index -> {
-                final int stateIndex = index.stateIndex();
-                yield query.stateAt(x, y, z, stateIndex);
+            case Rule.Expression.State state -> {
+                final String stateName = state.state();
+                yield query.stateAt(x, y, z, stateName);
             }
-            case Rule.Expression.NeighborIndex index -> expression(
-                    x + index.x(), y + index.y(), z + index.z(),
+            case Rule.Expression.NeighborState neighbor -> expression(
+                    x + neighbor.x(), y + neighbor.y(), z + neighbor.z(),
                     query,
-                    new Rule.Expression.Index(index.stateIndex()));
+                    new Rule.Expression.State(neighbor.state()));
             case Rule.Expression.Literal literal -> literal.value();
             case Rule.Expression.NeighborsCount neighborsCount -> {
                 int count = 0;

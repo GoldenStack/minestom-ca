@@ -112,6 +112,15 @@ public final class LazyWorld implements AutomataWorld {
         }
 
         @Override
+        public int stateIndex(String state) {
+            return rules.states().stream()
+                    .filter(s -> s.name().equals(state))
+                    .mapToInt(rules.states()::indexOf)
+                    .findFirst()
+                    .orElse(-1) + 1; // +1 because index 0 is reserved for block state
+        }
+
+        @Override
         public long stateAt(int x, int y, int z, int index) {
             x += localX;
             y += localY;
@@ -184,6 +193,14 @@ public final class LazyWorld implements AutomataWorld {
         this.rules = rules;
         this.sectionCount = instance.getCachedDimensionType().height() / 16;
         this.minY = instance.getCachedDimensionType().minY();
+
+        // Initialize variables id
+        Map<CellRule.State, Integer> mapping = new HashMap<>();
+        for (int i = 0; i < rules.states().size(); i++) {
+            final CellRule.State state = rules.states().get(i);
+            mapping.put(state, i + 1); // index 0 is reserved for block state
+        }
+        rules.init(mapping);
     }
 
     @Override
