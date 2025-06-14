@@ -90,7 +90,7 @@ public record Program(List<Rule> rules, Map<String, Integer> variables) {
                     }
                 }
                 if (block == null) return null;
-                return new CellRule.Action.UpdateState(block);
+                return CellRule.Action.UpdateState(block);
             }
 
             @Override

@@ -267,50 +267,7 @@ public final class LazyWorld implements AutomataWorld {
             final int x = currentChange.x();
             final int y = currentChange.y();
             final int z = currentChange.z();
-            if (currentChange.action() instanceof CellRule.Action.UpdateState(Int2LongMap states)) {
-                final int localX = globalToSectionRelative(x);
-                final int localY = globalToSectionRelative(y);
-                final int localZ = globalToSectionRelative(z);
-                // Set states
-                for (Int2LongMap.Entry changeEntry : states.int2LongEntrySet()) {
-                    final int stateIndex = changeEntry.getIntKey();
-                    final long value = changeEntry.getLongValue();
-                    if (stateIndex == 0) {
-                        if (palette != null) palette.set(localX, localY, localZ, (int) value);
-                        // Encode block change for packet
-                        final long blockState = value << 12;
-                        final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
-                        blockChanges.add(blockState | pos);
-                    } else {
-                        if (section == null) continue;
-                        section.setState(localX, localY, localZ, stateIndex - 1, value);
-                    }
-                }
-                // Register the point for the next tick
-                register(x, y, z, section);
-            } else if (currentChange.action() instanceof CellRule.Action.Schedule(
-                    int tick, Int2LongMap updatedStates
-            )) {
-                wheelTimer.schedule(() -> new BlockChange(x, y, z, new CellRule.Action.UpdateState(updatedStates)), tick);
-            } else if (currentChange.action() instanceof CellRule.Action.ConditionalSchedule(
-                    int tick, Int2LongMap conditionStates, Int2LongMap updatedStates
-            )) {
-                wheelTimer.schedule(() -> {
-                    query.updateLocal(null, x, y, z);
-                    final Int2LongMap currentStates = query.queryIndexes(0, 0, 0);
-                    boolean matches = true;
-                    for (Int2LongMap.Entry entry : conditionStates.int2LongEntrySet()) {
-                        if (!Objects.equals(currentStates.get(entry.getIntKey()), entry.getLongValue())) {
-                            matches = false;
-                            break;
-                        }
-                    }
-                    if (matches) {
-                        return new BlockChange(x, y, z, new CellRule.Action.UpdateState(updatedStates));
-                    }
-                    return null;
-                }, tick);
-            }
+            processSectionAction(section, palette, x, y, z, currentChange.action(), blockChanges);
         }
         trackedSections.add(section);
         if (!blockChanges.isEmpty()) {
@@ -325,6 +282,49 @@ public final class LazyWorld implements AutomataWorld {
                 chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
             }
         }
+    }
+
+    void processSectionAction(LSection section, Palette palette, int x, int y, int z, CellRule.Action action, LongList blockChanges) {
+        if (action.scheduleTick() > 0) {
+            wheelTimer.schedule(() -> new BlockChange(x, y, z, action.immediate()), action.scheduleTick());
+            return;
+        }
+        if (!actionPredicate(x, y, z, action)) return;
+        final int localX = globalToSectionRelative(x);
+        final int localY = globalToSectionRelative(y);
+        final int localZ = globalToSectionRelative(z);
+        // Set states
+        for (Int2LongMap.Entry changeEntry : action.updatedStates().int2LongEntrySet()) {
+            final int stateIndex = changeEntry.getIntKey();
+            final long value = changeEntry.getLongValue();
+            if (stateIndex == 0) {
+                if (palette != null) palette.set(localX, localY, localZ, (int) value);
+                // Encode block change for packet
+                final long blockState = value << 12;
+                final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
+                blockChanges.add(blockState | pos);
+            } else {
+                if (section == null) continue;
+                section.setState(localX, localY, localZ, stateIndex - 1, value);
+            }
+        }
+        // Register the point for the next tick
+        register(x, y, z, section);
+    }
+
+    boolean actionPredicate(int x, int y, int z, CellRule.Action action) {
+        final Int2LongMap conditionStates = action.conditionStates();
+        if (conditionStates == null || conditionStates.isEmpty()) return true;
+        query.updateLocal(null, x, y, z);
+        final Int2LongMap currentStates = query.queryIndexes(0, 0, 0);
+        for (Int2LongMap.Entry entry : conditionStates.int2LongEntrySet()) {
+            final int stateIndex = entry.getIntKey();
+            final long value = entry.getLongValue();
+            if (!Objects.equals(currentStates.get(stateIndex), value)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
