@@ -9,6 +9,8 @@ import it.unimi.dsi.fastutil.longs.LongList;
 import net.goldenstack.minestom_ca.AutomataQuery;
 import net.goldenstack.minestom_ca.AutomataWorld;
 import net.goldenstack.minestom_ca.CellRule;
+import net.goldenstack.minestom_ca.Neighbors;
+import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
@@ -309,7 +311,7 @@ public final class LazyWorld implements AutomataWorld {
             }
         }
         // Register the point for the next tick
-        register(x, y, z, section);
+        register(x, y, z, section, action.wakePoints());
     }
 
     boolean actionPredicate(int x, int y, int z, CellRule.Action action) {
@@ -338,7 +340,8 @@ public final class LazyWorld implements AutomataWorld {
             final long value = properties.getOrDefault(i + 1, 0);
             section.setState(localX, localY, localZ, i, value);
         }
-        register(x, y, z, null);
+        trackedSections.add(section);
+        register(x, y, z, section, Neighbors.MOORE_3D_SELF);
     }
 
     @Override
@@ -358,37 +361,33 @@ public final class LazyWorld implements AutomataWorld {
                 final int blockX = globalX + x;
                 final int blockY = globalY + y;
                 final int blockZ = globalZ + z;
-                register(blockX, blockY, blockZ, startSection);
+                register(blockX, blockY, blockZ, startSection, Neighbors.MOORE_3D_SELF);
             });
         }
     }
 
-    private void register(int x, int y, int z, LSection startSection) {
+    private void register(int x, int y, int z, LSection startSection, List<Point> wakePoints) {
         if (startSection == null) {
             startSection = sectionGlobalCompute(x, y, z);
             trackedSections.add(startSection);
         }
         final boolean boundary = globalSectionBoundary(x, y, z);
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                for (int dz = -1; dz <= 1; dz++) {
-                    final int nX = x + dx;
-                    final int nY = y + dy;
-                    final int nZ = z + dz;
-                    LSection section;
-                    if (!boundary) {
-                        section = startSection;
-                    } else {
-                        section = sectionGlobalCompute(nX, nY, nZ);
-                        trackedSections.add(section);
-                    }
-                    final int localX = globalToSectionRelative(nX);
-                    final int localY = globalToSectionRelative(nY);
-                    final int localZ = globalToSectionRelative(nZ);
-                    final int blockIndex = sectionBlockIndex(localX, localY, localZ);
-                    section.trackedBlocks.set(blockIndex);
-                }
+        for (Point point : wakePoints) {
+            final int nX = x + point.blockX();
+            final int nY = y + point.blockY();
+            final int nZ = z + point.blockZ();
+            LSection section;
+            if (!boundary) {
+                section = startSection;
+            } else {
+                section = sectionGlobalCompute(nX, nY, nZ);
+                trackedSections.add(section);
             }
+            final int localX = globalToSectionRelative(nX);
+            final int localY = globalToSectionRelative(nY);
+            final int localZ = globalToSectionRelative(nZ);
+            final int blockIndex = sectionBlockIndex(localX, localY, localZ);
+            section.trackedBlocks.set(blockIndex);
         }
     }
 

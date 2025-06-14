@@ -14,7 +14,6 @@ import java.util.UUID;
  * An AutomataWorld is a world capable of ticking cellular automata rules.
  */
 public interface AutomataWorld {
-
     Map<UUID, AutomataWorld> WORLDS = new HashMap<>();
 
     static void register(AutomataWorld world) {
@@ -25,9 +24,7 @@ public interface AutomataWorld {
         }
         // Register loaded chunks
         System.out.println("Registering loaded chunks...");
-        for (Chunk c : instance.getChunks()) {
-            world.handleChunkLoad(c.getChunkX(), c.getChunkZ());
-        }
+        for (Chunk c : instance.getChunks()) world.handleChunkLoad(c.getChunkX(), c.getChunkZ());
         System.out.println("Loaded chunks registered");
     }
 
