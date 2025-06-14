@@ -1,7 +1,6 @@
 package net.goldenstack.minestom_ca.backends.lazy;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -83,6 +82,8 @@ public final class LazyWorld implements AutomataWorld {
         LSection section;
         Palette palette;
         int localX, localY, localZ;
+        // Local cache
+        long[] localStates;
 
         void updateLocal(LSection section, Palette palette, int x, int y, int z) {
             this.section = section;
@@ -90,6 +91,7 @@ public final class LazyWorld implements AutomataWorld {
             this.localX = x;
             this.localY = y;
             this.localZ = z;
+            this.localStates = null;
         }
 
         @Override
@@ -114,17 +116,20 @@ public final class LazyWorld implements AutomataWorld {
         }
 
         @Override
-        public Int2LongMap queryIndexes() {
+        public long[] queryIndexes() {
+            if (this.localStates != null) return localStates;
             final int localX = globalToSectionRelative(this.localX);
             final int localY = globalToSectionRelative(this.localY);
             final int localZ = globalToSectionRelative(this.localZ);
             final int blockState = palette.get(localX, localY, localZ);
-            Int2LongMap indexes = new Int2LongOpenHashMap();
-            indexes.put(0, blockState);
-            for (int i = 0; i < rules.states().size(); i++) {
+            final List<CellRule.State> states = rules.states();
+            long[] indexes = new long[states.size() + 1];
+            indexes[0] = blockState;
+            for (int i = 0; i < states.size(); i++) {
                 final long value = section.getState(localX, localY, localZ, i);
-                indexes.put(i + 1, value);
+                indexes[i + 1] = value;
             }
+            this.localStates = indexes;
             return indexes;
         }
 
@@ -160,10 +165,10 @@ public final class LazyWorld implements AutomataWorld {
             return section.getState(localX, localY, localZ, index - 1);
         }
 
-        static final Int2LongMap EMPTY_INDEXES = CellRule.stateMap(0, 0);
+        static final long[] EMPTY_INDEXES = new long[]{0};
 
         @Override
-        public Int2LongMap queryIndexes(int x, int y, int z) {
+        public long[] queryIndexes(int x, int y, int z) {
             x += localX;
             y += localY;
             z += localZ;
@@ -172,11 +177,12 @@ public final class LazyWorld implements AutomataWorld {
             final int localX = globalToSectionRelative(x);
             final int localY = globalToSectionRelative(y);
             final int localZ = globalToSectionRelative(z);
-            Int2LongMap indexes = new Int2LongOpenHashMap();
-            indexes.put(0, queryBlockState(x, y, z));
-            for (int i = 0; i < rules.states().size(); i++) {
+            final List<CellRule.State> states = rules.states();
+            long[] indexes = new long[states.size() + 1];
+            indexes[0] = queryBlockState(x, y, z);
+            for (int i = 0; i < states.size(); i++) {
                 final long value = section.getState(localX, localY, localZ, i);
-                indexes.put(i + 1, value);
+                indexes[i + 1] = value;
             }
             return indexes;
         }
@@ -192,14 +198,13 @@ public final class LazyWorld implements AutomataWorld {
                 final String name = state.name();
                 variables.put(i + 1, name);
             }
-            final Int2LongMap indexes = queryIndexes(x, y, z);
+            final long[] indexes = queryIndexes(x, y, z);
             Map<String, Long> names = new HashMap<>();
-            for (Int2LongMap.Entry entry : indexes.int2LongEntrySet()) {
-                final int key = entry.getIntKey();
-                final long value = entry.getLongValue();
-                final String name = variables.get(key);
+            for (int i = 0; i < indexes.length; i++) {
+                final long value = indexes[i];
+                final String name = variables.get(i);
                 if (name != null) names.put(name, value);
-                else names.put("var" + key, value);
+                else names.put("var" + i, value);
             }
             return Map.copyOf(names);
         }
@@ -371,13 +376,11 @@ public final class LazyWorld implements AutomataWorld {
         final Int2LongMap conditionStates = action.conditionStates();
         if (conditionStates == null || conditionStates.isEmpty()) return true;
         query.updateLocal(section, palette, x, y, z);
-        final Int2LongMap currentStates = query.queryIndexes(0, 0, 0);
+        final long[] currentStates = query.queryIndexes();
         for (Int2LongMap.Entry entry : conditionStates.int2LongEntrySet()) {
             final int stateIndex = entry.getIntKey();
             final long value = entry.getLongValue();
-            if (!Objects.equals(currentStates.get(stateIndex), value)) {
-                return false;
-            }
+            if (currentStates[stateIndex] != value) return false;
         }
         return true;
     }

@@ -75,8 +75,11 @@ public record Program(List<Rule> rules, Set<String> variables) {
                                 final int blockX = blockCopy.x();
                                 final int blockY = blockCopy.y();
                                 final int blockZ = blockCopy.z();
-                                final Int2LongMap queryIndexes = query.queryIndexes(blockX, blockY, blockZ);
-                                block.putAll(queryIndexes);
+                                final long[] queryIndexes = query.queryIndexes(blockX, blockY, blockZ);
+                                for (int i = 0; i < queryIndexes.length; i++) {
+                                    final long value = queryIndexes[i];
+                                    block.put(i, value);
+                                }
                             }
                             case Rule.Result.TriggerEvent triggerEvent -> {
                                 final String eventName = triggerEvent.event();

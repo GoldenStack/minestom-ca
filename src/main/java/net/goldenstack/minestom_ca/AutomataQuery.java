@@ -1,6 +1,5 @@
 package net.goldenstack.minestom_ca;
 
-import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 
@@ -20,7 +19,7 @@ public interface AutomataQuery {
 
     long stateAt(int x, int y, int z, int index);
 
-    Int2LongMap queryIndexes();
+    long[] queryIndexes();
 
     default long stateAt(int x, int y, int z, String state) {
         final int index = stateIndex(state);
@@ -32,7 +31,7 @@ public interface AutomataQuery {
         return Block.fromStateId((int) blockState);
     }
 
-    Int2LongMap queryIndexes(int x, int y, int z);
+    long[] queryIndexes(int x, int y, int z);
 
     Map<String, Long> queryNames(int x, int y, int z);
 
