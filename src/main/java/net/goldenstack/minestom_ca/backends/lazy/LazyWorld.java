@@ -36,7 +36,7 @@ public final class LazyWorld implements AutomataWorld {
     private final int sectionCount;
     private final int minY;
 
-    private final HashedWheelTimer<BlockChange> wheelTimer = new HashedWheelTimer<>(255);
+    private final HashedWheelTimer<ScheduledChange> wheelTimer = new HashedWheelTimer<>(255);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
     private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
 
@@ -193,7 +193,10 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    private record BlockChange(int x, int y, int z, CellRule.Action action) {
+    private record BlockChange(int sectionBlockIndex, CellRule.Action action) {
+    }
+
+    private record ScheduledChange(LSection section, BlockChange change) {
     }
 
     private record SectionChange(LSection section, Palette palette, List<BlockChange> blockChanges) {
@@ -223,7 +226,7 @@ public final class LazyWorld implements AutomataWorld {
                 final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
                 query.updateLocal(palette, x, y, z);
                 final CellRule.Action action = rules.process(query);
-                if (action != null) blockChanges.add(new BlockChange(x, y, z, action));
+                if (action != null) blockChanges.add(new BlockChange(blockIndex, action));
             }
             if (!blockChanges.isEmpty()) {
                 changes.offer(new SectionChange(section, palette, blockChanges));
@@ -234,9 +237,10 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     private void computeTimedChanges(Queue<SectionChange> changes) {
-        wheelTimer.tick(blockChange -> {
-            if (blockChange == null) return;
-            LSection section = sectionGlobalCompute(blockChange.x(), blockChange.y(), blockChange.z());
+        wheelTimer.tick(scheduledChange -> {
+            if (scheduledChange == null) return;
+            final BlockChange blockChange = scheduledChange.change;
+            LSection section = scheduledChange.section;
             // Find section in changes
             final long sectionIndex = section.index;
             SectionChange sectionChange = changes.stream()
@@ -266,10 +270,7 @@ public final class LazyWorld implements AutomataWorld {
         Palette palette = sectionChange.palette();
         LongList blockChanges = new LongArrayList();
         for (BlockChange currentChange : sectionChange.blockChanges()) {
-            final int x = currentChange.x();
-            final int y = currentChange.y();
-            final int z = currentChange.z();
-            processSectionAction(section, palette, x, y, z, currentChange.action(), blockChanges);
+            processSectionAction(section, palette, currentChange, blockChanges);
         }
         trackedSections.add(section);
         if (!blockChanges.isEmpty()) {
@@ -286,15 +287,20 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    void processSectionAction(LSection section, Palette palette, int x, int y, int z, CellRule.Action action, LongList blockChanges) {
+    void processSectionAction(LSection section, Palette palette, BlockChange change, LongList blockChanges) {
+        final int sectionBlockIndex = change.sectionBlockIndex();
+        final CellRule.Action action = change.action();
         if (action.scheduleTick() > 0) {
-            wheelTimer.schedule(() -> new BlockChange(x, y, z, action.immediate()), action.scheduleTick());
+            wheelTimer.schedule(() -> new ScheduledChange(section, new BlockChange(sectionBlockIndex, action.immediate())), action.scheduleTick());
             return;
         }
-        if (!actionPredicate(x, y, z, action)) return;
-        final int localX = globalToSectionRelative(x);
-        final int localY = globalToSectionRelative(y);
-        final int localZ = globalToSectionRelative(z);
+        final int localX = sectionBlockIndexGetX(sectionBlockIndex);
+        final int localY = sectionBlockIndexGetY(sectionBlockIndex);
+        final int localZ = sectionBlockIndexGetZ(sectionBlockIndex);
+        final int globalX = sectionIndexGetX(section.index) * 16 + localX;
+        final int globalY = sectionIndexGetY(section.index) * 16 + localY;
+        final int globalZ = sectionIndexGetZ(section.index) * 16 + localZ;
+        if (!actionPredicate(globalX, globalY, globalZ, action)) return;
         // Set states
         for (Int2LongMap.Entry changeEntry : action.updatedStates().int2LongEntrySet()) {
             final int stateIndex = changeEntry.getIntKey();
@@ -306,12 +312,11 @@ public final class LazyWorld implements AutomataWorld {
                 final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
                 blockChanges.add(blockState | pos);
             } else {
-                if (section == null) continue;
                 section.setState(localX, localY, localZ, stateIndex - 1, value);
             }
         }
         // Register the point for the next tick
-        register(x, y, z, section, action.wakePoints());
+        register(globalX, globalY, globalZ, section, action.wakePoints());
     }
 
     boolean actionPredicate(int x, int y, int z, CellRule.Action action) {
@@ -400,13 +405,11 @@ public final class LazyWorld implements AutomataWorld {
     }
 
     private int globalBlockState(int x, int y, int z) {
-        try {
-            final Block block = instance.getBlock(x, y, z, Block.Getter.Condition.TYPE);
-            assert block != null;
-            return block.stateId();
-        } catch (NullPointerException e) {
-            return 0;
-        }
+        final Chunk chunk = instance.getChunkAt(x, z);
+        if (chunk == null) return 0;
+        final Block block = chunk.getBlock(x, y, z, Block.Getter.Condition.TYPE);
+        assert block != null;
+        return block.stateId();
     }
 
     @Override
