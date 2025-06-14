@@ -84,14 +84,17 @@ public final class LazyWorld implements AutomataWorld {
         int localX, localY, localZ;
         int localChunkX, localChunkY, localChunkZ;
 
-        void updateLocal(int x, int y, int z) {
+        void updateLocal(Palette palette, int x, int y, int z) {
+            this.palette = palette;
             this.localX = x;
             this.localY = y;
             this.localZ = z;
             this.localChunkX = CoordConversion.globalToChunk(x);
             this.localChunkY = CoordConversion.globalToChunk(y);
             this.localChunkZ = CoordConversion.globalToChunk(z);
-            this.palette = paletteAtSection(localChunkX, localChunkY, localChunkZ);
+            if (this.palette == null) {
+                this.palette = paletteAtSection(localChunkX, localChunkY, localChunkZ);
+            }
         }
 
         int queryBlockState(int x, int y, int z) {
@@ -217,7 +220,7 @@ public final class LazyWorld implements AutomataWorld {
                 final int x = sectionBlockIndexGetX(blockIndex) + sectionX * 16;
                 final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
                 final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
-                query.updateLocal(x, y, z);
+                query.updateLocal(palette, x, y, z);
                 final CellRule.Action action = rules.process(query);
                 if (action != null) blockChanges.add(new BlockChange(x, y, z, action));
             }
@@ -294,7 +297,7 @@ public final class LazyWorld implements AutomataWorld {
                     int tick, Int2LongMap conditionStates, Int2LongMap updatedStates
             )) {
                 wheelTimer.schedule(() -> {
-                    query.updateLocal(x, y, z);
+                    query.updateLocal(null, x, y, z);
                     final Int2LongMap currentStates = query.queryIndexes(0, 0, 0);
                     boolean matches = true;
                     for (Int2LongMap.Entry entry : conditionStates.int2LongEntrySet()) {
