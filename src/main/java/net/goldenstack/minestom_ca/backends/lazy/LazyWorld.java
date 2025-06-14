@@ -5,7 +5,8 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
-import net.goldenstack.minestom_ca.*;
+import net.goldenstack.minestom_ca.Automata;
+import net.goldenstack.minestom_ca.Neighbors;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
@@ -420,23 +421,29 @@ public final class LazyWorld implements Automata.World {
         }
     }
 
+    private LSection sectionCache(LSection startSection, LSection sectionCache, int x, int y, int z) {
+        final long sectionIndex = sectionIndexGlobal(x, y, z);
+        if (startSection.index == sectionIndex) return startSection;
+        if (sectionCache == null || sectionCache.index != sectionIndex) {
+            sectionCache = sectionGlobalCompute(x, y, z);
+            trackedSections.add(sectionCache);
+        }
+        return sectionCache;
+    }
+
     private void register(int x, int y, int z, LSection startSection, List<Point> wakePoints) {
         if (startSection == null) {
             startSection = sectionGlobalCompute(x, y, z);
             trackedSections.add(startSection);
         }
+        LSection sectionCache = null;
         final boolean boundary = globalSectionBoundary(x, y, z);
         for (Point point : wakePoints) {
             final int nX = x + point.blockX();
             final int nY = y + point.blockY();
             final int nZ = z + point.blockZ();
-            LSection section;
-            if (!boundary) {
-                section = startSection;
-            } else {
-                section = sectionGlobalCompute(nX, nY, nZ);
-                trackedSections.add(section);
-            }
+            LSection section = startSection;
+            if (boundary) section = sectionCache = sectionCache(startSection, sectionCache, nX, nY, nZ);
             final int localX = globalToSectionRelative(nX);
             final int localY = globalToSectionRelative(nY);
             final int localZ = globalToSectionRelative(nZ);
