@@ -6,38 +6,36 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public final class HashedWheelTimer<T> {
-    private final List<Set<ScheduledTask>> wheel;
+    private final Set<ScheduledTask>[] wheel;
     private final int wheelSize;
     private int currentTick = 0;
     private final AtomicLong taskIdGen = new AtomicLong();
 
     public HashedWheelTimer(int wheelSize) {
         this.wheelSize = wheelSize;
-        this.wheel = new ArrayList<>(wheelSize);
-        for (int i = 0; i < wheelSize; i++) {
-            wheel.add(new HashSet<>());
-        }
+        this.wheel = new Set[wheelSize];
+        Arrays.setAll(wheel, _ -> new HashSet<>());
     }
 
     public ScheduledTask schedule(Supplier<T> task, int delayTicks) {
         int scheduledTick = (currentTick + delayTicks) % wheelSize;
         ScheduledTask scheduledTask = new ScheduledTask(taskIdGen.incrementAndGet(), scheduledTick, task);
-        wheel.get(scheduledTick).add(scheduledTask);
+        wheel[scheduledTick].add(scheduledTask);
         return scheduledTask;
     }
 
     public void cancel(ScheduledTask task) {
-        wheel.get(task.scheduledTick).remove(task);
+        wheel[task.scheduledTick].remove(task);
     }
 
     public void tick(Consumer<T> consumer) {
-        Set<ScheduledTask> tasksInSlot = wheel.get(currentTick);
-        if (!tasksInSlot.isEmpty()) {
-            for (ScheduledTask task : tasksInSlot) {
+        Set<ScheduledTask> tasks = wheel[currentTick];
+        if (!tasks.isEmpty()) {
+            for (ScheduledTask task : tasks) {
                 final T value = task.run();
                 if (value != null) consumer.accept(value);
             }
-            tasksInSlot.clear();
+            tasks.clear();
         }
         currentTick = (currentTick + 1) % wheelSize;
     }
