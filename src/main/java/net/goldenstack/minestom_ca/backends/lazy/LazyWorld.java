@@ -193,7 +193,7 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    private record BlockChange(int sectionBlockIndex, CellRule.Action action) {
+    private record BlockChange(int sectionBlockIndex, List<CellRule.Action> actions) {
     }
 
     private record ScheduledChange(LSection section, BlockChange change) {
@@ -225,8 +225,8 @@ public final class LazyWorld implements AutomataWorld {
                 final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
                 final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
                 query.updateLocal(palette, x, y, z);
-                final CellRule.Action action = rules.process(query);
-                if (action != null) blockChanges.add(new BlockChange(blockIndex, action));
+                final List<CellRule.Action> actions = rules.process(query);
+                if (actions != null) blockChanges.add(new BlockChange(blockIndex, actions));
             }
             if (!blockChanges.isEmpty()) {
                 changes.offer(new SectionChange(section, palette, blockChanges));
@@ -270,7 +270,9 @@ public final class LazyWorld implements AutomataWorld {
         Palette palette = sectionChange.palette();
         LongList blockChanges = new LongArrayList();
         for (BlockChange currentChange : sectionChange.blockChanges()) {
-            processSectionAction(section, palette, currentChange, blockChanges);
+            for (CellRule.Action action : currentChange.actions()) {
+                processSectionAction(section, palette, currentChange.sectionBlockIndex(), action, blockChanges);
+            }
         }
         trackedSections.add(section);
         if (!blockChanges.isEmpty()) {
@@ -287,11 +289,9 @@ public final class LazyWorld implements AutomataWorld {
         }
     }
 
-    void processSectionAction(LSection section, Palette palette, BlockChange change, LongList blockChanges) {
-        final int sectionBlockIndex = change.sectionBlockIndex();
-        final CellRule.Action action = change.action();
+    void processSectionAction(LSection section, Palette palette, int sectionBlockIndex, CellRule.Action action, LongList blockChanges) {
         if (action.scheduleTick() > 0) {
-            wheelTimer.schedule(() -> new ScheduledChange(section, new BlockChange(sectionBlockIndex, action.immediate())), action.scheduleTick());
+            wheelTimer.schedule(() -> new ScheduledChange(section, new BlockChange(sectionBlockIndex, List.of(action.immediate()))), action.scheduleTick());
             return;
         }
         final int localX = sectionBlockIndexGetX(sectionBlockIndex);

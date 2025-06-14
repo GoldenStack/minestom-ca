@@ -13,11 +13,11 @@ public final class RuleSamples {
         private static final long VOID_STATE = Block.AIR.stateId();
         private static final long ALIVE_STATE = Block.WHITE_WOOL.stateId();
 
-        private static final Action KILL_ACTION = Action.UpdateState(CellRule.stateMap(0, VOID_STATE));
-        private static final Action REPRODUCE_ACTION = Action.UpdateState(CellRule.stateMap(0, ALIVE_STATE));
+        private static final List<Action> KILL_ACTION = List.of(Action.UpdateState(CellRule.stateMap(0, VOID_STATE)));
+        private static final List<Action> REPRODUCE_ACTION = List.of(Action.UpdateState(CellRule.stateMap(0, ALIVE_STATE)));
 
         @Override
-        public Action process(AutomataQuery query) {
+        public List<Action> process(AutomataQuery query) {
             final int neighbors = query.countNeighborsStateLimit(0, 4, Neighbors.MOORE_2D,
                     state -> state == ALIVE_STATE);
             final long currentState = query.stateAt(0, 0, 0, 0);
@@ -46,11 +46,12 @@ public final class RuleSamples {
         private static final long DIRT_STATE = Block.DIRT.stateId();
         private static final long GRASS_STATE = Block.GRASS_BLOCK.stateId();
 
-        private static final Action GROW_ACTION = Action.ConditionalSchedule(25,
-                CellRule.stateMap(0, DIRT_STATE), CellRule.stateMap(0, GRASS_STATE));
+        private static final List<Action> GROW_ACTION = List.of(
+                Action.ConditionalSchedule(25, CellRule.stateMap(0, DIRT_STATE), CellRule.stateMap(0, GRASS_STATE))
+        );
 
         @Override
-        public Action process(AutomataQuery query) {
+        public List<Action> process(AutomataQuery query) {
             final long currentState = query.stateAt(0, 0, 0, 0);
             if (currentState == DIRT_STATE) {
                 return GROW_ACTION;

@@ -59,7 +59,10 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        final CellRule rules = new RuleSamples.GameOfLife();
+        final CellRule rules = CellRule.rules(
+                new RuleSamples.GameOfLife(),
+                new RuleSamples.GrassGrow()
+        );
         //final CellRule rules = Program.fromFile(Path.of("rules/piston")).makeCellRule();
 
         // Print variables
