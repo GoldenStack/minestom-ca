@@ -74,15 +74,19 @@ public interface CellRule {
 
             @Override
             public List<Action> process(AutomataQuery query) {
+                List<Action> first = null;
                 List<Action> result = null;
                 for (CellRule rule : rules) {
                     List<Action> actions = rule.process(query);
-                    if (actions != null && !actions.isEmpty()) {
-                        if (result == null) result = new ArrayList<>(actions.size());
+                    if (actions == null || actions.isEmpty()) continue;
+                    if (first == null) {
+                        first = actions;
+                    } else {
+                        if (result == null) result = new ArrayList<>(first);
                         result.addAll(actions);
                     }
                 }
-                return result;
+                return result != null ? result : first;
             }
 
             @Override
