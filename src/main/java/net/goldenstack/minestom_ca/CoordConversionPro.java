@@ -1,6 +1,7 @@
 package net.goldenstack.minestom_ca;
 
-import net.minestom.server.coordinate.CoordConversion;
+import static net.minestom.server.coordinate.CoordConversion.globalToChunk;
+import static net.minestom.server.coordinate.CoordConversion.globalToSectionRelative;
 
 public final class CoordConversionPro {
     public static long sectionIndex(int sectionX, int sectionY, int sectionZ) {
@@ -31,9 +32,9 @@ public final class CoordConversionPro {
     }
 
     public static long sectionIndexGlobal(int x, int y, int z) {
-        final int sectionX = CoordConversion.globalToChunk(x);
-        final int sectionY = CoordConversion.globalToChunk(y);
-        final int sectionZ = CoordConversion.globalToChunk(z);
+        final int sectionX = globalToChunk(x);
+        final int sectionY = globalToChunk(y);
+        final int sectionZ = globalToChunk(z);
         return sectionIndex(sectionX, sectionY, sectionZ);
     }
 
@@ -54,15 +55,15 @@ public final class CoordConversionPro {
     }
 
     public static boolean globalSameChunk(int x1, int y1, int z1, int x2, int y2, int z2) {
-        return (CoordConversion.globalToChunk(x1) == CoordConversion.globalToChunk(x2) &&
-                CoordConversion.globalToChunk(y1) == CoordConversion.globalToChunk(y2) &&
-                CoordConversion.globalToChunk(z1) == CoordConversion.globalToChunk(z2));
+        return (globalToChunk(x1) == globalToChunk(x2) &&
+                globalToChunk(y1) == globalToChunk(y2) &&
+                globalToChunk(z1) == globalToChunk(z2));
     }
 
     public static boolean globalSectionBoundary(int x, int y, int z) {
-        final int relX = CoordConversion.globalToSectionRelative(x);
-        final int relY = CoordConversion.globalToSectionRelative(y);
-        final int relZ = CoordConversion.globalToSectionRelative(z);
+        final int relX = globalToSectionRelative(x);
+        final int relY = globalToSectionRelative(y);
+        final int relZ = globalToSectionRelative(z);
         // Check if any coordinate is at the edge of a section (0 or 15)
         return relX == 0 || relX == 15 ||
                 relY == 0 || relY == 15 ||

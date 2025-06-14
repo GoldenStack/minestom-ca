@@ -133,8 +133,7 @@ public final class LazyWorld implements Automata.World {
         }
 
         boolean sameSection(int x, int y, int z) {
-            if (section == null) return false;
-            return sectionIndexGlobal(x, y, z) == section.index;
+            return section != null && sectionIndexGlobal(x, y, z) == section.index;
         }
 
         LSection querySection(int x, int y, int z) {
