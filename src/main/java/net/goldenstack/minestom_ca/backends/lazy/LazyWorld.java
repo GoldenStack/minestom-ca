@@ -353,17 +353,20 @@ public final class LazyWorld implements Automata.World {
         final int globalZ = sectionIndexGetZ(section.index) * 16 + localZ;
         if (!actionPredicate(section, palette, globalX, globalY, globalZ, action)) return;
         // Set states
-        for (Int2LongMap.Entry changeEntry : action.updatedStates().int2LongEntrySet()) {
-            final int stateIndex = changeEntry.getIntKey();
-            final long value = changeEntry.getLongValue();
-            if (stateIndex == 0) {
-                if (palette != null) palette.set(localX, localY, localZ, (int) value);
-                // Encode block change for packet
-                final long blockState = value << 12;
-                final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
-                blockChanges.add(blockState | pos);
-            } else {
-                section.setState(localX, localY, localZ, stateIndex - 1, value);
+        final Int2LongMap updatedStates = action.updatedStates();
+        if (updatedStates != null) {
+            for (Int2LongMap.Entry changeEntry : updatedStates.int2LongEntrySet()) {
+                final int stateIndex = changeEntry.getIntKey();
+                final long value = changeEntry.getLongValue();
+                if (stateIndex == 0) {
+                    if (palette != null) palette.set(localX, localY, localZ, (int) value);
+                    // Encode block change for packet
+                    final long blockState = value << 12;
+                    final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
+                    blockChanges.add(blockState | pos);
+                } else {
+                    section.setState(localX, localY, localZ, stateIndex - 1, value);
+                }
             }
         }
         // Register the point for the next tick
