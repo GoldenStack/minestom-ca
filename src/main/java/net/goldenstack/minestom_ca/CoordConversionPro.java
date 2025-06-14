@@ -38,7 +38,7 @@ public final class CoordConversionPro {
     }
 
     public static int sectionBlockIndex(int x, int y, int z) {
-        return (y * 16 + z) * 16 + x;
+        return (y << 8) | (z << 4) | x;
     }
 
     public static int sectionBlockIndexGetX(int index) {

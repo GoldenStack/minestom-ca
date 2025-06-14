@@ -9,9 +9,6 @@ import it.unimi.dsi.fastutil.longs.LongList;
 import net.goldenstack.minestom_ca.AutomataQuery;
 import net.goldenstack.minestom_ca.AutomataWorld;
 import net.goldenstack.minestom_ca.CellRule;
-import net.goldenstack.minestom_ca.Neighbors;
-import net.minestom.server.coordinate.CoordConversion;
-import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
@@ -25,6 +22,8 @@ import java.lang.foreign.ValueLayout;
 import java.util.*;
 
 import static net.goldenstack.minestom_ca.CoordConversionPro.*;
+import static net.minestom.server.coordinate.CoordConversion.globalToChunk;
+import static net.minestom.server.coordinate.CoordConversion.globalToSectionRelative;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class LazyWorld implements AutomataWorld {
@@ -89,24 +88,24 @@ public final class LazyWorld implements AutomataWorld {
             this.localX = x;
             this.localY = y;
             this.localZ = z;
-            this.localChunkX = CoordConversion.globalToChunk(x);
-            this.localChunkY = CoordConversion.globalToChunk(y);
-            this.localChunkZ = CoordConversion.globalToChunk(z);
+            this.localChunkX = globalToChunk(x);
+            this.localChunkY = globalToChunk(y);
+            this.localChunkZ = globalToChunk(z);
             if (this.palette == null) {
                 this.palette = paletteAtSection(localChunkX, localChunkY, localChunkZ);
             }
         }
 
         int queryBlockState(int x, int y, int z) {
-            if (CoordConversion.globalToChunk(x) != localChunkX ||
-                    CoordConversion.globalToChunk(y) != localChunkY ||
-                    CoordConversion.globalToChunk(z) != localChunkZ) {
+            if (globalToChunk(x) != localChunkX ||
+                    globalToChunk(y) != localChunkY ||
+                    globalToChunk(z) != localChunkZ) {
                 return globalBlockState(x, y, z);
             }
             if (palette == null) return 0;
-            final int localX = CoordConversion.globalToSectionRelative(x);
-            final int localY = CoordConversion.globalToSectionRelative(y);
-            final int localZ = CoordConversion.globalToSectionRelative(z);
+            final int localX = globalToSectionRelative(x);
+            final int localY = globalToSectionRelative(y);
+            final int localZ = globalToSectionRelative(z);
             return palette.get(localX, localY, localZ);
         }
 
@@ -118,9 +117,9 @@ public final class LazyWorld implements AutomataWorld {
             if (index == 0) return queryBlockState(x, y, z);
             final LSection section = sectionGlobal(x, y, z);
             if (section == null) return 0;
-            final int localX = CoordConversion.globalToSectionRelative(x);
-            final int localY = CoordConversion.globalToSectionRelative(y);
-            final int localZ = CoordConversion.globalToSectionRelative(z);
+            final int localX = globalToSectionRelative(x);
+            final int localY = globalToSectionRelative(y);
+            final int localZ = globalToSectionRelative(z);
             return section.getState(localX, localY, localZ, index - 1);
         }
 
@@ -132,9 +131,9 @@ public final class LazyWorld implements AutomataWorld {
             final LSection section = sectionGlobal(x, y, z);
             final int blockState = queryBlockState(x, y, z);
             if (section == null) return CellRule.stateMap(0, blockState);
-            final int localX = CoordConversion.globalToSectionRelative(x);
-            final int localY = CoordConversion.globalToSectionRelative(y);
-            final int localZ = CoordConversion.globalToSectionRelative(z);
+            final int localX = globalToSectionRelative(x);
+            final int localY = globalToSectionRelative(y);
+            final int localZ = globalToSectionRelative(z);
             Int2LongMap indexes = new Int2LongOpenHashMap();
             indexes.put(0, blockState);
             for (int i = 0; i < rules.states().size(); i++) {
@@ -269,9 +268,9 @@ public final class LazyWorld implements AutomataWorld {
             final int y = currentChange.y();
             final int z = currentChange.z();
             if (currentChange.action() instanceof CellRule.Action.UpdateState(Int2LongMap states)) {
-                final int localX = CoordConversion.globalToSectionRelative(x);
-                final int localY = CoordConversion.globalToSectionRelative(y);
-                final int localZ = CoordConversion.globalToSectionRelative(z);
+                final int localX = globalToSectionRelative(x);
+                final int localY = globalToSectionRelative(y);
+                final int localZ = globalToSectionRelative(z);
                 // Set states
                 for (Int2LongMap.Entry changeEntry : states.int2LongEntrySet()) {
                     final int stateIndex = changeEntry.getIntKey();
@@ -332,9 +331,9 @@ public final class LazyWorld implements AutomataWorld {
     public void handlePlacement(int x, int y, int z, Int2LongMap properties) {
         LSection section = sectionGlobalCompute(x, y, z);
         assert section != null;
-        final int localX = CoordConversion.globalToSectionRelative(x);
-        final int localY = CoordConversion.globalToSectionRelative(y);
-        final int localZ = CoordConversion.globalToSectionRelative(z);
+        final int localX = globalToSectionRelative(x);
+        final int localY = globalToSectionRelative(y);
+        final int localZ = globalToSectionRelative(z);
         for (int i = 0; i < rules.states().size(); i++) {
             final long value = properties.getOrDefault(i + 1, 0);
             section.setState(localX, localY, localZ, i, value);
@@ -370,22 +369,26 @@ public final class LazyWorld implements AutomataWorld {
             trackedSections.add(startSection);
         }
         final boolean boundary = globalSectionBoundary(x, y, z);
-        for (Point offset : Neighbors.MOORE_3D_SELF) {
-            final int nX = x + offset.blockX();
-            final int nY = y + offset.blockY();
-            final int nZ = z + offset.blockZ();
-            LSection section;
-            if (!boundary) {
-                section = startSection;
-            } else {
-                section = sectionGlobalCompute(nX, nY, nZ);
-                trackedSections.add(section);
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    final int nX = x + dx;
+                    final int nY = y + dy;
+                    final int nZ = z + dz;
+                    LSection section;
+                    if (!boundary) {
+                        section = startSection;
+                    } else {
+                        section = sectionGlobalCompute(nX, nY, nZ);
+                        trackedSections.add(section);
+                    }
+                    final int localX = globalToSectionRelative(nX);
+                    final int localY = globalToSectionRelative(nY);
+                    final int localZ = globalToSectionRelative(nZ);
+                    final int blockIndex = sectionBlockIndex(localX, localY, localZ);
+                    section.trackedBlocks.set(blockIndex);
+                }
             }
-            final int localX = CoordConversion.globalToSectionRelative(nX);
-            final int localY = CoordConversion.globalToSectionRelative(nY);
-            final int localZ = CoordConversion.globalToSectionRelative(nZ);
-            final int blockIndex = sectionBlockIndex(localX, localY, localZ);
-            section.trackedBlocks.set(blockIndex);
         }
     }
 
