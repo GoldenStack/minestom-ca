@@ -108,6 +108,7 @@ public final class LazyWorld implements AutomataWorld {
 
         @Override
         public long state(int index) {
+            if (this.localStates != null) return localStates[index];
             final int localX = globalToSectionRelative(this.localX);
             final int localY = globalToSectionRelative(this.localY);
             final int localZ = globalToSectionRelative(this.localZ);
