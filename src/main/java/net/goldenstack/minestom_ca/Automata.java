@@ -182,7 +182,7 @@ public final class Automata {
         /**
          * Simulates one tick of progress for the world.
          */
-        void tick();
+        Metrics tick();
 
         /**
          * Handles an external block change (e.g. block place or break)
@@ -208,5 +208,27 @@ public final class Automata {
         CellRule rules();
 
         Query query();
+    }
+
+    public record Metrics(
+            int processedSections,
+            int processedBlocks,
+            int modifiedBlocks
+    ) {
+        public static final Metrics EMPTY = new Metrics(0, 0, 0);
+
+        public Metrics {
+            if (processedSections < 0 || processedBlocks < 0 || modifiedBlocks < 0) {
+                throw new IllegalArgumentException("Metrics values cannot be negative");
+            }
+        }
+
+        public Metrics add(Metrics other) {
+            return new Metrics(
+                    this.processedSections + other.processedSections,
+                    this.processedBlocks + other.processedBlocks,
+                    this.modifiedBlocks + other.modifiedBlocks
+            );
+        }
     }
 }

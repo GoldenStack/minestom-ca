@@ -4,11 +4,10 @@ import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.goldenstack.minestom_ca.Automata;
 import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
-import net.goldenstack.minestom_ca.rules.RuleSamples;
+import net.goldenstack.minestom_ca.rules.BlockPusher;
 import net.kyori.adventure.nbt.NumberBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.adventure.audience.Audiences;
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Pos;
@@ -22,6 +21,7 @@ import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
+import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
 import net.minestom.server.instance.block.Block;
@@ -59,8 +59,7 @@ public final class Main {
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
         final Automata.CellRule rules = Automata.CellRule.rules(
-                new RuleSamples.GameOfLife(),
-                new RuleSamples.GrassGrow()
+                new BlockPusher()
         );
         //final CellRule rules = Program.fromFile(Path.of("rules/piston")).makeCellRule();
 
@@ -134,13 +133,33 @@ public final class Main {
 
         globalEventHandler.addListener(InstanceTickEvent.class, event -> {
             if (!RUNNING.get()) return;
+            final Instance eventInstance = event.getInstance();
             final long start = System.nanoTime();
 
-            Automata.World world = Automata.World.get(event.getInstance());
-            world.tick();
+            Automata.World world = Automata.World.get(eventInstance);
+            final Automata.Metrics metrics = world.tick();
 
             final long duration = System.nanoTime() - start;
-            Audiences.all().sendPlayerListHeader(Component.text("MSPT " + String.format("%.2f", duration / 1.0e6) + "ms"));
+            final double mspt = duration / 1.0e6;
+
+            // Calculate modification ratio (percentage of processed blocks that were modified)
+            String ratio = "0%";
+            if (metrics.processedBlocks() > 0) {
+                final int modRatio = (metrics.modifiedBlocks() * 100) / metrics.processedBlocks();
+                ratio = modRatio + "%";
+            }
+
+            Component header = Component.text()
+                    .append(Component.text("§b■ §fMSPT: §a" + String.format("%.2f", mspt) + "ms"))
+                    .append(Component.newline())
+                    .append(Component.text("§b■ §fProcessed Sections: §a" + metrics.processedSections()))
+                    .append(Component.newline())
+                    .append(Component.text("§b■ §fProcessed Blocks: §a" + metrics.processedBlocks()))
+                    .append(Component.newline())
+                    .append(Component.text("§b■ §fModified Blocks: §a" + metrics.modifiedBlocks() + " §f(§a" + ratio + "§f)"))
+                    .build();
+
+            eventInstance.sendPlayerListHeader(header);
         });
 
         minecraftServer.start("0.0.0.0", 25565);

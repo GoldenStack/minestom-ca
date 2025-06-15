@@ -235,11 +235,14 @@ public final class LazyWorld implements Automata.World {
     }
 
     @Override
-    public void tick() {
-        if (trackedSections.isEmpty()) return;
+    public Automata.Metrics tick() {
+        if (trackedSections.isEmpty()) return Automata.Metrics.EMPTY;
+        Automata.Metrics metrics = Automata.Metrics.EMPTY;
         for (int i = 0; i < LIGHT_SPEED; i++) {
-            singleTick();
+            final Automata.Metrics tickMetrics = singleTick();
+            metrics = metrics.add(tickMetrics);
         }
+        return metrics;
     }
 
     private record BlockChange(int sectionBlockIndex, List<Automata.CellRule.Action> actions) {
@@ -251,14 +254,18 @@ public final class LazyWorld implements Automata.World {
     private record SectionChange(LSection section, Palette palette, List<BlockChange> blockChanges) {
     }
 
-    private void singleTick() {
+    private Automata.Metrics singleTick() {
         Queue<SectionChange> changes = new ArrayDeque<>();
-        computeChanges(changes);
+        final Automata.Metrics metrics = computeChanges(changes);
         computeTimedChanges(changes);
         applyChanges(changes);
+        return metrics;
     }
 
-    private void computeChanges(Queue<SectionChange> changes) {
+    private Automata.Metrics computeChanges(Queue<SectionChange> changes) {
+        final int processedSections = trackedSections.size();
+        int processedBlocks = 0;
+        int modifiedBlocks = 0;
         for (LSection section : trackedSections) {
             List<BlockChange> blockChanges = new ArrayList<>();
             final long sectionIndex = section.index;
@@ -274,12 +281,16 @@ public final class LazyWorld implements Automata.World {
             for (int blockIndex = trackedBlocks.nextSetBit(0);
                  blockIndex >= 0;
                  blockIndex = trackedBlocks.nextSetBit(blockIndex + 1)) {
+                processedBlocks++;
                 final int x = sectionBlockIndexGetX(blockIndex) + sectionX * 16;
                 final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
                 final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
                 query.updateLocal(section, palette, x, y, z);
                 final List<Automata.CellRule.Action> actions = rules.process(query);
-                if (actions != null) blockChanges.add(new BlockChange(blockIndex, actions));
+                if (actions != null) {
+                    modifiedBlocks++;
+                    blockChanges.add(new BlockChange(blockIndex, actions));
+                }
             }
             if (!blockChanges.isEmpty()) {
                 changes.offer(new SectionChange(section, palette, blockChanges));
@@ -287,6 +298,7 @@ public final class LazyWorld implements Automata.World {
             trackedBlocks.clear();
         }
         trackedSections.clear();
+        return new Automata.Metrics(processedSections, processedBlocks, modifiedBlocks);
     }
 
     private void computeTimedChanges(Queue<SectionChange> changes) {
