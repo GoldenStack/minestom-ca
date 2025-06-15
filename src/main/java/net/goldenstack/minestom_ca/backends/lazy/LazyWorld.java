@@ -264,11 +264,11 @@ public final class LazyWorld implements Automata.World {
             if (indexes.length == 1) return Map.of(Automata.CellRule.BLOCK_STATE.name(), indexes[0]);
             Map<String, Long> names = new HashMap<>();
             for (int i = 0; i < variables.size(); i++) {
+                final String name = variables.get(i + 1);
                 final long value = indexes[i];
-                final String name = variables.get(i);
                 names.put(name, value);
             }
-            return Map.copyOf(names);
+            return names;
         }
     }
 
@@ -439,7 +439,7 @@ public final class LazyWorld implements Automata.World {
         if (!actionPredicate(section, palette, globalX, globalY, globalZ, action)) return;
         // Clear states
         if (action.clear()) {
-            for (int i = 0; i < rules.states().size(); i++) {
+            for (int i = 0; i < orderedStates.size(); i++) {
                 section.setState(localX, localY, localZ, i, 0);
             }
             if (palette != null) palette.set(localX, localY, localZ, 0);
@@ -483,7 +483,7 @@ public final class LazyWorld implements Automata.World {
         final int localX = globalToSectionRelative(x);
         final int localY = globalToSectionRelative(y);
         final int localZ = globalToSectionRelative(z);
-        for (Automata.CellRule.State state : rules.states()) {
+        for (Automata.CellRule.State state : orderedStates) {
             final int index = rulesMapping.get(state);
             if (index == 0) continue;
             final long value = properties.getOrDefault(state, 0L);
@@ -557,9 +557,11 @@ public final class LazyWorld implements Automata.World {
     private int globalBlockState(int x, int y, int z) {
         final Chunk chunk = instance.getChunkAt(x, z);
         if (chunk == null) return 0;
-        final Block block = chunk.getBlock(x, y, z, Block.Getter.Condition.TYPE);
-        assert block != null;
-        return block.stateId();
+        synchronized (chunk) {
+            final Block block = chunk.getBlock(x, y, z, Block.Getter.Condition.TYPE);
+            assert block != null;
+            return block.stateId();
+        }
     }
 
     @Override

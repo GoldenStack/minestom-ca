@@ -24,9 +24,12 @@ public final class Main {
         MinecraftServer minecraftServer = MinecraftServer.init();
 
         // Register commands
-        MinecraftServer.getCommandManager().register(new CACommands.Start());
-        MinecraftServer.getCommandManager().register(new CACommands.Stop());
-        MinecraftServer.getCommandManager().register(new CACommands.State());
+        MinecraftServer.getCommandManager().register(
+                new CACommands.Start(),
+                new CACommands.Stop(),
+                new CACommands.State(),
+                new CACommands.ListStates()
+        );
 
         // Create an instance
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();

@@ -3,6 +3,7 @@ package net.goldenstack.minestom_ca.server;
 import net.goldenstack.minestom_ca.Automata;
 import net.goldenstack.minestom_ca.AutomataImpl;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.command.builder.CommandContext;
@@ -81,6 +82,37 @@ public final class CACommands {
                     suggestion.addEntry(new SuggestionEntry(state.name(), Component.empty()));
                 }
             };
+        }
+    }
+
+    /**
+     * A command that lists all available states in the current automata world.
+     */
+    public static final class ListStates extends Command {
+        public ListStates() {
+            super("liststates");
+            setCondition(Conditions::playerOnly);
+            setDefaultExecutor(this::execute);
+        }
+
+        private void execute(CommandSender sender, CommandContext context) {
+            Player player = (Player) sender;
+            final Automata.World world = Automata.World.get(player.getInstance());
+            if (world == null) {
+                player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
+                return;
+            }
+
+            final Set<Automata.CellRule.State> states = world.rules().states();
+            if (states.isEmpty()) {
+                player.sendMessage(Component.text("No states defined in this automata world.").color(NamedTextColor.YELLOW));
+                return;
+            }
+            player.sendMessage(Component.text("Available states:").color(NamedTextColor.GOLD));
+            for (Automata.CellRule.State state : states) {
+                player.sendMessage(Component.text(" • " + state.name() + " (" + state.bitSize() + " bits)")
+                        .color(NamedTextColor.WHITE));
+            }
         }
     }
 }
