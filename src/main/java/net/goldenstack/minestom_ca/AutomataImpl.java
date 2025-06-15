@@ -23,6 +23,7 @@ import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.component.CustomData;
+import net.minestom.server.tag.Tag;
 
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class AutomataImpl {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
+    public static final Tag<Boolean> AUTOMATA_DEBUG = Tag.Boolean("automata_debug").defaultValue(false);
     public static final EventNode<InstanceEvent> AUTOMATA_EVENT_NODE = EventNode.type("automata", EventFilter.INSTANCE)
             .addListener(PlayerBlockPlaceEvent.class, event -> {
                 final Point point = event.getBlockPosition();
@@ -63,6 +65,8 @@ public final class AutomataImpl {
                 final Player player = event.getPlayer();
                 final Point point = event.getBlockPosition();
                 if (event.getHand() != PlayerHand.MAIN) return;
+                if (!player.getItemInMainHand().getTag(AUTOMATA_DEBUG)) return;
+
                 Automata.World world = Automata.World.get(player.getInstance());
                 final Map<String, Long> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
                 player.sendMessage(Component.text()

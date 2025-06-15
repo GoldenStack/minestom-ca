@@ -1,8 +1,10 @@
 package net.goldenstack.minestom_ca.server;
 
 import net.goldenstack.minestom_ca.Automata;
+import net.goldenstack.minestom_ca.AutomataImpl;
 import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
 import net.goldenstack.minestom_ca.rules.BlockPusher;
+import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
@@ -61,6 +63,11 @@ public final class Main {
             inventory.addItemStack(ItemStack.of(Material.RED_WOOL));
             inventory.addItemStack(ItemStack.of(Material.REDSTONE_BLOCK));
             inventory.addItemStack(ItemStack.of(Material.OAK_LOG));
+
+            inventory.addItemStack(ItemStack.of(Material.STICK)
+                    .withTag(AutomataImpl.AUTOMATA_DEBUG, true)
+                    .withCustomName(Component.text("Automata Debug")));
+
 
             event.setSpawningInstance(instance);
             player.setRespawnPoint(new Pos(0, 13, 0));
