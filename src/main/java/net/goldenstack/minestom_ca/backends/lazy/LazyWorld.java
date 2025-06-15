@@ -44,47 +44,44 @@ public final class LazyWorld implements Automata.World {
     private final class LSection {
         private static final long BLOCKS_PER_SECTION = 16 * 16 * 16;
         private final long index;
-        private MemorySegment states;
+        private MemorySegment[] stateSegments;
         // Block indexes to track next tick
         private final BitSet trackedBlocks = new BitSet((int) BLOCKS_PER_SECTION);
 
         LSection(final long index) {
             this.index = index;
-            final long singleBlockSize = (long) rules.states().size() * Long.BYTES;
-            final long totalSize = BLOCKS_PER_SECTION * singleBlockSize;
-            this.states = Arena.ofAuto().allocate(totalSize);
+            final int stateCount = rules.states().size();
+            this.stateSegments = new MemorySegment[stateCount];
+            final long segmentSize = BLOCKS_PER_SECTION * Long.BYTES;
+            for (int i = 0; i < stateCount; i++) {
+                this.stateSegments[i] = Arena.ofAuto().allocate(segmentSize);
+            }
         }
 
         long getState(int x, int y, int z, int stateIndex) {
-            final long index = index(x, y, z, stateIndex);
-            return states.get(ValueLayout.JAVA_LONG, index);
+            final long offset = blockOffset(x, y, z);
+            return stateSegments[stateIndex].get(ValueLayout.JAVA_LONG, offset);
         }
 
         void setState(int x, int y, int z, int stateIndex, long value) {
-            final long index = index(x, y, z, stateIndex);
-            states.set(ValueLayout.JAVA_LONG, index, value);
+            final long offset = blockOffset(x, y, z);
+            stateSegments[stateIndex].set(ValueLayout.JAVA_LONG, offset, value);
         }
 
         boolean anyState(int x, int y, int z) {
-            final int blockIndex = sectionBlockIndex(x, y, z);
-            for (int i = 0; i < rules.states().size(); i++) {
-                final long index = index(blockIndex, i);
-                final long value = states.get(ValueLayout.JAVA_LONG, index);
-                if (value != 0) return true;
+            final long offset = blockOffset(x, y, z);
+            for (MemorySegment segment : stateSegments) {
+                if (segment.get(ValueLayout.JAVA_LONG, offset) != 0) return true;
             }
             return false;
         }
 
-        long index(int x, int y, int z, int stateIndex) {
+        private long blockOffset(int x, int y, int z) {
             if (x < 0 || x >= 16 || y < 0 || y >= 16 || z < 0 || z >= 16) {
                 throw new IndexOutOfBoundsException("Coordinates out of bounds for section: " + x + ", " + y + ", " + z);
             }
             final int blockIndex = sectionBlockIndex(x, y, z);
-            return index(blockIndex, stateIndex);
-        }
-
-        long index(int sectionBlockIndex, int stateIndex) {
-            return ((long) sectionBlockIndex * rules.states().size() + stateIndex) * Long.BYTES;
+            return (long) blockIndex * Long.BYTES;
         }
     }
 
@@ -260,7 +257,7 @@ public final class LazyWorld implements Automata.World {
 
     @Override
     public Automata.Metrics tick() {
-        if (trackedSections.isEmpty()) return Automata.Metrics.EMPTY;
+        if (trackedSections.isEmpty() && wheelTimer.isEmpty()) return Automata.Metrics.EMPTY;
         Automata.Metrics metrics = Automata.Metrics.EMPTY;
         for (int i = 0; i < LIGHT_SPEED; i++) {
             final Automata.Metrics tickMetrics = singleTick();
@@ -537,7 +534,7 @@ public final class LazyWorld implements Automata.World {
 
         // Update section state buffers
         for (LSection section : new ArrayList<>(loadedSections.values())) {
-            section.states = migrateSection(section, oldToNewIndex, newStates.size());
+            section.stateSegments = migrateSection(section, oldToNewIndex, newStates.size());
             section.trackedBlocks.clear();
         }
 
@@ -574,7 +571,7 @@ public final class LazyWorld implements Automata.World {
             final int sectionZ = sectionIndexGetZ(section.index);
             final Palette palette = paletteAtSection(sectionX, sectionY, sectionZ);
             if (palette == null) continue;
-            if (palette.count() == 0 && emptySegment(section.states)) continue;
+            if (palette.count() == 0 && emptySegments(section.stateSegments)) continue;
             palette.getAll((x, y, z, value) -> {
                 final boolean tracked = value > 0 && newRules.tracked(Block.fromStateId(value));
                 if (tracked || section.anyState(x, y, z)) {
@@ -620,32 +617,29 @@ public final class LazyWorld implements Automata.World {
         return remapped;
     }
 
-    private MemorySegment migrateSection(LSection section, Int2IntMap indexMapping, int newStateCount) {
-        final long singleBlockSize = (long) newStateCount * Long.BYTES;
-        final long totalSize = LSection.BLOCKS_PER_SECTION * singleBlockSize;
-        MemorySegment newStates = Arena.ofAuto().allocate(totalSize);
-        // Copy and map states from old format to new format
+    private MemorySegment[] migrateSection(LSection section, Int2IntMap indexMapping, int newStateCount) {
+        MemorySegment[] newStateSegments = new MemorySegment[newStateCount];
+        final long segmentSize = LSection.BLOCKS_PER_SECTION * Long.BYTES;
+        // Reuse existing segments for states that exist in both old and new rules
         for (Int2IntMap.Entry entry : indexMapping.int2IntEntrySet()) {
             final int oldIndex = entry.getIntKey();
             final int newIndex = entry.getIntValue();
-            for (int y = 0; y < 16; y++) {
-                for (int z = 0; z < 16; z++) {
-                    for (int x = 0; x < 16; x++) {
-                        final long stateValue = section.getState(x, y, z, oldIndex);
-                        // Calculate new index in memory segment
-                        final int blockIndex = sectionBlockIndex(x, y, z);
-                        final long newOffset = ((long) blockIndex * newStateCount + newIndex) * Long.BYTES;
-                        newStates.set(ValueLayout.JAVA_LONG, newOffset, stateValue);
-                    }
-                }
+            newStateSegments[newIndex] = section.stateSegments[oldIndex];
+        }
+        // Initialize new segments for states that didn't exist in the old rules
+        for (int i = 0; i < newStateCount; i++) {
+            if (newStateSegments[i] == null) {
+                newStateSegments[i] = Arena.ofAuto().allocate(segmentSize);
             }
         }
-        return newStates;
+        return newStateSegments;
     }
 
-    private boolean emptySegment(MemorySegment segment) {
-        for (int i = 0; i < segment.byteSize(); i += Long.BYTES) {
-            if (segment.get(ValueLayout.JAVA_LONG, i) != 0) return false;
+    private boolean emptySegments(MemorySegment[] segments) {
+        for (MemorySegment segment : segments) {
+            for (long i = 0; i < segment.byteSize(); i += Long.BYTES) {
+                if (segment.get(ValueLayout.JAVA_LONG, i) != 0) return false;
+            }
         }
         return true;
     }

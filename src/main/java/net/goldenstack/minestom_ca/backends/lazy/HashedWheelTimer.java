@@ -59,6 +59,13 @@ public final class HashedWheelTimer<T> {
         return result;
     }
 
+    public boolean isEmpty() {
+        for (Set<ScheduledTask> tasks : wheel) {
+            if (!tasks.isEmpty()) return false;
+        }
+        return true;
+    }
+
     public final class ScheduledTask {
         private final long id;
         private final int scheduledTick;
