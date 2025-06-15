@@ -6,6 +6,7 @@ import net.goldenstack.minestom_ca.Automata.CellRule;
 import net.goldenstack.minestom_ca.Automata.Query;
 import net.goldenstack.minestom_ca.Neighbors;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.utils.Direction;
 
@@ -40,6 +41,20 @@ public final class BlockPusher implements CellRule {
         return state == AIR_STATE;
     }
 
+    private static final List<Point>[] WAKEUP_POINTS_CACHE = new List[Direction.values().length];
+
+    static {
+        for (Direction dir : DIRECTIONS) {
+            final Point dirPoint = dir.vec();
+            final int nx = dirPoint.blockX(), ny = dirPoint.blockY(), nz = dirPoint.blockZ();
+            WAKEUP_POINTS_CACHE[dir.ordinal()] = List.of(Neighbors.SELF, dirPoint, new Vec(-nx, -ny, -nz));
+        }
+    }
+
+    List<Point> wakeupPoints(Direction direction) {
+        return WAKEUP_POINTS_CACHE[direction.ordinal()];
+    }
+
     @Override
     public List<Action> process(Query query) {
         final long blockState = query.state(0);
@@ -60,7 +75,7 @@ public final class BlockPusher implements CellRule {
                 if (direction(neighborDirValue) == dir.opposite()) {
                     final long neighborStrength = query.stateAt(nx, ny, nz, strengthIndex);
                     if (neighborStrength > 0) {
-                        // Air becomes the neighbor's block
+                        // Become the neighbor's block
                         long[] neighborStates = query.queryIndexes(nx, ny, nz);
                         final long newStrength = neighborStrength - 1;
                         if (newStrength > 0) {
@@ -76,7 +91,7 @@ public final class BlockPusher implements CellRule {
                         }
                         return List.of(new Action(
                                 updatedState, true,
-                                Neighbors.MOORE_3D_SELF,
+                                wakeupPoints(dir),
                                 null,
                                 0
                         ));
@@ -95,7 +110,7 @@ public final class BlockPusher implements CellRule {
                 clearState.put(0, AIR_STATE);
                 return List.of(new Action(
                         clearState, true,
-                        List.of(Neighbors.SELF, dirPoint),
+                        wakeupPoints(pushDir),
                         null,
                         0
                 ));
@@ -103,7 +118,7 @@ public final class BlockPusher implements CellRule {
                 // We hit a block - try to propagate the push to it
                 return List.of(new Action(
                         null, false,
-                        List.of(Neighbors.SELF, dirPoint),
+                        wakeupPoints(pushDir),
                         null,
                         0
                 ));
@@ -123,7 +138,12 @@ public final class BlockPusher implements CellRule {
                         Int2LongMap updatedState = new Int2LongOpenHashMap();
                         updatedState.put(directionIndex, neighborDirValue);
                         updatedState.put(strengthIndex, neighborStrength);
-                        return List.of(Action.UpdateState(updatedState));
+                        return List.of(new Action(
+                                updatedState, false,
+                                wakeupPoints(dir),
+                                null,
+                                0
+                        ));
                     }
                 }
             }
