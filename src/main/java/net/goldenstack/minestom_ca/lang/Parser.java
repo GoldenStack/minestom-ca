@@ -1,5 +1,6 @@
 package net.goldenstack.minestom_ca.lang;
 
+import net.goldenstack.minestom_ca.Automata;
 import net.goldenstack.minestom_ca.lang.Scanner.Token;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
@@ -17,6 +18,7 @@ public final class Parser {
     private int index;
 
     private final Set<String> properties = new HashSet<>();
+    private final Set<Automata.CellRule.State> states = new HashSet<>();
     private final List<Rule> rules = new ArrayList<>();
 
     public Parser() {
@@ -249,11 +251,13 @@ public final class Parser {
     }
 
     public Program program() {
-        return new Program(rules, properties);
+        return new Program(rules, states);
     }
 
     void registerState(String identifier) {
-        this.properties.add(identifier);
+        if (properties.add(identifier)) {
+            states.add(new Automata.CellRule.State(identifier, 64));
+        }
     }
 
     <T extends Token> T consume(Class<T> type, String message) {

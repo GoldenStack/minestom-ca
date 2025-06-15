@@ -11,6 +11,7 @@ import net.minestom.server.utils.Direction;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class BlockPusher implements CellRule {
     private static final long AIR_STATE = Block.AIR.stateId();
@@ -136,7 +137,7 @@ public final class BlockPusher implements CellRule {
     }
 
     @Override
-    public List<State> states() {
-        return List.of(PUSH_DIRECTION, PUSH_STRENGTH);
+    public Set<State> states() {
+        return Set.of(PUSH_DIRECTION, PUSH_STRENGTH);
     }
 }

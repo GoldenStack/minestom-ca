@@ -21,7 +21,7 @@ public final class Automata {
 
         boolean tracked(Block block);
 
-        List<State> states();
+        Set<State> states();
 
         record State(String name, int bitSize) {
             public State {
@@ -62,10 +62,8 @@ public final class Automata {
         }
 
         static CellRule rules(CellRule... rules) {
-            List<State> states = new ArrayList<>();
-            for (CellRule rule : rules) {
-                states.addAll(rule.states());
-            }
+            Set<State> states = new HashSet<>();
+            for (CellRule rule : rules) states.addAll(rule.states());
             return new CellRule() {
                 @Override
                 public void init(Map<State, Integer> mapping) {
@@ -98,7 +96,7 @@ public final class Automata {
                 }
 
                 @Override
-                public List<State> states() {
+                public Set<State> states() {
                     return states;
                 }
             };
@@ -110,11 +108,11 @@ public final class Automata {
     }
 
     public interface Query {
-        int stateIndex(String state);
+        int stateIndex(CellRule.State state);
 
         long state(int index);
 
-        default long state(String state) {
+        default long state(CellRule.State state) {
             final int index = stateIndex(state);
             return state(index);
         }
@@ -123,7 +121,7 @@ public final class Automata {
 
         long[] queryIndexes();
 
-        default long stateAt(int x, int y, int z, String state) {
+        default long stateAt(int x, int y, int z, CellRule.State state) {
             final int index = stateIndex(state);
             return stateAt(x, y, z, index);
         }
@@ -186,11 +184,11 @@ public final class Automata {
         /**
          * Handles an external block change (e.g. block place or break)
          */
-        void handlePlacement(int x, int y, int z, Int2LongMap properties);
+        void handlePlacement(int x, int y, int z, Map<CellRule.State, Long> properties);
 
         default void handlePlacement(Point point, Block block) {
             handlePlacement(point.blockX(), point.blockY(), point.blockZ(),
-                    CellRule.stateMap(0, block.stateId()));
+                    Map.of(CellRule.BLOCK_STATE, (long) block.stateId()));
         }
 
         void handleChunkLoad(int chunkX, int chunkZ);

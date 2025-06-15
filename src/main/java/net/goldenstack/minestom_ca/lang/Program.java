@@ -9,12 +9,11 @@ import net.minestom.server.instance.block.Block;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public record Program(List<Rule> rules, Set<String> variables) {
+public record Program(List<Rule> rules, Set<Automata.CellRule.State> variables) {
     public Program {
         rules = List.copyOf(rules);
         variables = Set.copyOf(variables);
@@ -40,12 +39,16 @@ public record Program(List<Rule> rules, Set<String> variables) {
         return parser.program();
     }
 
-    public Automata.CellRule makeCellRule() {
-        List<Automata.CellRule.State> states = new ArrayList<>();
-        for (String state : variables) {
-            states.add(new Automata.CellRule.State(state, 64));
+    private Automata.CellRule.State var(String name) {
+        for (Automata.CellRule.State state : variables) {
+            if (state.name().equals(name)) {
+                return state;
+            }
         }
+        throw new IllegalArgumentException("Unknown variable: " + name);
+    }
 
+    public Automata.CellRule makeCellRule() {
         boolean[] trackedStates = new boolean[Short.MAX_VALUE];
         for (Rule rule : rules) {
             RuleAnalysis.queryExpression(rule.condition(), Rule.Expression.Literal.class, literal -> {
@@ -69,7 +72,7 @@ public record Program(List<Rule> rules, Set<String> variables) {
                             case Rule.Result.SetState set -> {
                                 final String state = set.state();
                                 final long value = expression(0, 0, 0, query, set.expression());
-                                block.put(query.stateIndex(state), value);
+                                block.put(query.stateIndex(var(state)), value);
                             }
                             case Rule.Result.BlockCopy blockCopy -> {
                                 final int blockX = blockCopy.x();
@@ -105,8 +108,8 @@ public record Program(List<Rule> rules, Set<String> variables) {
             }
 
             @Override
-            public List<State> states() {
-                return states;
+            public Set<State> states() {
+                return variables;
             }
         };
     }
@@ -132,7 +135,7 @@ public record Program(List<Rule> rules, Set<String> variables) {
         return switch (expression) {
             case Rule.Expression.State state -> {
                 final String stateName = state.state();
-                yield query.stateAt(x, y, z, stateName);
+                yield query.stateAt(x, y, z, var(stateName));
             }
             case Rule.Expression.NeighborState neighbor -> expression(
                     x + neighbor.x(), y + neighbor.y(), z + neighbor.z(),

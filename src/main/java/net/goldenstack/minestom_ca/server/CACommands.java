@@ -13,7 +13,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
 
-import java.util.List;
+import java.util.Set;
 
 import static net.minestom.server.command.builder.arguments.ArgumentType.*;
 
@@ -55,16 +55,16 @@ public final class CACommands {
             setCondition(Conditions::playerOnly);
             var loop = Loop("states", Group("state",
                     Word("state_name").setSuggestionCallback(itemStates()),
-                    Integer("state_value")));
+                    Long("state_value")));
 
             addSyntax((sender, context) -> {
                 Player player = ((Player) sender);
                 ItemStack itemStack = player.getItemInMainHand();
                 for (CommandContext states : context.get(loop)) {
                     final String stateName = states.get("state_name");
-                    final int stateValue = states.get("state_value");
+                    final long stateValue = states.get("state_value");
                     player.sendMessage(Component.text(" * Applying: " + stateName + " = " + stateValue));
-                    itemStack = itemStack.withTag(Tag.Integer(stateName), stateValue);
+                    itemStack = itemStack.withTag(Tag.Long(stateName), stateValue);
                 }
                 player.setItemInMainHand(itemStack);
                 player.sendMessage("States applied to item!");
@@ -76,7 +76,7 @@ public final class CACommands {
             return (sender, context, suggestion) -> {
                 if (!(sender instanceof Player player)) return;
                 final Automata.World world = Automata.World.get(player.getInstance());
-                final List<Automata.CellRule.State> states = world.rules().states();
+                final Set<Automata.CellRule.State> states = world.rules().states();
                 for (Automata.CellRule.State state : states) {
                     suggestion.addEntry(new SuggestionEntry(state.name(), Component.empty()));
                 }

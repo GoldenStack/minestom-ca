@@ -7,6 +7,7 @@ import net.minestom.server.instance.block.Block;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class RuleSamples {
 
@@ -42,8 +43,8 @@ public final class RuleSamples {
         }
 
         @Override
-        public List<State> states() {
-            return List.of();
+        public Set<State> states() {
+            return Set.of();
         }
     }
 
@@ -71,8 +72,8 @@ public final class RuleSamples {
         }
 
         @Override
-        public List<State> states() {
-            return List.of();
+        public Set<State> states() {
+            return Set.of();
         }
     }
 }

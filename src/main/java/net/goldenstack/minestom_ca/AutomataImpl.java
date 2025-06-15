@@ -1,7 +1,5 @@
 package net.goldenstack.minestom_ca;
 
-import it.unimi.dsi.fastutil.ints.Int2LongMap;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.kyori.adventure.nbt.NumberBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -25,8 +23,9 @@ import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.component.CustomData;
 import net.minestom.server.tag.Tag;
 
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class AutomataImpl {
@@ -38,17 +37,16 @@ public final class AutomataImpl {
                 final Block block = event.getBlock();
                 Automata.World world = Automata.World.get(event.getPlayer().getInstance());
 
-                Int2LongMap properties = new Int2LongOpenHashMap();
-                properties.put(0, block.stateId());
+                Map<Automata.CellRule.State, Long> properties = new HashMap<>();
+                properties.put(Automata.CellRule.BLOCK_STATE, (long) block.stateId());
                 final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
                 for (var entry : item.get(DataComponents.CUSTOM_DATA, CustomData.EMPTY).nbt()) {
                     if (entry.getValue() instanceof NumberBinaryTag number) {
                         final String name = entry.getKey();
-                        final List<Automata.CellRule.State> states = world.rules().states();
-                        for (int i = 0; i < states.size(); i++) {
-                            final Automata.CellRule.State state = states.get(i);
+                        final Set<Automata.CellRule.State> states = world.rules().states();
+                        for (Automata.CellRule.State state : states) {
                             if (state.name().equals(name)) {
-                                properties.put(i + 1, number.intValue());
+                                properties.put(state, number.longValue());
                                 break;
                             }
                         }
