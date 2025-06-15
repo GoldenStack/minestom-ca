@@ -6,7 +6,6 @@ import net.goldenstack.minestom_ca.Automata.CellRule;
 import net.goldenstack.minestom_ca.Automata.Query;
 import net.goldenstack.minestom_ca.Neighbors;
 import net.minestom.server.coordinate.Point;
-import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.utils.Direction;
 
@@ -45,9 +44,7 @@ public final class BlockPusher implements CellRule {
 
     static {
         for (Direction dir : DIRECTIONS) {
-            final Point dirPoint = dir.vec();
-            final int nx = dirPoint.blockX(), ny = dirPoint.blockY(), nz = dirPoint.blockZ();
-            WAKEUP_POINTS_CACHE[dir.ordinal()] = List.of(Neighbors.SELF, dirPoint, new Vec(-nx, -ny, -nz));
+            WAKEUP_POINTS_CACHE[dir.ordinal()] = List.of(Neighbors.SELF, dir.vec(), dir.opposite().vec());
         }
     }
 
@@ -57,15 +54,34 @@ public final class BlockPusher implements CellRule {
 
     @Override
     public List<Action> process(Query query) {
-        final long blockState = query.state(0);
-
-        // Get current push properties
         final long dirValue = query.state(directionIndex);
-        final long strengthValue = query.state(strengthIndex);
-        final Direction pushDir = direction((int) dirValue);
-
-        if (replaceable(blockState)) {
-            // Check if a neighbor is pushing into here
+        if (dirValue != 0) {
+            // We're a block being pushed
+            final Direction pushDir = direction((int) dirValue);
+            assert pushDir != null;
+            final Point dirPoint = pushDir.vec();
+            final int dx = dirPoint.blockX(), dy = dirPoint.blockY(), dz = dirPoint.blockZ();
+            // Check if we can move forward
+            if (replaceable(query.stateAt(dx, dy, dz, 0))) {
+                // We can move - clear and wake up the target position
+                return List.of(new Action(
+                        null, true,
+                        wakeupPoints(pushDir),
+                        null,
+                        0
+                ));
+            } else {
+                // We hit a block - wait for propagation and empty space
+                return List.of(new Action(
+                        null, false,
+                        wakeupPoints(pushDir),
+                        null,
+                        0
+                ));
+            }
+        } else {
+            // Check if we should receive a push from any neighbor
+            final long blockState = query.state(0);
             for (Direction dir : DIRECTIONS) {
                 final Point dirPoint = dir.vec();
                 final int nx = dirPoint.blockX(), ny = dirPoint.blockY(), nz = dirPoint.blockZ();
@@ -74,7 +90,7 @@ public final class BlockPusher implements CellRule {
                 if (neighborDirValue == 0) continue;
                 if (direction(neighborDirValue) == dir.opposite()) {
                     final long neighborStrength = query.stateAt(nx, ny, nz, strengthIndex);
-                    if (neighborStrength > 0) {
+                    if (replaceable(blockState) && neighborStrength > 0) {
                         // Become the neighbor's block
                         long[] neighborStates = query.queryIndexes(nx, ny, nz);
                         final long newStrength = neighborStrength - 1;
@@ -95,45 +111,7 @@ public final class BlockPusher implements CellRule {
                                 null,
                                 0
                         ));
-                    }
-                }
-            }
-        } else if (pushDir != null && strengthValue > 0) {
-            // We're a block being pushed
-            final Point dirPoint = pushDir.vec();
-            final int dx = dirPoint.blockX(), dy = dirPoint.blockY(), dz = dirPoint.blockZ();
-
-            // Check if we can move forward
-            if (replaceable(query.stateAt(dx, dy, dz, 0))) {
-                // We can move - turn into air and wake up the target position
-                Int2LongMap clearState = new Int2LongOpenHashMap();
-                clearState.put(0, AIR_STATE);
-                return List.of(new Action(
-                        clearState, true,
-                        wakeupPoints(pushDir),
-                        null,
-                        0
-                ));
-            } else {
-                // We hit a block - try to propagate the push to it
-                return List.of(new Action(
-                        null, false,
-                        wakeupPoints(pushDir),
-                        null,
-                        0
-                ));
-            }
-        } else {
-            // Check if we should receive a push from any neighbor
-            for (Direction dir : DIRECTIONS) {
-                final Point dirPoint = dir.vec();
-                final int nx = dirPoint.blockX(), ny = dirPoint.blockY(), nz = dirPoint.blockZ();
-                // Check if neighbor is pushing toward us
-                final long neighborDirValue = query.stateAt(nx, ny, nz, directionIndex);
-                if (neighborDirValue == 0) continue;
-                if (direction(neighborDirValue) == dir.opposite()) {
-                    final long neighborStrength = query.stateAt(nx, ny, nz, strengthIndex);
-                    if (neighborStrength > 0) {
+                    } else {
                         // Block should store push direction and propagate it
                         Int2LongMap updatedState = new Int2LongOpenHashMap();
                         updatedState.put(directionIndex, neighborDirValue);

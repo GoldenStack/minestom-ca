@@ -236,6 +236,7 @@ public final class LazyWorld implements Automata.World {
 
     @Override
     public void tick() {
+        if (trackedSections.isEmpty()) return;
         for (int i = 0; i < LIGHT_SPEED; i++) {
             singleTick();
         }
