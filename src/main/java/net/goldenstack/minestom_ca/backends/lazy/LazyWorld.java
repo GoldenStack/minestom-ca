@@ -1,6 +1,9 @@
 package net.goldenstack.minestom_ca.backends.lazy;
 
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -27,10 +30,12 @@ import static net.minestom.server.coordinate.CoordConversion.globalToSectionRela
 public final class LazyWorld implements Automata.World {
     private static final int LIGHT_SPEED = 1;
     private final Instance instance;
-    private final Automata.CellRule rules;
     private final QueryImpl query = new QueryImpl();
     private final int sectionCount;
     private final int minY;
+
+    private Automata.CellRule rules;
+    private Map<Automata.CellRule.State, Integer> rulesMapping;
 
     private final HashedWheelTimer<ScheduledChange> wheelTimer = new HashedWheelTimer<>(255);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
@@ -39,7 +44,7 @@ public final class LazyWorld implements Automata.World {
     private final class LSection {
         private static final long BLOCKS_PER_SECTION = 16 * 16 * 16;
         private final long index;
-        private final MemorySegment states;
+        private MemorySegment states;
         // Block indexes to track next tick
         private final BitSet trackedBlocks = new BitSet((int) BLOCKS_PER_SECTION);
 
@@ -64,7 +69,7 @@ public final class LazyWorld implements Automata.World {
             if (x < 0 || x >= 16 || y < 0 || y >= 16 || z < 0 || z >= 16) {
                 throw new IndexOutOfBoundsException("Coordinates out of bounds for section: " + x + ", " + y + ", " + z);
             }
-            final int blockIndex = (y * 16 + z) * 16 + x;
+            final int blockIndex = sectionBlockIndex(x, y, z);
             return ((long) blockIndex * rules.states().size() + stateIndex) * Long.BYTES;
         }
     }
@@ -221,17 +226,22 @@ public final class LazyWorld implements Automata.World {
 
     public LazyWorld(Instance instance, Automata.CellRule rules) {
         this.instance = instance;
-        this.rules = rules;
         this.sectionCount = instance.getCachedDimensionType().height() / 16;
         this.minY = instance.getCachedDimensionType().minY();
+        initRules(rules);
+    }
 
+    void initRules(Automata.CellRule rules) {
         // Initialize variables id
+        List<Automata.CellRule.State> states = rules.states();
         Map<Automata.CellRule.State, Integer> mapping = new HashMap<>();
-        for (int i = 0; i < rules.states().size(); i++) {
-            final Automata.CellRule.State state = rules.states().get(i);
+        for (int i = 0; i < states.size(); i++) {
+            final Automata.CellRule.State state = states.get(i);
             mapping.put(state, i + 1); // index 0 is reserved for block state
         }
         rules.init(mapping);
+        this.rules = rules;
+        this.rulesMapping = mapping;
     }
 
     @Override
@@ -502,5 +512,100 @@ public final class LazyWorld implements Automata.World {
     @Override
     public Automata.Query query() {
         return query;
+    }
+
+    @Override
+    public void updateRules(Automata.CellRule newRules) {
+        final Automata.CellRule oldRules = rules;
+        // Map old state indices to new ones
+        Map<String, Integer> oldStateMap = new HashMap<>();
+        for (int i = 0; i < oldRules.states().size(); i++) {
+            oldStateMap.put(oldRules.states().get(i).name(), i);
+        }
+        // Create mapping from old index to new index
+        Int2IntMap oldToNewIndex = new Int2IntOpenHashMap();
+        oldToNewIndex.defaultReturnValue(-1);
+        for (int i = 0; i < newRules.states().size(); i++) {
+            final String stateName = newRules.states().get(i).name();
+            final Integer oldIndex = oldStateMap.get(stateName);
+            if (oldIndex != null) oldToNewIndex.put((int) oldIndex, i);
+        }
+
+        // Update section state buffers
+        for (LSection section : new ArrayList<>(loadedSections.values())) {
+            section.states = migrateSection(section, oldToNewIndex, newRules.states().size());
+            section.trackedBlocks.clear();
+        }
+
+        // Initialize new rules
+        initRules(newRules);
+
+        // Reschedule all changes with updated actions
+        Map<Integer, List<ScheduledChange>> scheduledChanges = wheelTimer.drainAll();
+        for (Map.Entry<Integer, List<ScheduledChange>> entry : scheduledChanges.entrySet()) {
+            final int remainingTicks = entry.getKey();
+            for (ScheduledChange change : entry.getValue()) {
+                BlockChange oldChange = change.change();
+                List<Automata.CellRule.Action> newActions = new ArrayList<>();
+                for (Automata.CellRule.Action action : oldChange.actions()) {
+                    Int2LongMap updatedStates = remapStateIndices(action.updatedStates(), oldToNewIndex);
+                    Int2LongMap conditionStates = remapStateIndices(action.conditionStates(), oldToNewIndex);
+                    final Automata.CellRule.Action newAction = new Automata.CellRule.Action(
+                            updatedStates,
+                            action.clear(),
+                            action.wakePoints(),
+                            conditionStates,
+                            action.scheduleTick()
+                    );
+                    newActions.add(newAction);
+                }
+                BlockChange newBlockChange = new BlockChange(oldChange.sectionBlockIndex(), newActions);
+                wheelTimer.schedule(() -> new ScheduledChange(change.section(), newBlockChange), remainingTicks);
+            }
+        }
+        trackedSections.clear();
+        // TODO: more precise tracking of sections
+        trackedSections.addAll(loadedSections.values());
+        for (LSection section : loadedSections.values()) {
+            section.trackedBlocks.clear();
+            section.trackedBlocks.flip(0, (int) LSection.BLOCKS_PER_SECTION - 1);
+        }
+    }
+
+    private Int2LongMap remapStateIndices(Int2LongMap original, Int2IntMap indexMapping) {
+        if (original == null) return null;
+        Int2LongMap remapped = new Int2LongOpenHashMap();
+        for (Int2LongMap.Entry entry : original.int2LongEntrySet()) {
+            final int oldIndex = entry.getIntKey();
+            final int newIndex = indexMapping.get(oldIndex);
+            // Only include states that exist in the new rules
+            if (newIndex != -1) {
+                remapped.put(newIndex, entry.getLongValue());
+            }
+        }
+        return remapped;
+    }
+
+    private MemorySegment migrateSection(LSection section, Int2IntMap indexMapping, int newStateCount) {
+        final long singleBlockSize = (long) newStateCount * Long.BYTES;
+        final long totalSize = LSection.BLOCKS_PER_SECTION * singleBlockSize;
+        MemorySegment newStates = Arena.ofAuto().allocate(totalSize);
+        // Copy and map states from old format to new format
+        for (Int2IntMap.Entry entry : indexMapping.int2IntEntrySet()) {
+            final int oldIndex = entry.getIntKey();
+            final int newIndex = entry.getIntValue();
+            for (int y = 0; y < 16; y++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int x = 0; x < 16; x++) {
+                        final long stateValue = section.getState(x, y, z, oldIndex);
+                        // Calculate new index in memory segment
+                        final int blockIndex = sectionBlockIndex(x, y, z);
+                        final long newOffset = ((long) blockIndex * newStateCount + newIndex) * Long.BYTES;
+                        newStates.set(ValueLayout.JAVA_LONG, newOffset, stateValue);
+                    }
+                }
+            }
+        }
+        return newStates;
     }
 }

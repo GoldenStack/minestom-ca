@@ -40,6 +40,25 @@ public final class HashedWheelTimer<T> {
         currentTick = (currentTick + 1) % wheelSize;
     }
 
+    public Map<Integer, List<T>> drainAll() {
+        Map<Integer, List<T>> result = new HashMap<>();
+        for (int i = 0; i < wheelSize; i++) {
+            final int ticksRemaining = (i - currentTick + wheelSize) % wheelSize;
+            Set<ScheduledTask> tasks = wheel[i];
+            if (tasks.isEmpty()) continue;
+            List<T> taskList = new ArrayList<>(tasks.size());
+            for (ScheduledTask task : new ArrayList<>(tasks)) {
+                final T value = task.run();
+                if (value != null) taskList.add(value);
+            }
+            if (!taskList.isEmpty()) {
+                result.put(ticksRemaining, taskList);
+            }
+            tasks.clear();
+        }
+        return result;
+    }
+
     public final class ScheduledTask {
         private final long id;
         private final int scheduledTick;

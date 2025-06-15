@@ -202,6 +202,8 @@ public final class Automata {
         CellRule rules();
 
         Query query();
+
+        void updateRules(Automata.CellRule newRules);
     }
 
     public record Metrics(
