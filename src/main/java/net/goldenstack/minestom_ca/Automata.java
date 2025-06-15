@@ -162,6 +162,7 @@ public final class Automata {
             if (prev != null) {
                 throw new IllegalStateException("An AutomataWorld is already registered for the instance " + instance);
             }
+            instance.eventNode().addChild(AutomataImpl.AUTOMATA_EVENT_NODE);
             // Register loaded chunks
             System.out.println("Registering loaded chunks...");
             for (Chunk c : instance.getChunks()) world.handleChunkLoad(c.getChunkX(), c.getChunkZ());

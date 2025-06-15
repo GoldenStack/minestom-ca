@@ -1,6 +1,7 @@
 package net.goldenstack.minestom_ca.server;
 
 import net.goldenstack.minestom_ca.Automata;
+import net.goldenstack.minestom_ca.AutomataImpl;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
@@ -29,7 +30,7 @@ public final class CACommands {
 
         private void execute(CommandSender sender, CommandContext context) {
             sender.sendMessage(Component.text("Starting CA ticker"));
-            Main.RUNNING.set(true);
+            AutomataImpl.RUNNING.set(true);
         }
     }
 
@@ -44,7 +45,7 @@ public final class CACommands {
 
         private void execute(CommandSender sender, CommandContext context) {
             sender.sendMessage(Component.text("Stopping CA ticker"));
-            Main.RUNNING.set(false);
+            AutomataImpl.RUNNING.set(false);
         }
     }
 
