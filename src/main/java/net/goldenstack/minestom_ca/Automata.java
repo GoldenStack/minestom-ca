@@ -13,7 +13,7 @@ import java.util.function.LongPredicate;
 
 public final class Automata {
     public interface CellRule {
-        State BLOCK_STATE = new State("block_state");
+        State BLOCK_STATE = new State("block_state", 32);
 
         void init(Map<State, Integer> mapping);
 
@@ -23,7 +23,12 @@ public final class Automata {
 
         List<State> states();
 
-        record State(String name) {
+        record State(String name, int bitSize) {
+            public State {
+                if (bitSize < 1 || bitSize > 64) {
+                    throw new IllegalArgumentException("State bit size must be between 1 and 64");
+                }
+            }
         }
 
         record Action(

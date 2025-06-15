@@ -43,7 +43,7 @@ public record Program(List<Rule> rules, Set<String> variables) {
     public Automata.CellRule makeCellRule() {
         List<Automata.CellRule.State> states = new ArrayList<>();
         for (String state : variables) {
-            states.add(new Automata.CellRule.State(state));
+            states.add(new Automata.CellRule.State(state, 64));
         }
 
         boolean[] trackedStates = new boolean[Short.MAX_VALUE];

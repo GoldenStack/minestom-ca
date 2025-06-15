@@ -16,9 +16,9 @@ public final class BlockPusher implements CellRule {
     private static final long AIR_STATE = Block.AIR.stateId();
 
     // Direction state - stores which direction to push (0=none, Direction ordinal + 1)
-    private static final State PUSH_DIRECTION = new State("push_direction");
+    private static final State PUSH_DIRECTION = new State("push_direction", 4);
     // Strength state - stores how far the push should propagate
-    private static final State PUSH_STRENGTH = new State("push_strength");
+    private static final State PUSH_STRENGTH = new State("push_strength", 8);
 
     private static final Direction[] DIRECTIONS = Direction.values();
 
