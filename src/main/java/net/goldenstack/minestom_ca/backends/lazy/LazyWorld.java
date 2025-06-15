@@ -189,20 +189,21 @@ public final class LazyWorld implements Automata.World {
             x += localX;
             y += localY;
             z += localZ;
+            final List<Automata.CellRule.State> states = rules().states();
             Map<Integer, String> variables = new HashMap<>();
-            List<Automata.CellRule.State> states = rules().states();
+            variables.put(0, Automata.CellRule.BLOCK_STATE.name());
             for (int i = 0; i < states.size(); i++) {
                 final Automata.CellRule.State state = states.get(i);
                 final String name = state.name();
                 variables.put(i + 1, name);
             }
             final long[] indexes = queryIndexes(x, y, z);
+            if (indexes.length == 1) return Map.of(Automata.CellRule.BLOCK_STATE.name(), indexes[0]);
             Map<String, Long> names = new HashMap<>();
-            for (int i = 0; i < indexes.length; i++) {
+            for (int i = 0; i < variables.size(); i++) {
                 final long value = indexes[i];
                 final String name = variables.get(i);
-                if (name != null) names.put(name, value);
-                else names.put("var" + i, value);
+                names.put(name, value);
             }
             return Map.copyOf(names);
         }
@@ -352,6 +353,14 @@ public final class LazyWorld implements Automata.World {
         final int globalY = sectionIndexGetY(section.index) * 16 + localY;
         final int globalZ = sectionIndexGetZ(section.index) * 16 + localZ;
         if (!actionPredicate(section, palette, globalX, globalY, globalZ, action)) return;
+        // Clear states
+        if (action.clear()) {
+            for (int i = 0; i < rules.states().size(); i++) {
+                section.setState(localX, localY, localZ, i, 0);
+            }
+            if (palette != null) palette.set(localX, localY, localZ, 0);
+            blockChanges.add(encodeSectionBlockChange(localX, localY, localZ, 0));
+        }
         // Set states
         final Int2LongMap updatedStates = action.updatedStates();
         if (updatedStates != null) {
@@ -360,10 +369,7 @@ public final class LazyWorld implements Automata.World {
                 final long value = changeEntry.getLongValue();
                 if (stateIndex == 0) {
                     if (palette != null) palette.set(localX, localY, localZ, (int) value);
-                    // Encode block change for packet
-                    final long blockState = value << 12;
-                    final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
-                    blockChanges.add(blockState | pos);
+                    blockChanges.add(encodeSectionBlockChange(localX, localY, localZ, value));
                 } else {
                     section.setState(localX, localY, localZ, stateIndex - 1, value);
                 }

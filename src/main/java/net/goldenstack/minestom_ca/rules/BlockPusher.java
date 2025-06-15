@@ -20,12 +20,14 @@ public final class BlockPusher implements CellRule {
     // Strength state - stores how far the push should propagate
     private static final State PUSH_STRENGTH = new State("push_strength");
 
+    private static final Direction[] DIRECTIONS = Direction.values();
+
     private int directionIndex;
     private int strengthIndex;
 
-    static Direction direction(int value) {
+    static Direction direction(long value) {
         if (value == 0) return null;
-        return Direction.values()[value - 1];
+        return DIRECTIONS[(int) (value - 1)];
     }
 
     @Override
@@ -34,40 +36,50 @@ public final class BlockPusher implements CellRule {
         strengthIndex = mapping.get(PUSH_STRENGTH);
     }
 
+    boolean replaceable(long state) {
+        return state == AIR_STATE;
+    }
+
     @Override
     public List<Action> process(Query query) {
         final long blockState = query.state(0);
-        final boolean isAir = blockState == AIR_STATE;
 
         // Get current push properties
         final long dirValue = query.state(directionIndex);
         final long strengthValue = query.state(strengthIndex);
         final Direction pushDir = direction((int) dirValue);
 
-        if (isAir) {
-            // Check if a neighbor is pushing into this air block
-            for (Direction dir : Direction.values()) {
+        if (replaceable(blockState)) {
+            // Check if a neighbor is pushing into here
+            for (Direction dir : DIRECTIONS) {
                 final Point dirPoint = dir.vec();
                 final int nx = dirPoint.blockX(), ny = dirPoint.blockY(), nz = dirPoint.blockZ();
                 // Check if neighbor is pushing toward us
                 final long neighborDirValue = query.stateAt(nx, ny, nz, directionIndex);
-                final Direction neighborDir = direction((int) neighborDirValue);
-                if (neighborDir == dir.opposite()) {
+                if (neighborDirValue == 0) continue;
+                if (direction(neighborDirValue) == dir.opposite()) {
                     final long neighborStrength = query.stateAt(nx, ny, nz, strengthIndex);
-                    final long neighborBlock = query.stateAt(nx, ny, nz, 0);
-                    if (neighborStrength > 0 && neighborBlock != AIR_STATE) {
+                    if (neighborStrength > 0) {
                         // Air becomes the neighbor's block
-                        Int2LongMap updatedState = new Int2LongOpenHashMap();
-                        updatedState.put(0, neighborBlock);
+                        long[] neighborStates = query.queryIndexes(nx, ny, nz);
                         final long newStrength = neighborStrength - 1;
                         if (newStrength > 0) {
-                            updatedState.put(directionIndex, neighborDirValue);
-                            updatedState.put(strengthIndex, newStrength);
+                            neighborStates[directionIndex] = neighborDirValue;
+                            neighborStates[strengthIndex] = newStrength;
                         } else {
-                            updatedState.put(directionIndex, 0);
-                            updatedState.put(strengthIndex, 0);
+                            neighborStates[directionIndex] = 0;
+                            neighborStates[strengthIndex] = 0;
                         }
-                        return List.of(Action.UpdateState(updatedState));
+                        Int2LongMap updatedState = new Int2LongOpenHashMap(neighborStates.length);
+                        for (int i = 0; i < neighborStates.length; i++) {
+                            updatedState.put(i, neighborStates[i]);
+                        }
+                        return List.of(new Action(
+                                updatedState, true,
+                                Neighbors.MOORE_3D_SELF,
+                                null,
+                                0
+                        ));
                     }
                 }
             }
@@ -76,15 +88,13 @@ public final class BlockPusher implements CellRule {
             final Point dirPoint = pushDir.vec();
             final int dx = dirPoint.blockX(), dy = dirPoint.blockY(), dz = dirPoint.blockZ();
 
-            // Check if we can move forward (into air)
-            if (query.stateAt(dx, dy, dz, 0) == AIR_STATE) {
+            // Check if we can move forward
+            if (replaceable(query.stateAt(dx, dy, dz, 0))) {
                 // We can move - turn into air and wake up the target position
                 Int2LongMap clearState = new Int2LongOpenHashMap();
                 clearState.put(0, AIR_STATE);
-                clearState.put(directionIndex, 0);
-                clearState.put(strengthIndex, 0);
                 return List.of(new Action(
-                        clearState,
+                        clearState, true,
                         List.of(Neighbors.SELF, dirPoint),
                         null,
                         0
@@ -92,7 +102,7 @@ public final class BlockPusher implements CellRule {
             } else {
                 // We hit a block - try to propagate the push to it
                 return List.of(new Action(
-                        null,
+                        null, false,
                         List.of(Neighbors.SELF, dirPoint),
                         null,
                         0
@@ -100,14 +110,13 @@ public final class BlockPusher implements CellRule {
             }
         } else {
             // Check if we should receive a push from any neighbor
-            for (Direction dir : Direction.values()) {
+            for (Direction dir : DIRECTIONS) {
                 final Point dirPoint = dir.vec();
                 final int nx = dirPoint.blockX(), ny = dirPoint.blockY(), nz = dirPoint.blockZ();
                 // Check if neighbor is pushing toward us
                 final long neighborDirValue = query.stateAt(nx, ny, nz, directionIndex);
-                final Direction neighborDir = direction((int) neighborDirValue);
-                // If neighbor is pushing in the opposite direction (toward us)
-                if (neighborDir == dir.opposite()) {
+                if (neighborDirValue == 0) continue;
+                if (direction(neighborDirValue) == dir.opposite()) {
                     final long neighborStrength = query.stateAt(nx, ny, nz, strengthIndex);
                     if (neighborStrength > 0) {
                         // Block should store push direction and propagate it
@@ -125,7 +134,7 @@ public final class BlockPusher implements CellRule {
 
     @Override
     public boolean tracked(int state) {
-        return true; // Track all states for push propagation
+        return false; // Tracking doesn't depend on block state, but on push properties
     }
 
     @Override

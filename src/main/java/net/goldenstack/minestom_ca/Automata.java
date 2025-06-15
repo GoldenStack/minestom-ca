@@ -28,6 +28,8 @@ public final class Automata {
 
         record Action(
                 Int2LongMap updatedStates,
+                // Whether states should be cleared before applying the action
+                boolean clear,
                 // Relative points to wake up after the action is applied
                 List<Point> wakePoints,
                 // States to check before applying the action
@@ -36,21 +38,21 @@ public final class Automata {
                 int scheduleTick
         ) {
             public static Action UpdateState(Int2LongMap states) {
-                return new Action(states, Neighbors.MOORE_3D_SELF, null, 0);
+                return new Action(states, false, Neighbors.MOORE_3D_SELF, null, 0);
             }
 
             // Update state after X ticks no matter what
             public static Action Schedule(int tick, Int2LongMap updatedStates) {
-                return new Action(updatedStates, Neighbors.MOORE_3D_SELF, null, tick);
+                return new Action(updatedStates, false, Neighbors.MOORE_3D_SELF, null, tick);
             }
 
             // Update state after X ticks if specified states are equal
             public static Action ConditionalSchedule(int tick, Int2LongMap conditionStates, Int2LongMap updatedStates) {
-                return new Action(updatedStates, Neighbors.MOORE_3D_SELF, conditionStates, tick);
+                return new Action(updatedStates, false, Neighbors.MOORE_3D_SELF, conditionStates, tick);
             }
 
             public Action immediate() {
-                return new Action(updatedStates, wakePoints, conditionStates, 0);
+                return new Action(updatedStates, clear, wakePoints, conditionStates, 0);
             }
         }
 

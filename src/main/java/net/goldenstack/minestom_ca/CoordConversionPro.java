@@ -69,4 +69,11 @@ public final class CoordConversionPro {
                 relY == 0 || relY == 15 ||
                 relZ == 0 || relZ == 15;
     }
+
+    public static long encodeSectionBlockChange(int localX, int localY, int localZ, long value) {
+        // To use with `MultiBlockChangePacket`
+        final long blockState = value << 12;
+        final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
+        return blockState | pos;
+    }
 }
