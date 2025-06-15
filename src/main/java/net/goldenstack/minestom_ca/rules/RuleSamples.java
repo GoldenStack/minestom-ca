@@ -37,8 +37,8 @@ public final class RuleSamples {
         }
 
         @Override
-        public boolean tracked(int state) {
-            return state == ALIVE_STATE;
+        public boolean tracked(Block block) {
+            return block.stateId() == ALIVE_STATE;
         }
 
         @Override
@@ -66,8 +66,8 @@ public final class RuleSamples {
         }
 
         @Override
-        public boolean tracked(int state) {
-            return state == DIRT_STATE;
+        public boolean tracked(Block block) {
+            return block.stateId() == DIRT_STATE;
         }
 
         @Override

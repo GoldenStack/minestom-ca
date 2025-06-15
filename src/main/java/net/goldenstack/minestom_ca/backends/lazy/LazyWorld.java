@@ -433,7 +433,7 @@ public final class LazyWorld implements Automata.World {
             LSection startSection = sectionGlobalCompute(globalX, globalY, globalZ);
             trackedSections.add(startSection);
             section.blockPalette().getAllPresent((x, y, z, value) -> {
-                if (!rules.tracked(value)) return;
+                if (!rules.tracked(Block.fromStateId(value))) return;
                 final int blockX = globalX + x;
                 final int blockY = globalY + y;
                 final int blockZ = globalZ + z;

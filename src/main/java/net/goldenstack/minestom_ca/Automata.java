@@ -19,7 +19,7 @@ public final class Automata {
 
         List<Action> process(Query query);
 
-        boolean tracked(int state);
+        boolean tracked(Block block);
 
         List<State> states();
 
@@ -57,16 +57,6 @@ public final class Automata {
         }
 
         static CellRule rules(CellRule... rules) {
-            boolean[] trackedStates = new boolean[Short.MAX_VALUE];
-            for (int i = 0; i < trackedStates.length; i++) {
-                for (CellRule rule : rules) {
-                    if (rule.tracked(i)) {
-                        trackedStates[i] = true;
-                        break;
-                    }
-                }
-            }
-
             List<State> states = new ArrayList<>();
             for (CellRule rule : rules) {
                 states.addAll(rule.states());
@@ -95,8 +85,11 @@ public final class Automata {
                 }
 
                 @Override
-                public boolean tracked(int state) {
-                    return state >= 0 && state < trackedStates.length && trackedStates[state];
+                public boolean tracked(Block block) {
+                    for (CellRule rule : rules) {
+                        if (rule.tracked(block)) return true;
+                    }
+                    return false;
                 }
 
                 @Override

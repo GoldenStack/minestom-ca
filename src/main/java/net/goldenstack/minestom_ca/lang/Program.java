@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.goldenstack.minestom_ca.Automata;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.instance.block.Block;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -98,7 +99,8 @@ public record Program(List<Rule> rules, Set<String> variables) {
             }
 
             @Override
-            public boolean tracked(int state) {
+            public boolean tracked(Block block) {
+                final int state = block.stateId();
                 return state >= 0 && state < trackedStates.length && trackedStates[state];
             }
 

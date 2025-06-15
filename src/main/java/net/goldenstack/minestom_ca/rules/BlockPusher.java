@@ -131,7 +131,7 @@ public final class BlockPusher implements CellRule {
     }
 
     @Override
-    public boolean tracked(int state) {
+    public boolean tracked(Block block) {
         return false; // Tracking doesn't depend on block state, but on push properties
     }
 
