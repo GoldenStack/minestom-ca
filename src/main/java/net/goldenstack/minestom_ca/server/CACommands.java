@@ -66,7 +66,7 @@ public final class CACommands {
                     player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
                     return;
                 }
-                ItemStack itemStack = player.getItemInMainHand();
+                ItemStack.Builder itemStack = player.getItemInMainHand().builder();
                 for (CommandContext states : context.get(loop)) {
                     final String stateName = states.get("state_name");
                     final Automata.CellRule.State state = world.rules().state(stateName);
@@ -74,9 +74,9 @@ public final class CACommands {
                     final long stateValue = states.get("state_value");
                     player.sendMessage(Component.text(" * Applying: " + stateName + " = " + stateValue));
                     final Tag<Long> tag = AutomataImpl.CellTag(state);
-                    itemStack = itemStack.withTag(tag, stateValue);
+                    itemStack.set(tag, stateValue);
                 }
-                player.setItemInMainHand(itemStack);
+                player.setItemInMainHand(itemStack.build());
                 player.sendMessage("States applied to item!");
             }, loop);
         }
@@ -113,7 +113,7 @@ public final class CACommands {
                     player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
                     return;
                 }
-                ItemStack itemStack = player.getItemInMainHand();
+                ItemStack.Builder itemStack = player.getItemInMainHand().builder();
                 for (CommandContext states : context.get(loop)) {
                     final String stateName = states.get("state_name");
                     final Automata.CellRule.State state = world.rules().state(stateName);
@@ -122,9 +122,9 @@ public final class CACommands {
                     final String stateExpression = states.get("state_expression");
                     player.sendMessage(Component.text(" * Applying: " + stateName + " = '" + stateExpression + "' on " + event));
                     final Tag<AutomataImpl.CellAction> tag = AutomataImpl.CellActionTag(state);
-                    itemStack = itemStack.withTag(tag, new AutomataImpl.CellAction(event, stateExpression));
+                    itemStack.set(tag, new AutomataImpl.CellAction(event, stateExpression));
                 }
-                player.setItemInMainHand(itemStack);
+                player.setItemInMainHand(itemStack.build());
                 player.sendMessage("States applied to item!");
             }, loop);
         }

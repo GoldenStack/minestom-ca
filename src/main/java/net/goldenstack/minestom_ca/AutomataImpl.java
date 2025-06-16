@@ -137,7 +137,7 @@ public final class AutomataImpl {
 
         final CustomData data = item.get(DataComponents.CUSTOM_DATA);
         if (data == null) return;
-        // FIXME: the `path` doesn't seem to be respected
+        // FIXME: `Tag#path` is broken on items
         CompoundBinaryTag actions = data.nbt();//data.nbt().getCompound("cell_actions");
         if (actions.isEmpty()) return;
         Map<Automata.CellRule.State, Long> properties = new HashMap<>();
@@ -149,6 +149,7 @@ public final class AutomataImpl {
             final long value = Long.parseLong(action.expression()); // TODO: operation support
             properties.put(state, value);
         }
+        if (properties.isEmpty()) return;
         world.updateAt(point.blockX(), point.blockY(), point.blockZ(), properties);
         player.sendMessage(Component.text("Applied " + event.name().toLowerCase() + " action at " +
                         point.blockX() + "," + point.blockY() + "," + point.blockZ())
