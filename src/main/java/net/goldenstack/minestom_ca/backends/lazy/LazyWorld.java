@@ -321,17 +321,6 @@ public final class LazyWorld implements Automata.World {
         this.rulesMapping = mapping;
     }
 
-    @Override
-    public Automata.Metrics tick() {
-        if (trackedSections.isEmpty() && wheelTimer.isEmpty()) return Automata.Metrics.EMPTY;
-        Automata.Metrics metrics = Automata.Metrics.EMPTY;
-        for (int i = 0; i < LIGHT_SPEED; i++) {
-            final Automata.Metrics tickMetrics = singleTick();
-            metrics = metrics.add(tickMetrics);
-        }
-        return metrics;
-    }
-
     private record BlockChange(int sectionBlockIndex, List<Automata.CellRule.Action> actions) {
     }
 
@@ -341,11 +330,24 @@ public final class LazyWorld implements Automata.World {
     private record SectionChange(LSection section, Palette palette, List<BlockChange> blockChanges) {
     }
 
-    private Automata.Metrics singleTick() {
+    @Override
+    public Automata.Metrics tick() {
+        if (trackedSections.isEmpty() && wheelTimer.isEmpty()) return Automata.Metrics.EMPTY;
+        Long2ObjectMap<LongList> tickBlockChanges = new Long2ObjectOpenHashMap<>();
+        Automata.Metrics metrics = Automata.Metrics.EMPTY;
+        for (int i = 0; i < LIGHT_SPEED; i++) {
+            final Automata.Metrics tickMetrics = singleTick(tickBlockChanges);
+            metrics = metrics.add(tickMetrics);
+        }
+        sendPackets(tickBlockChanges);
+        return metrics;
+    }
+
+    private Automata.Metrics singleTick(Long2ObjectMap<LongList> tickBlockChanges) {
         Queue<SectionChange> changes = new ArrayDeque<>();
         final Automata.Metrics metrics = computeChanges(changes);
         computeTimedChanges(changes);
-        applyChanges(changes);
+        applyChanges(changes, tickBlockChanges);
         return metrics;
     }
 
@@ -410,33 +412,39 @@ public final class LazyWorld implements Automata.World {
         });
     }
 
-    private void applyChanges(Queue<SectionChange> changes) {
+    private void applyChanges(Queue<SectionChange> changes, Long2ObjectMap<LongList> tickBlockChanges) {
         while (!changes.isEmpty()) {
             final SectionChange sectionChange = changes.poll();
-            applySectionChanges(sectionChange);
+            applySectionChanges(sectionChange, tickBlockChanges);
         }
     }
 
-    private void applySectionChanges(SectionChange sectionChange) {
+    private void applySectionChanges(SectionChange sectionChange, Long2ObjectMap<LongList> tickBlockChanges) {
         final LSection section = sectionChange.section();
         Palette palette = sectionChange.palette();
-        LongList blockChanges = new LongArrayList();
+        LongList blockChanges = tickBlockChanges.computeIfAbsent(section.index, _ -> new LongArrayList());
         for (BlockChange currentChange : sectionChange.blockChanges()) {
             for (Automata.CellRule.Action action : currentChange.actions()) {
                 processSectionAction(section, palette, currentChange.sectionBlockIndex(), action, blockChanges);
             }
         }
         trackedSections.add(section);
-        if (!blockChanges.isEmpty()) {
-            final long sectionIndex = section.index;
-            final int sectionX = sectionIndexGetX(sectionIndex);
-            final int sectionY = sectionIndexGetY(sectionIndex);
-            final int sectionZ = sectionIndexGetZ(sectionIndex);
-            final Chunk chunk = instance.getChunk(sectionX, sectionZ);
-            if (chunk != null) {
-                chunk.invalidate();
-                final long[] blocksArray = blockChanges.toLongArray();
-                chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
+    }
+
+    private void sendPackets(Long2ObjectMap<LongList> tickBlockChanges) {
+        for (Long2ObjectMap.Entry<LongList> entry : tickBlockChanges.long2ObjectEntrySet()) {
+            final long sectionIndex = entry.getLongKey();
+            final LongList blockChanges = entry.getValue();
+            if (!blockChanges.isEmpty()) {
+                final int sectionX = sectionIndexGetX(sectionIndex);
+                final int sectionY = sectionIndexGetY(sectionIndex);
+                final int sectionZ = sectionIndexGetZ(sectionIndex);
+                final Chunk chunk = instance.getChunk(sectionX, sectionZ);
+                if (chunk != null) {
+                    chunk.invalidate();
+                    final long[] blocksArray = blockChanges.toLongArray();
+                    chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
+                }
             }
         }
     }
