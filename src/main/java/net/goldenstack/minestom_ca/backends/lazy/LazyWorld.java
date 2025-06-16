@@ -81,13 +81,22 @@ public final class LazyWorld implements Automata.World {
 
         LSection(final long index) {
             this.index = index;
+            // Initialize with null segments - allocate lazily
             this.stateSegments = new MemorySegment[stateLayout.segmentSizes.length];
-            for (int i = 0; i < stateLayout.segmentSizes.length; i++) {
-                this.stateSegments[i] = Arena.ofAuto().allocate(stateLayout.segmentSizes[i]);
+        }
+
+        private MemorySegment ensureSegmentAllocated(int stateIndex) {
+            MemorySegment segment = stateSegments[stateIndex];
+            if (stateSegments[stateIndex] == null) {
+                segment = stateSegments[stateIndex] = Arena.ofAuto().allocate(stateLayout.segmentSizes[stateIndex]);
             }
+            return segment;
         }
 
         long getState(int x, int y, int z, int stateIndex) {
+            final MemorySegment segment = stateSegments[stateIndex];
+            if (segment == null) return 0; // Segment not allocated = all zeros
+
             final int blockIndex = sectionBlockIndex(x, y, z);
             final int bitSize = stateLayout.stateBitSizes[stateIndex];
             final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
@@ -97,11 +106,16 @@ public final class LazyWorld implements Automata.World {
             final int bitOffset = (blockIndex % valuesPerLong) * bitSize;
             final long offset = (long) longIndex * Long.BYTES;
 
-            final long packed = stateSegments[stateIndex].get(ValueLayout.JAVA_LONG, offset);
+            final long packed = segment.get(ValueLayout.JAVA_LONG, offset);
             return (packed >>> bitOffset) & mask;
         }
 
         void setState(int x, int y, int z, int stateIndex, long value) {
+            MemorySegment segment = stateSegments[stateIndex];
+            if (value == 0 && segment == null) return; // No need to allocate for zero values
+
+            segment = ensureSegmentAllocated(stateIndex);
+
             final int blockIndex = sectionBlockIndex(x, y, z);
             final int bitSize = stateLayout.stateBitSizes[stateIndex];
             final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
@@ -111,10 +125,10 @@ public final class LazyWorld implements Automata.World {
             final int bitOffset = (blockIndex % valuesPerLong) * bitSize;
             final long offset = (long) longIndex * Long.BYTES;
 
-            final long packed = stateSegments[stateIndex].get(ValueLayout.JAVA_LONG, offset);
+            final long packed = segment.get(ValueLayout.JAVA_LONG, offset);
             final long cleared = packed & ~(mask << bitOffset);
             final long updated = cleared | ((value & mask) << bitOffset);
-            stateSegments[stateIndex].set(ValueLayout.JAVA_LONG, offset, updated);
+            segment.set(ValueLayout.JAVA_LONG, offset, updated);
         }
 
         boolean anyState(int x, int y, int z) {
@@ -126,6 +140,8 @@ public final class LazyWorld implements Automata.World {
         }
 
         private long getStateByBlockIndex(int blockIndex, int stateIndex) {
+            if (stateSegments[stateIndex] == null) return 0; // Segment not allocated = all zeros
+
             final int bitSize = stateLayout.stateBitSizes[stateIndex];
             final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
             final long mask = stateLayout.stateMasks[stateIndex];
@@ -673,19 +689,18 @@ public final class LazyWorld implements Automata.World {
         for (Int2IntMap.Entry entry : indexMapping.int2IntEntrySet()) {
             final int oldIndex = entry.getIntKey();
             final int newIndex = entry.getIntValue();
-            newStateSegments[newIndex] = section.stateSegments[oldIndex];
-        }
-        // Initialize new segments for states that didn't exist in the old rules
-        for (int i = 0; i < newLayout.segmentSizes.length; i++) {
-            if (newStateSegments[i] == null) {
-                newStateSegments[i] = Arena.ofAuto().allocate(newLayout.segmentSizes[i]);
+            // Only copy non-null segments
+            if (section.stateSegments[oldIndex] != null) {
+                newStateSegments[newIndex] = section.stateSegments[oldIndex];
             }
         }
+        // New states remain null - they will be allocated when first accessed
         return newStateSegments;
     }
 
     private boolean emptySegments(MemorySegment[] segments) {
         for (MemorySegment segment : segments) {
+            if (segment == null) continue;
             for (long i = 0; i < segment.byteSize(); i += Long.BYTES) {
                 if (segment.get(ValueLayout.JAVA_LONG, i) != 0) return false;
             }
