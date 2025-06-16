@@ -98,7 +98,12 @@ public record Program(List<Rule> rules, Set<Automata.CellRule.State> variables) 
                     }
                 }
                 if (block == null) return null;
-                return List.of(Automata.CellRule.Action.UpdateState(block));
+                final Int2LongMap finalBlock = block;
+                return List.of(Automata.CellRule.Action.action(action -> {
+                    for (Int2LongMap.Entry entry : finalBlock.int2LongEntrySet()) {
+                        action.state(entry.getIntKey(), entry.getLongValue());
+                    }
+                }));
             }
 
             @Override

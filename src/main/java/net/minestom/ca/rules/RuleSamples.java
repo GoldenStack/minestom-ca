@@ -15,8 +15,14 @@ public final class RuleSamples {
         private static final long VOID_STATE = Block.AIR.stateId();
         private static final long ALIVE_STATE = Block.WHITE_WOOL.stateId();
 
-        private static final List<Action> KILL_ACTION = List.of(Action.UpdateState(CellRule.stateMap(0, VOID_STATE)));
-        private static final List<Action> REPRODUCE_ACTION = List.of(Action.UpdateState(CellRule.stateMap(0, ALIVE_STATE)));
+        private static final List<Action> KILL_ACTION = List.of(Action.action(action -> {
+            action.state(0, VOID_STATE);
+            action.wakeup(Neighbors.MOORE_2D_SELF);
+        }));
+        private static final List<Action> REPRODUCE_ACTION = List.of(Action.action(action -> {
+            action.state(0, ALIVE_STATE);
+            action.wakeup(Neighbors.MOORE_2D_SELF);
+        }));
 
         @Override
         public void init(Map<State, Integer> mapping) {
@@ -52,9 +58,11 @@ public final class RuleSamples {
         private static final long DIRT_STATE = Block.DIRT.stateId();
         private static final long GRASS_STATE = Block.GRASS_BLOCK.stateId();
 
-        private static final List<Action> GROW_ACTION = List.of(
-                Action.ConditionalSchedule(25, CellRule.stateMap(0, DIRT_STATE), CellRule.stateMap(0, GRASS_STATE))
-        );
+        private static final List<Action> GROW_ACTION = List.of(Action.action(action -> {
+            action.state(0, GRASS_STATE);
+            action.condition(0, DIRT_STATE);
+            action.schedule(25);
+        }));
 
         @Override
         public void init(Map<State, Integer> mapping) {

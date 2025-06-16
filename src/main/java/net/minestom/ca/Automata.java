@@ -2,6 +2,7 @@ package net.minestom.ca;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongMaps;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
@@ -9,6 +10,7 @@ import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.LongPredicate;
 
 public final class Automata {
@@ -49,22 +51,52 @@ public final class Automata {
                 // Number of ticks to wait before applying the action (including interpreting the conditions)
                 int scheduleTick
         ) {
-            public static Action UpdateState(Int2LongMap states) {
-                return new Action(states, false, Neighbors.MOORE_3D_SELF, null, 0);
-            }
-
-            // Update state after X ticks no matter what
-            public static Action Schedule(int tick, Int2LongMap updatedStates) {
-                return new Action(updatedStates, false, Neighbors.MOORE_3D_SELF, null, tick);
-            }
-
-            // Update state after X ticks if specified states are equal
-            public static Action ConditionalSchedule(int tick, Int2LongMap conditionStates, Int2LongMap updatedStates) {
-                return new Action(updatedStates, false, Neighbors.MOORE_3D_SELF, conditionStates, tick);
+            public static Action action(Consumer<Builder> builder) {
+                Builder b = new Builder();
+                builder.accept(b);
+                return b.build();
             }
 
             public Action immediate() {
                 return new Action(updatedStates, clear, wakePoints, conditionStates, 0);
+            }
+
+            public static final class Builder {
+                Int2LongMap updatedStates = new Int2LongOpenHashMap();
+                boolean clear;
+                List<Point> wakePoints = Neighbors.MOORE_3D_SELF;
+                @Nullable Int2LongMap conditionStates;
+                int scheduleTick;
+
+                public void state(int state, long value) {
+                    updatedStates.put(state, value);
+                }
+
+                public void clear() {
+                    this.clear = true;
+                }
+
+                public void wakeup(List<Point> wakePoints) {
+                    this.wakePoints = wakePoints;
+                }
+
+                public void condition(int state, long value) {
+                    if (conditionStates == null) conditionStates = new Int2LongOpenHashMap();
+                    conditionStates.put(state, value);
+                }
+
+                public void schedule(int scheduleTick) {
+                    this.scheduleTick = scheduleTick;
+                }
+
+                Action build() {
+                    return new Action(
+                            updatedStates, clear,
+                            wakePoints,
+                            conditionStates,
+                            scheduleTick
+                    );
+                }
             }
         }
 
