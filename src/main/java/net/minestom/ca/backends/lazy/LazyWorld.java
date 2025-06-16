@@ -24,6 +24,7 @@ import java.lang.foreign.ValueLayout;
 import java.util.*;
 
 import static net.minestom.ca.CoordConversionPro.*;
+import static net.minestom.server.coordinate.CoordConversion.globalToChunk;
 import static net.minestom.server.coordinate.CoordConversion.globalToSectionRelative;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -222,7 +223,8 @@ public final class LazyWorld implements Automata.World {
         }
 
         int queryBlockState(int x, int y, int z) {
-            if (!sameSection(x, y, z)) return globalBlockState(x, y, z);
+            final Palette palette = sameSection(x, y, z) ? this.palette :
+                    paletteAtSection(globalToChunk(x), globalToChunk(y), globalToChunk(z));
             if (palette == null) return 0;
             final int localX = globalToSectionRelative(x);
             final int localY = globalToSectionRelative(y);
@@ -595,16 +597,6 @@ public final class LazyWorld implements Automata.World {
         }
         trackedSections.add(section);
         register(x, y, z, section, Neighbors.MOORE_3D_SELF);
-    }
-
-    private int globalBlockState(int x, int y, int z) {
-        final Chunk chunk = instance.getChunkAt(x, z);
-        if (chunk == null) return 0;
-        synchronized (chunk) {
-            final Block block = chunk.getBlock(x, y, z, Block.Getter.Condition.TYPE);
-            assert block != null;
-            return block.stateId();
-        }
     }
 
     @Override
