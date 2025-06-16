@@ -28,6 +28,7 @@ public final class Main {
                 new CACommands.Start(),
                 new CACommands.Stop(),
                 new CACommands.State(),
+                new CACommands.Action(),
                 new CACommands.ListStates()
         );
 

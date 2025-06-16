@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.command.builder.CommandContext;
+import net.minestom.server.command.builder.arguments.ArgumentEnum;
 import net.minestom.server.command.builder.condition.Conditions;
 import net.minestom.server.command.builder.suggestion.SuggestionCallback;
 import net.minestom.server.command.builder.suggestion.SuggestionEntry;
@@ -60,12 +61,20 @@ public final class CACommands {
 
             addSyntax((sender, context) -> {
                 Player player = ((Player) sender);
+                final Automata.World world = Automata.World.get(player.getInstance());
+                if (world == null) {
+                    player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
+                    return;
+                }
                 ItemStack itemStack = player.getItemInMainHand();
                 for (CommandContext states : context.get(loop)) {
                     final String stateName = states.get("state_name");
+                    final Automata.CellRule.State state = world.rules().state(stateName);
+                    if (state == null) continue;
                     final long stateValue = states.get("state_value");
                     player.sendMessage(Component.text(" * Applying: " + stateName + " = " + stateValue));
-                    itemStack = itemStack.withTag(Tag.Long(stateName), stateValue);
+                    final Tag<Long> tag = AutomataImpl.CellTag(state);
+                    itemStack = itemStack.withTag(tag, stateValue);
                 }
                 player.setItemInMainHand(itemStack);
                 player.sendMessage("States applied to item!");
@@ -82,6 +91,42 @@ public final class CACommands {
                     suggestion.addEntry(new SuggestionEntry(state.name(), Component.empty()));
                 }
             };
+        }
+    }
+
+    /**
+     * Add cell action states to the item in hand.
+     */
+    public static final class Action extends Command {
+        public Action() {
+            super("action");
+            setCondition(Conditions::playerOnly);
+            var loop = Loop("actions", Group("action",
+                    Word("state_name"),
+                    Enum("state_event", AutomataImpl.CellEvent.class).setFormat(ArgumentEnum.Format.LOWER_CASED),
+                    String("state_expression")));
+
+            addSyntax((sender, context) -> {
+                Player player = ((Player) sender);
+                final Automata.World world = Automata.World.get(player.getInstance());
+                if (world == null) {
+                    player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
+                    return;
+                }
+                ItemStack itemStack = player.getItemInMainHand();
+                for (CommandContext states : context.get(loop)) {
+                    final String stateName = states.get("state_name");
+                    final Automata.CellRule.State state = world.rules().state(stateName);
+                    if (state == null) continue;
+                    final AutomataImpl.CellEvent event = states.get("state_event");
+                    final String stateExpression = states.get("state_expression");
+                    player.sendMessage(Component.text(" * Applying: " + stateName + " = '" + stateExpression + "' on " + event));
+                    final Tag<AutomataImpl.CellAction> tag = AutomataImpl.CellActionTag(state);
+                    itemStack = itemStack.withTag(tag, new AutomataImpl.CellAction(event, stateExpression));
+                }
+                player.setItemInMainHand(itemStack);
+                player.sendMessage("States applied to item!");
+            }, loop);
         }
     }
 

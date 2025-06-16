@@ -502,19 +502,8 @@ public final class LazyWorld implements Automata.World {
 
     @Override
     public void handlePlacement(int x, int y, int z, Map<Automata.CellRule.State, Long> properties) {
-        LSection section = sectionGlobalCompute(x, y, z);
-        assert section != null;
-        final int localX = globalToSectionRelative(x);
-        final int localY = globalToSectionRelative(y);
-        final int localZ = globalToSectionRelative(z);
-        for (Automata.CellRule.State state : orderedStates) {
-            final int index = rulesMapping.get(state);
-            if (index == 0) continue;
-            final long value = properties.getOrDefault(state, 0L);
-            section.setState(localX, localY, localZ, index - 1, value);
-        }
-        trackedSections.add(section);
-        register(x, y, z, section, Neighbors.MOORE_3D_SELF);
+        clearAt(x, y, z);
+        updateAt(x, y, z, properties);
     }
 
     @Override
@@ -576,6 +565,36 @@ public final class LazyWorld implements Automata.World {
             final long sectionIndex = sectionIndex(chunkX, sectionY, chunkZ);
             this.loadedSections.remove(sectionIndex);
         }
+    }
+
+    @Override
+    public void clearAt(int x, int y, int z) {
+        final LSection section = sectionGlobalCompute(x, y, z);
+        final int localX = globalToSectionRelative(x);
+        final int localY = globalToSectionRelative(y);
+        final int localZ = globalToSectionRelative(z);
+        for (int i = 0; i < orderedStates.size(); i++) {
+            section.setState(localX, localY, localZ, i, 0);
+        }
+        //if (palette != null) palette.set(localX, localY, localZ, 0);
+        trackedSections.add(section);
+        register(x, y, z, section, Neighbors.MOORE_3D_SELF);
+    }
+
+    @Override
+    public void updateAt(int x, int y, int z, Map<Automata.CellRule.State, Long> properties) {
+        final LSection section = sectionGlobalCompute(x, y, z);
+        final int localX = globalToSectionRelative(x);
+        final int localY = globalToSectionRelative(y);
+        final int localZ = globalToSectionRelative(z);
+        for (Automata.CellRule.State state : orderedStates) {
+            final int index = rulesMapping.get(state);
+            if (index == 0) continue; // Skip block state
+            final long value = properties.getOrDefault(state, 0L);
+            section.setState(localX, localY, localZ, index - 1, value);
+        }
+        trackedSections.add(section);
+        register(x, y, z, section, Neighbors.MOORE_3D_SELF);
     }
 
     private int globalBlockState(int x, int y, int z) {

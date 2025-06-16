@@ -23,6 +23,13 @@ public final class Automata {
 
         Set<State> states();
 
+        default State state(String stateName) {
+            for (State state : states()) {
+                if (state.name().equals(stateName)) return state;
+            }
+            return null;
+        }
+
         record State(String name, int bitSize) {
             public State {
                 if (bitSize < 1 || bitSize > 64) {
@@ -194,6 +201,10 @@ public final class Automata {
         void handleChunkLoad(int chunkX, int chunkZ);
 
         void handleChunkUnload(int chunkX, int chunkZ);
+
+        void clearAt(int x, int y, int z);
+
+        void updateAt(int x, int y, int z, Map<CellRule.State, Long> properties);
 
         /**
          * Gets the instance that is being ticked
