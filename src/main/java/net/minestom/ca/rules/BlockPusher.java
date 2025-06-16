@@ -6,6 +6,7 @@ import net.minestom.ca.Automata.CellRule;
 import net.minestom.ca.Automata.Query;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.utils.Direction;
 
@@ -82,53 +83,57 @@ public final class BlockPusher implements CellRule {
             }
         } else {
             // Check if we should receive a push from any neighbor
+            final Direction neighborDir = query.findFirstPresent(directionIndex, Neighbors.NEUMANN_3D,
+                    (x, y, z, value) -> {
+                        final Direction dir = direction(value);
+                        assert dir != null;
+                        final Vec vec = dir.vec();
+                        final boolean zeroX = vec.blockX() + x == 0;
+                        final boolean zeroY = vec.blockY() + y == 0;
+                        final boolean zeroZ = vec.blockZ() + z == 0;
+                        return (zeroX && zeroY && zeroZ) ? dir : null;
+                    });
+            if (neighborDir == null) return null;
+            final Direction dir = neighborDir.opposite();
+            final Vec dirPoint = dir.vec();
+            final int nx = dirPoint.blockX(), ny = dirPoint.blockY(), nz = dirPoint.blockZ();
+            final long neighborDirValue = neighborDir.ordinal() + 1;
+            final long neighborStrength = query.stateAt(nx, ny, nz, strengthIndex);
             final long blockState = query.state(0);
-            for (Direction dir : DIRECTIONS) {
-                final Point dirPoint = dir.vec();
-                final int nx = dirPoint.blockX(), ny = dirPoint.blockY(), nz = dirPoint.blockZ();
-                // Check if neighbor is pushing toward us
-                final long neighborDirValue = query.stateAt(nx, ny, nz, directionIndex);
-                if (neighborDirValue == 0) continue;
-                if (direction(neighborDirValue) == dir.opposite()) {
-                    final long neighborStrength = query.stateAt(nx, ny, nz, strengthIndex);
-                    if (replaceable(blockState) && neighborStrength > 0) {
-                        // Become the neighbor's block
-                        long[] neighborStates = query.queryIndexes(nx, ny, nz);
-                        final long newStrength = neighborStrength - 1;
-                        if (newStrength > 0) {
-                            neighborStates[directionIndex] = neighborDirValue;
-                            neighborStates[strengthIndex] = newStrength;
-                        } else {
-                            neighborStates[directionIndex] = 0;
-                            neighborStates[strengthIndex] = 0;
-                        }
-                        Int2LongMap updatedState = new Int2LongOpenHashMap(neighborStates.length);
-                        for (int i = 0; i < neighborStates.length; i++) {
-                            updatedState.put(i, neighborStates[i]);
-                        }
-                        return List.of(new Action(
-                                updatedState, true,
-                                wakeupPoints(dir),
-                                null,
-                                0
-                        ));
-                    } else {
-                        // Block should store push direction and propagate it
-                        Int2LongMap updatedState = new Int2LongOpenHashMap();
-                        updatedState.put(directionIndex, neighborDirValue);
-                        updatedState.put(strengthIndex, neighborStrength);
-                        return List.of(new Action(
-                                updatedState, false,
-                                wakeupPoints(dir),
-                                null,
-                                0
-                        ));
-                    }
+            if (replaceable(blockState) && neighborStrength > 0) {
+                // Become the neighbor's block
+                long[] neighborStates = query.queryIndexes(nx, ny, nz);
+                final long newStrength = neighborStrength - 1;
+                if (newStrength > 0) {
+                    neighborStates[directionIndex] = neighborDirValue;
+                    neighborStates[strengthIndex] = newStrength;
+                } else {
+                    neighborStates[directionIndex] = 0;
+                    neighborStates[strengthIndex] = 0;
                 }
+                Int2LongMap updatedState = new Int2LongOpenHashMap(neighborStates.length);
+                for (int i = 0; i < neighborStates.length; i++) {
+                    updatedState.put(i, neighborStates[i]);
+                }
+                return List.of(new Action(
+                        updatedState, true,
+                        wakeupPoints(dir),
+                        null,
+                        0
+                ));
+            } else {
+                // Block should store push direction and propagate it
+                Int2LongMap updatedState = new Int2LongOpenHashMap();
+                updatedState.put(directionIndex, neighborDirValue);
+                updatedState.put(strengthIndex, neighborStrength);
+                return List.of(new Action(
+                        updatedState, false,
+                        wakeupPoints(dir),
+                        null,
+                        0
+                ));
             }
         }
-
-        return null;
     }
 
     @Override

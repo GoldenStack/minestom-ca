@@ -184,14 +184,44 @@ public final class Automata {
             return count;
         }
 
-        default int countNeighborsStateLimit(int index, int limit, List<Point> points,
-                                             LongPredicate predicate) {
+        default int countLimit(int index, int limit, List<Point> points,
+                               LongPredicate predicate) {
             int count = 0;
             for (Point point : points) {
                 final long state = stateAt(point.blockX(), point.blockY(), point.blockZ(), index);
                 if (predicate.test(state) && ++count >= limit) break;
             }
             return count;
+        }
+
+        default <T> T findFirst(int index, List<Point> points, Finder<T> finder) {
+            for (Point point : points) {
+                final int blockX = point.blockX();
+                final int blockY = point.blockY();
+                final int blockZ = point.blockZ();
+                final long value = stateAt(blockX, blockY, blockZ, index);
+                final T result = finder.find(blockX, blockY, blockZ, value);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        default <T> T findFirstPresent(int index, List<Point> points, Finder<T> finder) {
+            for (Point point : points) {
+                final int blockX = point.blockX();
+                final int blockY = point.blockY();
+                final int blockZ = point.blockZ();
+                final long value = stateAt(blockX, blockY, blockZ, index);
+                if (value == 0) continue;
+                final T result = finder.find(blockX, blockY, blockZ, value);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        @FunctionalInterface
+        interface Finder<T> {
+            T find(int x, int y, int z, long value);
         }
     }
 

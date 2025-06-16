@@ -437,16 +437,15 @@ public final class LazyWorld implements Automata.World {
         for (Long2ObjectMap.Entry<LongList> entry : tickBlockChanges.long2ObjectEntrySet()) {
             final long sectionIndex = entry.getLongKey();
             final LongList blockChanges = entry.getValue();
-            if (!blockChanges.isEmpty()) {
-                final int sectionX = sectionIndexGetX(sectionIndex);
-                final int sectionY = sectionIndexGetY(sectionIndex);
-                final int sectionZ = sectionIndexGetZ(sectionIndex);
-                final Chunk chunk = instance.getChunk(sectionX, sectionZ);
-                if (chunk != null) {
-                    chunk.invalidate();
-                    final long[] blocksArray = blockChanges.toLongArray();
-                    chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
-                }
+            if (blockChanges.isEmpty()) continue;
+            final int sectionX = sectionIndexGetX(sectionIndex);
+            final int sectionY = sectionIndexGetY(sectionIndex);
+            final int sectionZ = sectionIndexGetZ(sectionIndex);
+            final Chunk chunk = instance.getChunk(sectionX, sectionZ);
+            if (chunk != null) {
+                chunk.invalidate();
+                final long[] blocksArray = blockChanges.toLongArray();
+                chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
             }
         }
     }

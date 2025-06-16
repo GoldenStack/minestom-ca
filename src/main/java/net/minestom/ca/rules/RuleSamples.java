@@ -30,7 +30,7 @@ public final class RuleSamples {
 
         @Override
         public List<Action> process(Query query) {
-            final int neighbors = query.countNeighborsStateLimit(0, 4, Neighbors.MOORE_2D,
+            final int neighbors = query.countLimit(0, 4, Neighbors.MOORE_2D,
                     state -> state == ALIVE_STATE);
             final long currentState = query.state(0);
             if (currentState == ALIVE_STATE && (neighbors < 2 || neighbors > 3)) {
