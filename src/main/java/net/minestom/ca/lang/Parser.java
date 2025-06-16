@@ -1,7 +1,7 @@
-package net.goldenstack.minestom_ca.lang;
+package net.minestom.ca.lang;
 
-import net.goldenstack.minestom_ca.Automata;
-import net.goldenstack.minestom_ca.lang.Scanner.Token;
+import net.minestom.ca.Automata;
+import net.minestom.ca.lang.Scanner.Token;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 
@@ -10,7 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static net.goldenstack.minestom_ca.Neighbors.NAMED;
+import static net.minestom.ca.Neighbors.NAMED;
 
 public final class Parser {
     private int line;

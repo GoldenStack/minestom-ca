@@ -1,9 +1,9 @@
-package net.goldenstack.minestom_ca.server;
+package net.minestom.ca.server;
 
-import net.goldenstack.minestom_ca.Automata;
-import net.goldenstack.minestom_ca.AutomataImpl;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.minestom.ca.Automata;
+import net.minestom.ca.AutomataImpl;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.builder.Command;
 import net.minestom.server.command.builder.CommandContext;

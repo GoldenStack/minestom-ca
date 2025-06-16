@@ -1,4 +1,4 @@
-package net.goldenstack.minestom_ca.backends.lazy;
+package net.minestom.ca.backends.lazy;
 
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -8,8 +8,8 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
-import net.goldenstack.minestom_ca.Automata;
-import net.goldenstack.minestom_ca.Neighbors;
+import net.minestom.ca.Automata;
+import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
@@ -23,7 +23,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.*;
 
-import static net.goldenstack.minestom_ca.CoordConversionPro.*;
+import static net.minestom.ca.CoordConversionPro.*;
 import static net.minestom.server.coordinate.CoordConversion.globalToSectionRelative;
 
 @SuppressWarnings("UnstableApiUsage")

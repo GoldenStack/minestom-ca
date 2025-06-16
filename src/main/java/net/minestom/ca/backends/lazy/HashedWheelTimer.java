@@ -1,4 +1,4 @@
-package net.goldenstack.minestom_ca.backends.lazy;
+package net.minestom.ca.backends.lazy;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;

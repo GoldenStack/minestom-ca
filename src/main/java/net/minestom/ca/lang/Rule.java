@@ -1,6 +1,6 @@
-package net.goldenstack.minestom_ca.lang;
+package net.minestom.ca.lang;
 
-import net.goldenstack.minestom_ca.Automata;
+import net.minestom.ca.Automata;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;

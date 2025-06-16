@@ -1,4 +1,4 @@
-package net.goldenstack.minestom_ca;
+package net.minestom.ca;
 
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.text.Component;

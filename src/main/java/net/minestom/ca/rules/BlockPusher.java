@@ -1,10 +1,10 @@
-package net.goldenstack.minestom_ca.rules;
+package net.minestom.ca.rules;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import net.goldenstack.minestom_ca.Automata.CellRule;
-import net.goldenstack.minestom_ca.Automata.Query;
-import net.goldenstack.minestom_ca.Neighbors;
+import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata.Query;
+import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.utils.Direction;

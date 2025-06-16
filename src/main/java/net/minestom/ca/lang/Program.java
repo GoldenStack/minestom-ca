@@ -1,8 +1,8 @@
-package net.goldenstack.minestom_ca.lang;
+package net.minestom.ca.lang;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import net.goldenstack.minestom_ca.Automata;
+import net.minestom.ca.Automata;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 

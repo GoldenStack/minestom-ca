@@ -1,4 +1,4 @@
-package net.goldenstack.minestom_ca;
+package net.minestom.ca;
 
 import static net.minestom.server.coordinate.CoordConversion.globalToChunk;
 import static net.minestom.server.coordinate.CoordConversion.globalToSectionRelative;

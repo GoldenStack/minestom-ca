@@ -1,4 +1,4 @@
-package net.goldenstack.minestom_ca;
+package net.minestom.ca;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongMaps;

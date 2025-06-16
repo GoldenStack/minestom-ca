@@ -1,11 +1,11 @@
-package net.goldenstack.minestom_ca.server;
+package net.minestom.ca.server;
 
-import net.goldenstack.minestom_ca.Automata;
-import net.goldenstack.minestom_ca.AutomataImpl;
-import net.goldenstack.minestom_ca.backends.lazy.LazyWorld;
-import net.goldenstack.minestom_ca.rules.BlockPusher;
-import net.goldenstack.minestom_ca.rules.RuleSamples;
 import net.kyori.adventure.text.Component;
+import net.minestom.ca.Automata;
+import net.minestom.ca.AutomataImpl;
+import net.minestom.ca.backends.lazy.LazyWorld;
+import net.minestom.ca.rules.BlockPusher;
+import net.minestom.ca.rules.RuleSamples;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;

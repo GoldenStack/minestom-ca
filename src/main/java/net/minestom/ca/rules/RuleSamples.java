@@ -1,8 +1,8 @@
-package net.goldenstack.minestom_ca.rules;
+package net.minestom.ca.rules;
 
-import net.goldenstack.minestom_ca.Automata.CellRule;
-import net.goldenstack.minestom_ca.Automata.Query;
-import net.goldenstack.minestom_ca.Neighbors;
+import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata.Query;
+import net.minestom.ca.Neighbors;
 import net.minestom.server.instance.block.Block;
 
 import java.util.List;

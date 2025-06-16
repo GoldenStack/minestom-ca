@@ -1,7 +1,7 @@
-package net.goldenstack.minestom_ca.test.lang;
+package net.minestom.ca.test.lang;
 
-import net.goldenstack.minestom_ca.lang.Program;
-import net.goldenstack.minestom_ca.lang.Rule;
+import net.minestom.ca.lang.Program;
+import net.minestom.ca.lang.Rule;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
