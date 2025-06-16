@@ -165,17 +165,11 @@ public final class Automata {
             return stateAt(x, y, z, index);
         }
 
-        default Block blockAt(int x, int y, int z) {
-            final long blockState = stateAt(x, y, z, 0);
-            return Block.fromStateId((int) blockState);
-        }
-
         long[] queryIndexes(int x, int y, int z);
 
         Map<String, Long> queryNames(int x, int y, int z);
 
-        default int countNeighborsState(int index, List<Point> points,
-                                        LongPredicate predicate) {
+        default int count(int index, List<Point> points, LongPredicate predicate) {
             int count = 0;
             for (Point point : points) {
                 final long state = stateAt(point.blockX(), point.blockY(), point.blockZ(), index);
@@ -184,8 +178,7 @@ public final class Automata {
             return count;
         }
 
-        default int countLimit(int index, int limit, List<Point> points,
-                               LongPredicate predicate) {
+        default int countLimit(int index, int limit, List<Point> points, LongPredicate predicate) {
             int count = 0;
             for (Point point : points) {
                 final long state = stateAt(point.blockX(), point.blockY(), point.blockZ(), index);
