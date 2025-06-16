@@ -214,17 +214,23 @@ public final class LazyWorld implements Automata.World {
             return indexes;
         }
 
-        boolean sameSection(int x, int y, int z) {
-            return section != null && sectionIndexGlobal(x, y, z) == section.index;
+        LSection querySection(int x, int y, int z) {
+            final long sectionIndex = sectionIndexGlobal(x, y, z);
+            if (section != null && sectionIndex == section.index) return section;
+            return loadedSections.get(sectionIndex);
         }
 
-        LSection querySection(int x, int y, int z) {
-            return sameSection(x, y, z) ? this.section : sectionGlobal(x, y, z);
+        Palette queryPalette(int x, int y, int z) {
+            final int sectionX = globalToChunk(x);
+            final int sectionY = globalToChunk(y);
+            final int sectionZ = globalToChunk(z);
+            final long sectionIndex = sectionIndex(sectionX, sectionY, sectionZ);
+            if (section != null && sectionIndex == section.index) return palette;
+            return paletteAtSection(sectionX, sectionY, sectionZ);
         }
 
         int queryBlockState(int x, int y, int z) {
-            final Palette palette = sameSection(x, y, z) ? this.palette :
-                    paletteAtSection(globalToChunk(x), globalToChunk(y), globalToChunk(z));
+            final Palette palette = queryPalette(x, y, z);
             if (palette == null) return 0;
             final int localX = globalToSectionRelative(x);
             final int localY = globalToSectionRelative(y);
@@ -268,6 +274,7 @@ public final class LazyWorld implements Automata.World {
             return indexes;
         }
 
+        @Override
         public Map<String, Long> queryNames(int x, int y, int z) {
             x += localX;
             y += localY;
@@ -288,11 +295,6 @@ public final class LazyWorld implements Automata.World {
             }
             return names;
         }
-    }
-
-    LSection sectionGlobal(int x, int y, int z) {
-        final long sectionIndex = sectionIndexGlobal(x, y, z);
-        return loadedSections.get(sectionIndex);
     }
 
     LSection sectionGlobalCompute(int x, int y, int z) {
