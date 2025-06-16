@@ -117,11 +117,11 @@ public final class AutomataImpl {
                 Component header = Component.text()
                         .append(Component.text("§b■ §fMSPT: §a" + String.format("%.2f", mspt) + "ms"))
                         .append(Component.newline())
-                        .append(Component.text("§b■ §fProcessed Sections: §a" + metrics.processedSections()))
+                        .append(Component.text("§b■ §fProcessed Sections: §a" + String.format("%,d", metrics.processedSections())))
                         .append(Component.newline())
-                        .append(Component.text("§b■ §fProcessed Blocks: §a" + metrics.processedBlocks()))
+                        .append(Component.text("§b■ §fProcessed Blocks: §a" + String.format("%,d", metrics.processedBlocks())))
                         .append(Component.newline())
-                        .append(Component.text("§b■ §fModified Blocks: §a" + metrics.modifiedBlocks() + " §f(§a" + ratio + "§f)"))
+                        .append(Component.text("§b■ §fModified Blocks: §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a" + ratio + "§f)"))
                         .build();
 
                 eventInstance.sendPlayerListHeader(header);
