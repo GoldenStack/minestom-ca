@@ -214,28 +214,16 @@ public final class LazyWorld implements Automata.World {
             return indexes;
         }
 
-        LSection querySection(int x, int y, int z) {
-            final long sectionIndex = sectionIndexGlobal(x, y, z);
+        LSection querySection(int sectionX, int sectionY, int sectionZ) {
+            final long sectionIndex = sectionIndex(sectionX, sectionY, sectionZ);
             if (section != null && sectionIndex == section.index) return section;
             return loadedSections.get(sectionIndex);
         }
 
-        Palette queryPalette(int x, int y, int z) {
-            final int sectionX = globalToChunk(x);
-            final int sectionY = globalToChunk(y);
-            final int sectionZ = globalToChunk(z);
+        Palette queryPalette(int sectionX, int sectionY, int sectionZ) {
             final long sectionIndex = sectionIndex(sectionX, sectionY, sectionZ);
             if (section != null && sectionIndex == section.index) return palette;
             return paletteAtSection(sectionX, sectionY, sectionZ);
-        }
-
-        int queryBlockState(int x, int y, int z) {
-            final Palette palette = queryPalette(x, y, z);
-            if (palette == null) return 0;
-            final int localX = globalToSectionRelative(x);
-            final int localY = globalToSectionRelative(y);
-            final int localZ = globalToSectionRelative(z);
-            return palette.get(localX, localY, localZ);
         }
 
         @Override
@@ -243,13 +231,19 @@ public final class LazyWorld implements Automata.World {
             x += localX;
             y += localY;
             z += localZ;
-            if (index == 0) return queryBlockState(x, y, z);
-            final LSection section = querySection(x, y, z);
-            if (section == null) return 0;
-            final int localX = globalToSectionRelative(x);
-            final int localY = globalToSectionRelative(y);
-            final int localZ = globalToSectionRelative(z);
-            return section.getState(localX, localY, localZ, index - 1);
+            final int sectionX = globalToChunk(x), sectionY = globalToChunk(y), sectionZ = globalToChunk(z);
+            if (index == 0) {
+                final Palette palette = queryPalette(sectionX, sectionY, sectionZ);
+                if (palette == null) return 0;
+                return palette.get(globalToSectionRelative(x), globalToSectionRelative(y), globalToSectionRelative(z));
+            } else {
+                final LSection section = querySection(sectionX, sectionY, sectionZ);
+                if (section == null) return 0;
+                final int localX = globalToSectionRelative(x);
+                final int localY = globalToSectionRelative(y);
+                final int localZ = globalToSectionRelative(z);
+                return section.getState(localX, localY, localZ, index - 1);
+            }
         }
 
         static final long[] EMPTY_INDEXES = new long[]{0};
@@ -259,14 +253,16 @@ public final class LazyWorld implements Automata.World {
             x += localX;
             y += localY;
             z += localZ;
-            final LSection section = querySection(x, y, z);
-            if (section == null) return EMPTY_INDEXES;
+            final int sectionX = globalToChunk(x), sectionY = globalToChunk(y), sectionZ = globalToChunk(z);
+            final LSection section = querySection(sectionX, sectionY, sectionZ);
+            final Palette palette = queryPalette(sectionX, sectionY, sectionZ);
+            if (section == null || palette == null) return EMPTY_INDEXES;
             final int localX = globalToSectionRelative(x);
             final int localY = globalToSectionRelative(y);
             final int localZ = globalToSectionRelative(z);
             final List<Automata.CellRule.State> states = orderedStates;
             long[] indexes = new long[states.size() + 1];
-            indexes[0] = queryBlockState(x, y, z);
+            indexes[0] = palette.get(localX, localY, localZ);
             for (int i = 0; i < states.size(); i++) {
                 final long value = section.getState(localX, localY, localZ, i);
                 indexes[i + 1] = value;
