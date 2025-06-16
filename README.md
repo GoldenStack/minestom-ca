@@ -90,9 +90,7 @@ Instance instance; // Your instance
 final Automata.CellRule rules = Automata.CellRule.rules(
         // You can define multiple rules here
 );
-Automata.World.
-
-register(new LazyWorld(instance, rules));
+Automata.World.register(new LazyWorld(instance, rules));
 ```
 
 ## Future potential features
