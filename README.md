@@ -87,6 +87,15 @@ dependencies {
 
 TODO
 
+## Future potential features
+
+* Block states serialization.
+* Spatial rules: rules that only apply to a certain area, such as a region/chunk/section.
+* Better rule reusability: rules that can be reused in other rules, e.g. block spread/movement.
+* Optional block state visualization: change block state based on a separate cellular automata state (potentially
+  configured per player).
+* In-game heatmap visualization of block updates to detect hotspots.
+
 ## Contributing
 
 Found a bug? Explain it clearly in a new issue.
