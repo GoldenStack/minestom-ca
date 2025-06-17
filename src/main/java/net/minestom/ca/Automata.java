@@ -101,6 +101,7 @@ public final class Automata {
         }
 
         static CellRule rules(CellRule... rules) {
+            if (rules.length == 1) return rules[0];
             Set<State> states = new HashSet<>();
             for (CellRule rule : rules) states.addAll(rule.states());
             return new CellRule() {
