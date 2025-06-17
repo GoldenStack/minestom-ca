@@ -122,7 +122,8 @@ public final class CACommands {
                     final String stateExpression = states.get("state_expression");
                     player.sendMessage(Component.text(" * Applying: " + stateName + " = '" + stateExpression + "' on " + event));
                     final Tag<AutomataImpl.CellAction> tag = AutomataImpl.CellActionTag(state);
-                    itemStack.set(tag, new AutomataImpl.CellAction(event, stateExpression));
+                    final AutomataImpl.CellAction action = new AutomataImpl.CellAction(event, stateExpression, false, 0);
+                    itemStack.set(tag, action);
                 }
                 player.setItemInMainHand(itemStack.build());
                 player.sendMessage("States applied to item!");

@@ -6,7 +6,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Player;
-import net.minestom.server.entity.PlayerHand;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.instance.InstanceChunkLoadEvent;
@@ -29,6 +28,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class AutomataImpl {
@@ -60,10 +60,10 @@ public final class AutomataImpl {
             .addListener(PlayerBlockInteractEvent.class, event -> {
                 final Player player = event.getPlayer();
                 final Point point = event.getBlockPosition();
-                if (event.getHand() != PlayerHand.MAIN) return;
                 final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
                 if (item.getTag(AUTOMATA_DEBUG)) showBlockInfo(player, point);
-                applyAction(player, point, item, CellEvent.INTERACT);
+                final ItemStack update = applyAction(player, point, item, CellEvent.INTERACT);
+                if (update != null) player.setItemInHand(event.getHand(), update);
             })
             .addListener(InstanceChunkLoadEvent.class, event -> {
                 Automata.World world = Automata.World.get(event.getInstance());
@@ -129,15 +129,16 @@ public final class AutomataImpl {
                 .build()));
     }
 
-    private static void applyAction(Player player, Point point, ItemStack item, CellEvent event) {
+    private static ItemStack applyAction(Player player, Point point, ItemStack item, CellEvent event) {
         Automata.World world = Automata.World.get(player.getInstance());
-        if (world == null) return;
-
+        if (world == null) return null;
         final CustomData data = item.get(DataComponents.CUSTOM_DATA);
-        if (data == null) return;
+        if (data == null) return null;
         // FIXME: `Tag#path` is broken on items
         CompoundBinaryTag actions = data.nbt();//data.nbt().getCompound("cell_actions");
-        if (actions.isEmpty()) return;
+        if (actions.isEmpty()) return null;
+
+        ItemStack updatedItem = null;
         Map<Automata.CellRule.State, Long> properties = new HashMap<>();
         for (String key : actions.keySet()) {
             final Automata.CellRule.State state = world.rules().state(key);
@@ -145,14 +146,32 @@ public final class AutomataImpl {
             final Tag<CellAction> tag = AutomataImpl.CellActionTag(state);
             final CellAction action = item.getTag(tag);
             if (action == null || !action.event().equals(event)) continue;
+            // Run action
             final long value = actionValue(action.expression()); // TODO: operation support
             properties.put(state, value);
+            // Item update
+            if (action.consume()) {
+                updatedItem = Objects.requireNonNullElse(updatedItem, item).consume(1);
+            }
+            if (action.damage() > 0) {
+                final ItemStack tmp = Objects.requireNonNullElse(updatedItem, item);
+                final Integer damage = tmp.get(DataComponents.DAMAGE);
+                if (damage != null) {
+                    final Integer maxDamage = tmp.get(DataComponents.MAX_DAMAGE);
+                    if (maxDamage != null && damage + 1 >= maxDamage) {
+                        updatedItem = ItemStack.AIR;
+                    } else {
+                        updatedItem = tmp.with(DataComponents.DAMAGE, damage + 1);
+                    }
+                }
+            }
         }
-        if (properties.isEmpty()) return;
+        if (properties.isEmpty()) return null;
         world.updateAt(point.blockX(), point.blockY(), point.blockZ(), properties);
         player.sendMessage(Component.text("Applied " + event.name().toLowerCase() + " action at " +
                         point.blockX() + "," + point.blockY() + "," + point.blockZ())
                 .color(NamedTextColor.GREEN));
+        return updatedItem;
     }
 
     private static long actionValue(String expression) {
@@ -166,7 +185,10 @@ public final class AutomataImpl {
         INTERACT
     }
 
-    public record CellAction(CellEvent event, String expression) {
+    public record CellAction(
+            CellEvent event, String expression,
+            boolean consume, int damage
+    ) {
     }
 
     static final CellActionSerializer CELL_ACTION_SERIALIZER = new CellActionSerializer();
@@ -174,20 +196,26 @@ public final class AutomataImpl {
     static final class CellActionSerializer implements TagSerializer<CellAction> {
         private static final Tag<String> EVENT_TAG = Tag.String("event");
         private static final Tag<String> EXPRESSION_TAG = Tag.String("expression");
+        private static final Tag<Boolean> CONSUME_TAG = Tag.Boolean("consume").defaultValue(false);
+        private static final Tag<Integer> DAMAGE_TAG = Tag.Integer("damage").defaultValue(0);
 
         @Override
         public @Nullable CellAction read(@NotNull TagReadable reader) {
             final String eventStr = reader.getTag(EVENT_TAG);
             final String expression = reader.getTag(EXPRESSION_TAG);
+            final boolean consume = reader.getTag(CONSUME_TAG);
+            final int damage = reader.getTag(DAMAGE_TAG);
             if (eventStr == null || expression == null) return null;
             final CellEvent event = CellEvent.valueOf(eventStr);
-            return new CellAction(event, expression);
+            return new CellAction(event, expression, consume, damage);
         }
 
         @Override
         public void write(@NotNull TagWritable writer, @NotNull CellAction value) {
             writer.setTag(EVENT_TAG, value.event().name());
             writer.setTag(EXPRESSION_TAG, value.expression());
+            if (value.consume()) writer.setTag(CONSUME_TAG, true);
+            if (value.damage() > 0) writer.setTag(DAMAGE_TAG, value.damage());
         }
     }
 
