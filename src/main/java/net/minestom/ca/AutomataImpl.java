@@ -121,13 +121,11 @@ public final class AutomataImpl {
             player.sendMessage(Component.text("No states available")
                     .color(NamedTextColor.RED).decorate(TextDecoration.ITALIC));
         } else {
-            indexes.forEach((name, value) -> {
-                player.sendMessage(Component.text()
-                        .append(Component.text(name).color(NamedTextColor.GRAY))
-                        .append(Component.text(": ").color(NamedTextColor.DARK_GRAY))
-                        .append(Component.text(value).color(NamedTextColor.WHITE))
-                        .build());
-            });
+            indexes.forEach((name, value) -> player.sendMessage(Component.text()
+                    .append(Component.text(name).color(NamedTextColor.GRAY))
+                    .append(Component.text(": ").color(NamedTextColor.DARK_GRAY))
+                    .append(Component.text(value).color(NamedTextColor.WHITE))
+                    .build()));
         }
     }
 
@@ -143,10 +141,11 @@ public final class AutomataImpl {
         Map<Automata.CellRule.State, Long> properties = new HashMap<>();
         for (String key : actions.keySet()) {
             final Automata.CellRule.State state = world.rules().state(key);
+            if (state == null) continue;
             final Tag<CellAction> tag = AutomataImpl.CellActionTag(state);
             final CellAction action = item.getTag(tag);
             if (action == null || !action.event().equals(event)) continue;
-            final long value = Long.parseLong(action.expression()); // TODO: operation support
+            final long value = actionValue(action.expression()); // TODO: operation support
             properties.put(state, value);
         }
         if (properties.isEmpty()) return;
@@ -154,6 +153,11 @@ public final class AutomataImpl {
         player.sendMessage(Component.text("Applied " + event.name().toLowerCase() + " action at " +
                         point.blockX() + "," + point.blockY() + "," + point.blockZ())
                 .color(NamedTextColor.GREEN));
+    }
+
+    private static long actionValue(String expression) {
+        // TODO: operation support
+        return Long.parseLong(expression);
     }
 
     public enum CellEvent {

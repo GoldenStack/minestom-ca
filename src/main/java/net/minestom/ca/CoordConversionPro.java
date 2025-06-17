@@ -39,15 +39,15 @@ public final class CoordConversionPro {
     }
 
     public static int sectionBlockIndex(int x, int y, int z) {
-        return (y << 8) | (z << 4) | x;
+        return (x << 8) | (z << 4) | y;
     }
 
     public static int sectionBlockIndexGetX(int index) {
-        return index & 0xF;
+        return (index >> 8) & 0xF;
     }
 
     public static int sectionBlockIndexGetY(int index) {
-        return (index >> 8) & 0xF;
+        return index & 0xF;
     }
 
     public static int sectionBlockIndexGetZ(int index) {
@@ -64,16 +64,13 @@ public final class CoordConversionPro {
         final int relX = globalToSectionRelative(x);
         final int relY = globalToSectionRelative(y);
         final int relZ = globalToSectionRelative(z);
-        // Check if any coordinate is at the edge of a section (0 or 15)
-        return relX == 0 || relX == 15 ||
-                relY == 0 || relY == 15 ||
-                relZ == 0 || relZ == 15;
+        return relX == 0 || relX == 15 || relY == 0 || relY == 15 || relZ == 0 || relZ == 15;
     }
 
     public static long encodeSectionBlockChange(int localX, int localY, int localZ, long value) {
         // To use with `MultiBlockChangePacket`
         final long blockState = value << 12;
-        final long pos = ((long) localX << 8 | (long) localZ << 4 | localY);
+        final long pos = sectionBlockIndex(localX, localY, localZ);
         return blockState | pos;
     }
 }
