@@ -285,8 +285,9 @@ public final class LazyWorld implements Automata.World {
             if (indexes.length == 1) return Map.of(Automata.CellRule.BLOCK_STATE.name(), indexes[0]);
             Map<String, Long> names = new HashMap<>();
             for (int i = 0; i < variables.size(); i++) {
-                final String name = variables.get(i + 1);
+                final String name = variables.get(i);
                 final long value = indexes[i];
+                assert name != null;
                 names.put(name, value);
             }
             return names;
