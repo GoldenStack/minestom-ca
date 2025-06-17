@@ -466,7 +466,7 @@ public final class LazyWorld implements Automata.World {
                 section.setState(localX, localY, localZ, i, 0);
             }
             if (palette != null) palette.set(localX, localY, localZ, 0);
-            blockChanges.add(encodeSectionBlockChange(localX, localY, localZ, 0));
+            blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, 0));
         }
         // Set states
         final Int2LongMap updatedStates = action.updatedStates();
@@ -476,7 +476,7 @@ public final class LazyWorld implements Automata.World {
                 final long value = changeEntry.getLongValue();
                 if (stateIndex == 0) {
                     if (palette != null) palette.set(localX, localY, localZ, (int) value);
-                    blockChanges.add(encodeSectionBlockChange(localX, localY, localZ, value));
+                    blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, value));
                 } else {
                     section.setState(localX, localY, localZ, stateIndex - 1, value);
                 }

@@ -67,10 +67,13 @@ public final class CoordConversionPro {
         return relX == 0 || relX == 15 || relY == 0 || relY == 15 || relZ == 0 || relZ == 15;
     }
 
-    public static long encodeSectionBlockChange(int localX, int localY, int localZ, long value) {
+    public static long encodeSectionBlockChange(int sectionBlockIndex, long value) {
         // To use with `MultiBlockChangePacket`
         final long blockState = value << 12;
-        final long pos = sectionBlockIndex(localX, localY, localZ);
-        return blockState | pos;
+        return blockState | (long) sectionBlockIndex;
+    }
+
+    public static long encodeSectionBlockChange(int localX, int localY, int localZ, long value) {
+        return encodeSectionBlockChange(sectionBlockIndex(localX, localY, localZ), value);
     }
 }
