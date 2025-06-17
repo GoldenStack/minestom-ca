@@ -2,6 +2,7 @@ package net.minestom.ca;
 
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
+import net.minestom.server.utils.Direction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,14 +14,12 @@ import java.util.Map;
 public final class Neighbors {
     public static final Point SELF = Vec.ZERO;
 
-    public static final Point UP = new Vec(0, 1, 0);
-
-    public static final Point DOWN = new Vec(0, -1, 0);
-
-    public static final Point NORTH = new Vec(0, 0, -1);
-    public static final Point EAST = new Vec(1, 0, 0);
-    public static final Point SOUTH = new Vec(0, 0, 1);
-    public static final Point WEST = new Vec(-1, 0, 0);
+    public static final Point DOWN = Direction.DOWN.vec();
+    public static final Point UP = Direction.UP.vec();
+    public static final Point NORTH = Direction.NORTH.vec();
+    public static final Point SOUTH = Direction.SOUTH.vec();
+    public static final Point WEST = Direction.WEST.vec();
+    public static final Point EAST = Direction.EAST.vec();
 
     public static final Point NORTHEAST = NORTH.add(EAST);
     public static final Point SOUTHEAST = SOUTH.add(EAST);
@@ -41,9 +40,10 @@ public final class Neighbors {
 
     static {
         List<Point> points3d = new ArrayList<>();
-        for (int x : new int[]{-1, 0, 1}) {
-            for (int y : new int[]{-1, 0, 1}) {
-                for (int z : new int[]{-1, 0, 1}) {
+        final int[] offsets = {-1, 0, 1};
+        for (int x : offsets) {
+            for (int y : offsets) {
+                for (int z : offsets) {
                     points3d.add(new Vec(x, y, z));
                 }
             }
