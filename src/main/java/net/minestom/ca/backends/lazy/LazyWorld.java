@@ -312,6 +312,7 @@ public final class LazyWorld implements Automata.World {
 
         // Initialize variables id
         Map<Automata.CellRule.State, Integer> mapping = new HashMap<>();
+        mapping.put(Automata.CellRule.BLOCK_STATE, 0);
         for (int i = 0; i < orderedStates.size(); i++) {
             final Automata.CellRule.State state = orderedStates.get(i);
             mapping.put(state, i + 1); // index 0 is reserved for block state

@@ -5,6 +5,7 @@ import net.minestom.ca.Automata;
 import net.minestom.ca.AutomataImpl;
 import net.minestom.ca.backends.lazy.LazyWorld;
 import net.minestom.ca.rules.BlockPusher;
+import net.minestom.ca.rules.LiquidRule;
 import net.minestom.ca.rules.RuleSamples;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
@@ -29,7 +30,8 @@ public final class Main {
                 new CACommands.Stop(),
                 new CACommands.State(),
                 new CACommands.Action(),
-                new CACommands.ListStates()
+                new CACommands.ListStates(),
+                new CACommands.SetBlock()
         );
 
         // Create an instance
@@ -46,8 +48,10 @@ public final class Main {
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
         final Automata.CellRule rules = Automata.CellRule.rules(
+                new RuleSamples.GameOfLife(),
                 new RuleSamples.GrassGrow(),
-                new BlockPusher()
+                new BlockPusher(),
+                new LiquidRule()
         );
         //final CellRule rules = Program.fromFile(Path.of("rules/piston")).makeCellRule();
 

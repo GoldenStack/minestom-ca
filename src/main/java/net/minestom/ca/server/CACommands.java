@@ -11,10 +11,14 @@ import net.minestom.server.command.builder.arguments.ArgumentEnum;
 import net.minestom.server.command.builder.condition.Conditions;
 import net.minestom.server.command.builder.suggestion.SuggestionCallback;
 import net.minestom.server.command.builder.suggestion.SuggestionEntry;
+import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Player;
+import net.minestom.server.instance.Instance;
+import net.minestom.server.instance.block.Block;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.tag.Tag;
 
+import java.util.Map;
 import java.util.Set;
 
 import static net.minestom.server.command.builder.arguments.ArgumentType.*;
@@ -159,6 +163,28 @@ public final class CACommands {
                 player.sendMessage(Component.text(" • " + state.name() + " (" + state.bitSize() + " bits)")
                         .color(NamedTextColor.WHITE));
             }
+        }
+    }
+
+    public static final class SetBlock extends Command {
+        public SetBlock() {
+            super("setblock");
+            final var position = RelativeBlockPosition("position");
+            final var block = BlockState("block");
+
+            addSyntax((sender, context) -> {
+                final Player player = (Player) sender;
+                final Block blockToPlace = context.get(block);
+                final Point point = context.get(position).from(player);
+                Instance instance = player.getInstance();
+                instance.setBlock(point, blockToPlace);
+
+                final Automata.World world = Automata.World.get(player.getInstance());
+                if (world != null) {
+                    final Map<Automata.CellRule.State, Long> properties = Map.of(Automata.CellRule.BLOCK_STATE, (long) blockToPlace.stateId());
+                    world.handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
+                }
+            }, position, block);
         }
     }
 }
