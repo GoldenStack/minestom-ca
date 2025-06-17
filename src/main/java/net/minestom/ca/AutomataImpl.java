@@ -3,7 +3,6 @@ package net.minestom.ca;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Player;
@@ -106,8 +105,10 @@ public final class AutomataImpl {
             });
 
     private static void showBlockInfo(Player player, Point point) {
-        Automata.World world = Automata.World.get(player.getInstance());
+        final Instance instance = player.getInstance();
+        final Automata.World world = Automata.World.get(instance);
         if (world == null) return;
+        final Block block = instance.getBlock(point);
         final Map<String, Long> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
         player.sendMessage(Component.text()
                 .append(Component.text("Block States").color(NamedTextColor.GRAY)
@@ -116,17 +117,16 @@ public final class AutomataImpl {
                 .append(Component.text(point.blockX() + "," + point.blockY() + "," + point.blockZ())
                         .color(NamedTextColor.DARK_GRAY))
                 .build());
-
-        if (indexes.isEmpty()) {
-            player.sendMessage(Component.text("No states available")
-                    .color(NamedTextColor.RED).decorate(TextDecoration.ITALIC));
-        } else {
-            indexes.forEach((name, value) -> player.sendMessage(Component.text()
-                    .append(Component.text(name).color(NamedTextColor.GRAY))
-                    .append(Component.text(": ").color(NamedTextColor.DARK_GRAY))
-                    .append(Component.text(value).color(NamedTextColor.WHITE))
-                    .build()));
-        }
+        player.sendMessage(Component.text()
+                .append(Component.text("Block: ").color(NamedTextColor.GRAY))
+                .append(Component.text(block.name()).color(NamedTextColor.WHITE))
+                .append(Component.text(" (ID: " + block.stateId() + ")").color(NamedTextColor.DARK_GRAY))
+                .build());
+        indexes.forEach((name, value) -> player.sendMessage(Component.text()
+                .append(Component.text(name).color(NamedTextColor.GRAY))
+                .append(Component.text(": ").color(NamedTextColor.DARK_GRAY))
+                .append(Component.text(value).color(NamedTextColor.WHITE))
+                .build()));
     }
 
     private static void applyAction(Player player, Point point, ItemStack item, CellEvent event) {
