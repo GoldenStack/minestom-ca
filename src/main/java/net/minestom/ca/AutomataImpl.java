@@ -134,8 +134,7 @@ public final class AutomataImpl {
         if (world == null) return null;
         final CustomData data = item.get(DataComponents.CUSTOM_DATA);
         if (data == null) return null;
-        // FIXME: `Tag#path` is broken on items
-        CompoundBinaryTag actions = data.nbt();//data.nbt().getCompound("cell_actions");
+        CompoundBinaryTag actions = data.nbt().getCompound("cell_actions");
         if (actions.isEmpty()) return null;
 
         ItemStack updatedItem = null;
@@ -154,16 +153,7 @@ public final class AutomataImpl {
                 updatedItem = Objects.requireNonNullElse(updatedItem, item).consume(1);
             }
             if (action.damage() > 0) {
-                final ItemStack tmp = Objects.requireNonNullElse(updatedItem, item);
-                final Integer damage = tmp.get(DataComponents.DAMAGE);
-                if (damage != null) {
-                    final Integer maxDamage = tmp.get(DataComponents.MAX_DAMAGE);
-                    if (maxDamage != null && damage + 1 >= maxDamage) {
-                        updatedItem = ItemStack.AIR;
-                    } else {
-                        updatedItem = tmp.with(DataComponents.DAMAGE, damage + 1);
-                    }
-                }
+                updatedItem = Objects.requireNonNullElse(updatedItem, item).damage(action.damage());
             }
         }
         if (properties.isEmpty()) return null;
