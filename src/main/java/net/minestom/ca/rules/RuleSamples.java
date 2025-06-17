@@ -1,6 +1,7 @@
 package net.minestom.ca.rules;
 
 import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.instance.block.Block;
@@ -29,7 +30,7 @@ public final class RuleSamples {
         }
 
         @Override
-        public List<Action> process(Query query) {
+        public List<Action> process(Context context, Query query) {
             final int neighbors = query.countLimit(0, 4, Neighbors.MOORE_2D,
                     state -> state == ALIVE_STATE);
             final long currentState = query.state(0);
@@ -69,7 +70,7 @@ public final class RuleSamples {
         }
 
         @Override
-        public List<Action> process(Query query) {
+        public List<Action> process(Context context, Query query) {
             final long currentState = query.state(0);
             return currentState == DIRT_STATE ? GROW_ACTION : null;
         }

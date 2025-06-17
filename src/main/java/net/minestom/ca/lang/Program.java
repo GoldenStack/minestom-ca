@@ -2,7 +2,6 @@ package net.minestom.ca.lang;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import net.minestom.ca.Automata;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 
@@ -13,7 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public record Program(List<Rule> rules, Set<Automata.CellRule.State> variables) {
+import static net.minestom.ca.Automata.*;
+
+public record Program(List<Rule> rules, Set<CellRule.State> variables) {
     public Program {
         rules = List.copyOf(rules);
         variables = Set.copyOf(variables);
@@ -39,8 +40,8 @@ public record Program(List<Rule> rules, Set<Automata.CellRule.State> variables) 
         return parser.program();
     }
 
-    private Automata.CellRule.State var(String name) {
-        for (Automata.CellRule.State state : variables) {
+    private CellRule.State var(String name) {
+        for (CellRule.State state : variables) {
             if (state.name().equals(name)) {
                 return state;
             }
@@ -48,7 +49,7 @@ public record Program(List<Rule> rules, Set<Automata.CellRule.State> variables) 
         throw new IllegalArgumentException("Unknown variable: " + name);
     }
 
-    public Automata.CellRule makeCellRule() {
+    public CellRule makeCellRule() {
         boolean[] trackedStates = new boolean[Short.MAX_VALUE];
         for (Rule rule : rules) {
             RuleAnalysis.queryExpression(rule.condition(), Rule.Expression.Literal.class, literal -> {
@@ -56,13 +57,13 @@ public record Program(List<Rule> rules, Set<Automata.CellRule.State> variables) 
                 trackedStates[literal.value()] = true;
             });
         }
-        return new Automata.CellRule() {
+        return new CellRule() {
             @Override
             public void init(Map<State, Integer> mapping) {
             }
 
             @Override
-            public List<Action> process(Automata.Query query) {
+            public List<Action> process(Context context, Query query) {
                 Int2LongMap block = null;
                 for (Rule rule : rules) {
                     if (!verifyCondition(0, 0, 0, query, rule.condition())) continue;
@@ -99,7 +100,7 @@ public record Program(List<Rule> rules, Set<Automata.CellRule.State> variables) 
                 }
                 if (block == null) return null;
                 final Int2LongMap finalBlock = block;
-                return List.of(Automata.CellRule.Action.action(action -> {
+                return List.of(CellRule.Action.action(action -> {
                     for (Int2LongMap.Entry entry : finalBlock.int2LongEntrySet()) {
                         action.state(entry.getIntKey(), entry.getLongValue());
                     }
@@ -119,7 +120,7 @@ public record Program(List<Rule> rules, Set<Automata.CellRule.State> variables) 
         };
     }
 
-    private boolean verifyCondition(int x, int y, int z, Automata.Query query, Rule.Condition condition) {
+    private boolean verifyCondition(int x, int y, int z, Query query, Rule.Condition condition) {
         return switch (condition) {
             case Rule.Condition.And and -> {
                 for (Rule.Condition c : and.conditions()) {
@@ -136,7 +137,7 @@ public record Program(List<Rule> rules, Set<Automata.CellRule.State> variables) 
         };
     }
 
-    private long expression(int x, int y, int z, Automata.Query query, Rule.Expression expression) {
+    private long expression(int x, int y, int z, Query query, Rule.Expression expression) {
         return switch (expression) {
             case Rule.Expression.State state -> {
                 final String stateName = state.state();

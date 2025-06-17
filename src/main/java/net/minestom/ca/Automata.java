@@ -15,11 +15,20 @@ import java.util.function.LongPredicate;
 
 public final class Automata {
     public interface CellRule {
+        // The default state for the block, used to track the block's state
+        // Its index is always 0
         State BLOCK_STATE = new State("block_state", 32);
 
         void init(Map<State, Integer> mapping);
 
-        List<Action> process(Query query);
+        /**
+         * Process a single block in the world.
+         *
+         * @param context processing context
+         * @param query   query the current block and its neighbors
+         * @return actions to apply to the world
+         */
+        List<Action> process(Context context, Query query);
 
         boolean tracked(Block block);
 
@@ -111,11 +120,11 @@ public final class Automata {
                 }
 
                 @Override
-                public List<Action> process(Query query) {
+                public List<Action> process(Context context, Query query) {
                     List<Action> first = null;
                     List<Action> result = null;
                     for (CellRule rule : rules) {
-                        List<Action> actions = rule.process(query);
+                        List<Action> actions = rule.process(context, query);
                         if (actions == null || actions.isEmpty()) continue;
                         if (first == null) {
                             first = actions;
@@ -145,6 +154,10 @@ public final class Automata {
         static Int2LongMap stateMap(int key, long value) {
             return Int2LongMaps.singleton(key, value);
         }
+    }
+
+    public interface Context {
+        long tick();
     }
 
     public interface Query {

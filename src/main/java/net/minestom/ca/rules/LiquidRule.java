@@ -1,6 +1,7 @@
 package net.minestom.ca.rules;
 
 import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
@@ -45,11 +46,11 @@ public final class LiquidRule implements CellRule {
     private boolean areSameLiquidType(Block block1, Block block2) {
         if (!isLiquid(block1) || !isLiquid(block2)) return false;
         return (block1.compare(Block.WATER) && block2.compare(Block.WATER)) ||
-               (block1.compare(Block.LAVA) && block2.compare(Block.LAVA));
+                (block1.compare(Block.LAVA) && block2.compare(Block.LAVA));
     }
 
     @Override
-    public List<Action> process(Query query) {
+    public List<Action> process(Context context, Query query) {
         long currentBlockStateId = query.state(blockStateIndex);
         Block currentBlock = Block.fromStateId((int) currentBlockStateId);
         List<Action> resultingActions = new ArrayList<>();

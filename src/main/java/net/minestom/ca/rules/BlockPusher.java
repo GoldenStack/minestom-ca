@@ -3,6 +3,7 @@ package net.minestom.ca.rules;
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
@@ -55,7 +56,7 @@ public final class BlockPusher implements CellRule {
     }
 
     @Override
-    public List<Action> process(Query query) {
+    public List<Action> process(Context context, Query query) {
         final long dirValue = query.state(directionIndex);
         if (dirValue != 0) {
             // We're a block being pushed

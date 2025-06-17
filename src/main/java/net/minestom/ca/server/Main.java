@@ -4,9 +4,8 @@ import net.kyori.adventure.text.Component;
 import net.minestom.ca.Automata;
 import net.minestom.ca.AutomataImpl;
 import net.minestom.ca.backends.lazy.LazyWorld;
-import net.minestom.ca.rules.BlockPusher;
 import net.minestom.ca.rules.LiquidRule;
-import net.minestom.ca.rules.RuleSamples;
+import net.minestom.ca.rules.TreeGrowthRule;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
@@ -48,12 +47,9 @@ public final class Main {
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
         final Automata.CellRule rules = Automata.CellRule.rules(
-                new RuleSamples.GameOfLife(),
-                new RuleSamples.GrassGrow(),
-                new BlockPusher(),
+                new TreeGrowthRule(),
                 new LiquidRule()
         );
-        //final CellRule rules = Program.fromFile(Path.of("rules/piston")).makeCellRule();
 
         // Print variables
         System.out.println("Variables: " + rules.states().stream()
@@ -73,11 +69,10 @@ public final class Main {
             inventory.addItemStack(ItemStack.of(Material.DIRT));
             inventory.addItemStack(ItemStack.of(Material.REDSTONE_BLOCK));
             inventory.addItemStack(ItemStack.of(Material.OAK_LOG));
-
+            inventory.addItemStack(ItemStack.of(Material.OAK_SAPLING));
             inventory.addItemStack(ItemStack.of(Material.STICK)
                     .withTag(AutomataImpl.AUTOMATA_DEBUG, true)
                     .withCustomName(Component.text("Automata Debug")));
-
 
             event.setSpawningInstance(instance);
             player.setRespawnPoint(new Pos(0, 13, 0));
