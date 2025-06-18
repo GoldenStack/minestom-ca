@@ -1,13 +1,10 @@
 package net.minestom.ca.server;
 
 import net.kyori.adventure.text.Component;
-import net.minestom.ca.Automata;
+import net.minestom.ca.Automata.RuleConfig;
 import net.minestom.ca.AutomataImpl;
 import net.minestom.ca.backends.lazy.LazyWorld;
-import net.minestom.ca.rules.LiquidRule;
-import net.minestom.ca.rules.RedstoneWireRule;
-import net.minestom.ca.rules.TreeGrowthRule;
-import net.minestom.ca.rules.WireworldRule;
+import net.minestom.ca.rules.*;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
@@ -23,6 +20,9 @@ import net.minestom.server.item.Material;
 
 import java.util.List;
 
+import static net.minestom.ca.Automata.CellRule;
+import static net.minestom.ca.Automata.World;
+
 public final class Main {
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
@@ -34,7 +34,8 @@ public final class Main {
                 new CACommands.State(),
                 new CACommands.Action(),
                 new CACommands.ListStates(),
-                new CACommands.SetBlock()
+                new CACommands.SetBlock(),
+                new CACommands.SetLightSpeed()
         );
 
         // Create an instance
@@ -50,19 +51,20 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        final List<Automata.CellRule> rules = List.of(
-                new TreeGrowthRule(),
-                new LiquidRule(),
-                new RedstoneWireRule(),
-                new WireworldRule()
+        final List<RuleConfig> rules = List.of(
+                new RuleConfig(new TreeGrowthRule()),
+                new RuleConfig(new LiquidRule()),
+                new RuleConfig(new RedstoneWireRule()),
+                new RuleConfig(new WireworldRule()),
+                new RuleConfig(new RuleSamples.GrassGrow())
         );
 
-        Automata.World world = new LazyWorld(instance, rules);
-        Automata.World.register(world);
+        World world = new LazyWorld(instance, rules);
+        World.register(world);
 
         // Print variables
         System.out.println("Variables: " + world.states().stream()
-                .map(Automata.CellRule.State::name)
+                .map(CellRule.State::name)
                 .toList());
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();

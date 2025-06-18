@@ -192,6 +192,22 @@ public final class Automata {
         }
     }
 
+    public record RuleConfig(
+            Automata.CellRule rule,
+            // How often the rule executes (1 = every tick, 2 = every other tick)
+            int tickInterval,
+            // How many times the rule executes within a single tick
+            int executionsPerTick
+    ) {
+        public RuleConfig(Automata.CellRule rule, int tickInterval) {
+            this(rule, tickInterval, 1);
+        }
+
+        public RuleConfig(Automata.CellRule rule) {
+            this(rule, 1, 1);
+        }
+    }
+
     public interface World {
         Map<UUID, World> WORLDS = new HashMap<>();
 
@@ -255,7 +271,11 @@ public final class Automata {
 
         Query query();
 
-        void updateRules(List<CellRule> newRules);
+        void updateRules(List<RuleConfig> configs);
+
+        int lightSpeed();
+
+        void updateLightSpeed(int lightSpeed);
     }
 
     public record Metrics(

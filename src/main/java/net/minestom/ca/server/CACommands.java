@@ -186,4 +186,25 @@ public final class CACommands {
             }, position, block);
         }
     }
+
+    public static final class SetLightSpeed extends Command {
+        public SetLightSpeed() {
+            super("speed");
+            setCondition(Conditions::playerOnly);
+            final var speed = Integer("speed");
+
+            addSyntax((sender, context) -> {
+                Player player = (Player) sender;
+                final Automata.World world = Automata.World.get(player.getInstance());
+                if (world == null) {
+                    player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
+                    return;
+                }
+
+                final int lightSpeed = context.get(speed);
+                world.updateLightSpeed(lightSpeed);
+                player.sendMessage(Component.text("Light speed updated to: " + lightSpeed).color(NamedTextColor.GREEN));
+            }, speed);
+        }
+    }
 }

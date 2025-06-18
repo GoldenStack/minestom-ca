@@ -22,6 +22,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static net.minestom.ca.CoordConversionPro.*;
 import static net.minestom.ca.backends.lazy.LazyWorld.LSection.BLOCKS_PER_SECTION;
@@ -30,17 +31,19 @@ import static net.minestom.server.coordinate.CoordConversion.globalToSectionRela
 
 @SuppressWarnings("UnstableApiUsage")
 public final class LazyWorld implements Automata.World {
-    private static final int LIGHT_SPEED = 1;
     private final Instance instance;
     private final ContextImpl context = new ContextImpl();
     private final QueryImpl query = new QueryImpl();
     private final int sectionCount;
     private final int minY;
 
+    private List<Automata.RuleConfig> ruleConfigs;
     private List<Automata.CellRule> rules;
     private List<Automata.CellRule.State> orderedStates;
     private Map<Automata.CellRule.State, Integer> rulesMapping;
     private StateLayout stateLayout;
+
+    private int lightSpeed;
 
     private final HashedWheelTimer<ScheduledChange> wheelTimer = new HashedWheelTimer<>(255);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
@@ -307,11 +310,19 @@ public final class LazyWorld implements Automata.World {
         return loadedSections.computeIfAbsent(sectionIndex, LSection::new);
     }
 
-    public LazyWorld(Instance instance, List<Automata.CellRule> rules) {
+    public LazyWorld(Instance instance, List<Automata.RuleConfig> ruleConfigs) {
         this.instance = instance;
         this.sectionCount = instance.getCachedDimensionType().height() / 16;
         this.minY = instance.getCachedDimensionType().minY();
-        initRules(rules, ordered(rules));
+        // Extract rules from configs
+        List<Automata.CellRule> extractedRules = ruleConfigs.stream()
+                .map(Automata.RuleConfig::rule)
+                .collect(Collectors.toList());
+
+        this.ruleConfigs = new ArrayList<>(ruleConfigs);
+        this.rules = extractedRules;
+
+        initRules(extractedRules, ordered(extractedRules));
     }
 
     private static List<Automata.CellRule.State> ordered(List<Automata.CellRule> rules) {
@@ -348,30 +359,50 @@ public final class LazyWorld implements Automata.World {
 
     @Override
     public Automata.Metrics tick() {
+        Automata.Metrics totalMetrics = Automata.Metrics.EMPTY;
+        final int iterations = Math.max(1, lightSpeed);
+        for (int i = 0; i < iterations; i++) {
+            Automata.Metrics iterationMetrics = singleTick();
+            totalMetrics = totalMetrics.add(iterationMetrics);
+        }
+        return totalMetrics;
+    }
+
+    private Automata.Metrics singleTick() {
         if (trackedSections.isEmpty() && wheelTimer.isEmpty()) return Automata.Metrics.EMPTY;
         Long2ObjectMap<LongList> tickBlockChanges = new Long2ObjectOpenHashMap<>();
         Automata.Metrics metrics = Automata.Metrics.EMPTY;
-        for (int i = 0; i < LIGHT_SPEED; i++) {
-            final Automata.Metrics tickMetrics = singleTick(tickBlockChanges);
-            metrics = metrics.add(tickMetrics);
-        }
-        sendPackets(tickBlockChanges);
-        return metrics;
-    }
 
-    private Automata.Metrics singleTick(Long2ObjectMap<LongList> tickBlockChanges) {
         Queue<SectionChange> changes = new ArrayDeque<>();
-        final Automata.Metrics metrics = computeChanges(changes);
+        // Process timed changes first to ensure they're available for this tick
         computeTimedChanges(changes);
+
+        // Process rules according to their configurations
+        for (Automata.RuleConfig config : ruleConfigs) {
+            if (context.tick() % config.tickInterval() != 0) continue;
+            final int tickCount = config.executionsPerTick();
+            for (int execution = 0; execution < tickCount; execution++) {
+                Automata.Metrics ruleMetrics = computeChangesForRule(changes, config);
+                metrics = metrics.add(ruleMetrics);
+            }
+        }
+        trackedSections.clear();
+
         applyChanges(changes, tickBlockChanges);
+        sendPackets(tickBlockChanges);
         this.context.updateTick();
         return metrics;
     }
 
-    private Automata.Metrics computeChanges(Queue<SectionChange> changes) {
+    private Automata.Metrics computeChangesForRule(Queue<SectionChange> changes, Automata.RuleConfig ruleConfig) {
         final int processedSections = trackedSections.size();
         int processedBlocks = 0;
         int modifiedBlocks = 0;
+
+        Automata.CellRule rule = ruleConfig.rule();
+        final int ruleIndex = rules.indexOf(rule);
+        if (ruleIndex == -1) return Automata.Metrics.EMPTY; // Rule not found
+
         for (LSection section : trackedSections) {
             List<BlockChange> blockChanges = new ArrayList<>();
             final long sectionIndex = section.index;
@@ -379,36 +410,33 @@ public final class LazyWorld implements Automata.World {
             final int sectionY = sectionIndexGetY(sectionIndex);
             final int sectionZ = sectionIndexGetZ(sectionIndex);
             Palette palette = paletteAtSection(sectionX, sectionY, sectionZ);
-            int i = 0;
-            for (Automata.CellRule rule : rules) {
-                int ruleIndex = i++;
-                BitSet trackedBlocks = section.trackedBlocks[ruleIndex];
-                if (trackedBlocks == null) continue;
-                if (palette == null) {
-                    trackedBlocks.clear();
-                    continue;
+
+            BitSet trackedBlocks = section.trackedBlocks[ruleIndex];
+            if (trackedBlocks == null || palette == null) continue;
+
+            // Process the rule for tracked blocks
+            BitSet processedBlocksCopy = (BitSet) trackedBlocks.clone(); // Clone to avoid modification issues
+            trackedBlocks.clear(); // Clear for next tick
+
+            for (int blockIndex = processedBlocksCopy.nextSetBit(0);
+                 blockIndex >= 0;
+                 blockIndex = processedBlocksCopy.nextSetBit(blockIndex + 1)) {
+                processedBlocks++;
+                final int x = sectionBlockIndexGetX(blockIndex) + sectionX * 16;
+                final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
+                final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
+                context.updateLocal(section, palette, x, y, z);
+                final List<Automata.CellRule.Action> actions = rule.process(context, query);
+                if (actions != null) {
+                    modifiedBlocks++;
+                    blockChanges.add(new BlockChange(blockIndex, actions));
                 }
-                for (int blockIndex = trackedBlocks.nextSetBit(0);
-                     blockIndex >= 0;
-                     blockIndex = trackedBlocks.nextSetBit(blockIndex + 1)) {
-                    processedBlocks++;
-                    final int x = sectionBlockIndexGetX(blockIndex) + sectionX * 16;
-                    final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
-                    final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
-                    context.updateLocal(section, palette, x, y, z);
-                    final List<Automata.CellRule.Action> actions = rule.process(context, query);
-                    if (actions != null) {
-                        modifiedBlocks++;
-                        blockChanges.add(new BlockChange(blockIndex, actions));
-                    }
-                }
-                trackedBlocks.clear();
             }
             if (!blockChanges.isEmpty()) {
                 changes.offer(new SectionChange(section, palette, blockChanges));
             }
         }
-        trackedSections.clear();
+
         return new Automata.Metrics(processedSections, processedBlocks, modifiedBlocks);
     }
 
@@ -655,7 +683,11 @@ public final class LazyWorld implements Automata.World {
     }
 
     @Override
-    public void updateRules(List<Automata.CellRule> newRules) {
+    public void updateRules(List<Automata.RuleConfig> newRuleConfigs) {
+        List<Automata.CellRule> newRules = newRuleConfigs.stream()
+                .map(Automata.RuleConfig::rule)
+                .toList();
+
         final List<Automata.CellRule.State> orderedStates = ordered(newRules);
         // Map old state indices to new ones
         final Int2IntMap oldToNewIndex = indexMap(orderedStates);
@@ -669,6 +701,8 @@ public final class LazyWorld implements Automata.World {
 
         // Initialize new rules
         initRules(newRules, orderedStates);
+        this.ruleConfigs = newRuleConfigs;
+        this.rules = newRules;
 
         // Reschedule all changes with updated actions
         Map<Integer, List<ScheduledChange>> scheduledChanges = wheelTimer.drainAll();
@@ -743,13 +777,13 @@ public final class LazyWorld implements Automata.World {
         return newStateSegments;
     }
 
-    private boolean emptySegments(MemorySegment[] segments) {
-        for (MemorySegment segment : segments) {
-            if (segment == null) continue;
-            for (long i = 0; i < segment.byteSize(); i += Long.BYTES) {
-                if (segment.get(ValueLayout.JAVA_LONG, i) != 0) return false;
-            }
-        }
-        return true;
+    @Override
+    public int lightSpeed() {
+        return lightSpeed;
+    }
+
+    @Override
+    public void updateLightSpeed(int lightSpeed) {
+        this.lightSpeed = lightSpeed;
     }
 }
