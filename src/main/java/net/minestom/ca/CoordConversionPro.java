@@ -6,9 +6,9 @@ import static net.minestom.server.coordinate.CoordConversion.globalToSectionRela
 public final class CoordConversionPro {
     public static long sectionIndex(int sectionX, int sectionY, int sectionZ) {
         // Use 21 bits for each, with sign extension
-        long x = sectionX & 0x1FFFFF;
-        long y = sectionY & 0x1FFFFF;
-        long z = sectionZ & 0x1FFFFF;
+        final long x = sectionX & 0x1FFFFF;
+        final long y = sectionY & 0x1FFFFF;
+        final long z = sectionZ & 0x1FFFFF;
         return (x << 42) | (y << 21) | z;
     }
 
@@ -55,9 +55,9 @@ public final class CoordConversionPro {
     }
 
     public static boolean globalSameChunk(int x1, int y1, int z1, int x2, int y2, int z2) {
-        return (globalToChunk(x1) == globalToChunk(x2) &&
+        return globalToChunk(x1) == globalToChunk(x2) &&
                 globalToChunk(y1) == globalToChunk(y2) &&
-                globalToChunk(z1) == globalToChunk(z2));
+                globalToChunk(z1) == globalToChunk(z2);
     }
 
     public static boolean globalSectionBoundary(int x, int y, int z) {

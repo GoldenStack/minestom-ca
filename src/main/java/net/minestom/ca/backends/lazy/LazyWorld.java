@@ -173,6 +173,10 @@ public final class LazyWorld implements Automata.World {
         int localX, localY, localZ;
         long[] localStates;
 
+        void updateTick() {
+            this.tick++;
+        }
+
         void updateLocal(LSection section, Palette palette, int x, int y, int z) {
             this.section = section;
             this.palette = palette;
@@ -238,20 +242,16 @@ public final class LazyWorld implements Automata.World {
 
         @Override
         public long stateAt(int x, int y, int z, int index) {
-            x += context.localX;
-            y += context.localY;
-            z += context.localZ;
-            final int sectionX = globalToChunk(x), sectionY = globalToChunk(y), sectionZ = globalToChunk(z);
+            final int gX = context.localX + x, gY = context.localY + y, gZ = context.localZ + z;
+            final int sectionX = globalToChunk(gX), sectionY = globalToChunk(gY), sectionZ = globalToChunk(gZ);
+            final int localX = globalToSectionRelative(gX), localY = globalToSectionRelative(gY), localZ = globalToSectionRelative(gZ);
             if (index == 0) {
                 final Palette palette = queryPalette(sectionX, sectionY, sectionZ);
                 if (palette == null) return 0;
-                return palette.get(globalToSectionRelative(x), globalToSectionRelative(y), globalToSectionRelative(z));
+                return palette.get(localX, localY, localZ);
             } else {
                 final LSection section = querySection(sectionX, sectionY, sectionZ);
                 if (section == null) return 0;
-                final int localX = globalToSectionRelative(x);
-                final int localY = globalToSectionRelative(y);
-                final int localZ = globalToSectionRelative(z);
                 return section.getState(localX, localY, localZ, index - 1);
             }
         }
@@ -260,16 +260,12 @@ public final class LazyWorld implements Automata.World {
 
         @Override
         public long[] queryIndexes(int x, int y, int z) {
-            x += context.localX;
-            y += context.localY;
-            z += context.localZ;
-            final int sectionX = globalToChunk(x), sectionY = globalToChunk(y), sectionZ = globalToChunk(z);
+            final int gX = context.localX + x, gY = context.localY + y, gZ = context.localZ + z;
+            final int sectionX = globalToChunk(gX), sectionY = globalToChunk(gY), sectionZ = globalToChunk(gZ);
+            final int localX = globalToSectionRelative(gX), localY = globalToSectionRelative(gY), localZ = globalToSectionRelative(gZ);
             final LSection section = querySection(sectionX, sectionY, sectionZ);
             final Palette palette = queryPalette(sectionX, sectionY, sectionZ);
             if (section == null || palette == null) return EMPTY_INDEXES;
-            final int localX = globalToSectionRelative(x);
-            final int localY = globalToSectionRelative(y);
-            final int localZ = globalToSectionRelative(z);
             final List<Automata.CellRule.State> states = orderedStates;
             long[] indexes = new long[states.size() + 1];
             indexes[0] = palette.get(localX, localY, localZ);
@@ -282,17 +278,14 @@ public final class LazyWorld implements Automata.World {
 
         @Override
         public Map<String, Long> queryNames(int x, int y, int z) {
-            x += context.localX;
-            y += context.localY;
-            z += context.localZ;
+            final long[] indexes = queryIndexes(x, y, z);
+            if (indexes.length == 1) return Map.of(Automata.CellRule.BLOCK_STATE.name(), indexes[0]);
             Map<Integer, String> variables = new HashMap<>();
             for (Map.Entry<Automata.CellRule.State, Integer> entry : rulesMapping.entrySet()) {
                 final Automata.CellRule.State state = entry.getKey();
                 final int index = entry.getValue();
                 variables.put(index, state.name());
             }
-            final long[] indexes = queryIndexes(x, y, z);
-            if (indexes.length == 1) return Map.of(Automata.CellRule.BLOCK_STATE.name(), indexes[0]);
             Map<String, Long> names = new HashMap<>();
             for (int i = 0; i < variables.size(); i++) {
                 final String name = variables.get(i);
@@ -360,7 +353,7 @@ public final class LazyWorld implements Automata.World {
         final Automata.Metrics metrics = computeChanges(changes);
         computeTimedChanges(changes);
         applyChanges(changes, tickBlockChanges);
-        context.tick++;
+        this.context.updateTick();
         return metrics;
     }
 

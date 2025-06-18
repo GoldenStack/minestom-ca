@@ -13,11 +13,9 @@ import java.util.Map;
 import java.util.Set;
 
 public final class LiquidRule implements CellRule {
-    private int blockStateIndex;
 
     @Override
     public void init(Map<State, Integer> mapping) {
-        blockStateIndex = mapping.get(BLOCK_STATE);
     }
 
     private boolean isLiquid(Block block) {
@@ -30,12 +28,12 @@ public final class LiquidRule implements CellRule {
 
     private int getLiquidLevel(Block block) {
         if (!isLiquid(block)) return -1;
-        String levelStr = block.getProperty("level");
+        final String levelStr = block.getProperty("level");
         return levelStr == null ? 0 : Integer.parseInt(levelStr); // Default to 0 for base "minecraft:water"
     }
 
     private Block getLiquidBlock(Block liquidBaseType, int level) {
-        level = Math.min(Math.max(level, 0), 7); // Clamp to 0-7 for block property
+        level = Math.clamp(level, 0, 7);
         return liquidBaseType.withProperty("level", String.valueOf(level));
     }
 
@@ -51,8 +49,7 @@ public final class LiquidRule implements CellRule {
 
     @Override
     public List<Action> process(Context context, Query query) {
-        long currentBlockStateId = query.state(blockStateIndex);
-        Block currentBlock = Block.fromStateId((int) currentBlockStateId);
+        final Block currentBlock = query.block();
         List<Action> resultingActions = new ArrayList<>();
 
         // Rule 1: If I am liquid and can flow downwards, I become air.
@@ -62,7 +59,7 @@ public final class LiquidRule implements CellRule {
             int currentLvl = getLiquidLevel(currentBlock);
 
             Point downPos = Neighbors.DOWN;
-            Block blockBelow = Block.fromStateId((int) query.stateAt(downPos.blockX(), downPos.blockY(), downPos.blockZ(), blockStateIndex));
+            Block blockBelow = query.blockAt(downPos.blockX(), downPos.blockY(), downPos.blockZ());
 
             boolean canFlowIntoReplaceable = isReplaceableByLiquid(blockBelow);
             boolean canFlowIntoWeakerSameLiquid = false;
@@ -77,7 +74,7 @@ public final class LiquidRule implements CellRule {
 
             if (canFlowIntoReplaceable || canFlowIntoWeakerSameLiquid) {
                 Action becomeAir = Action.action(b -> {
-                    b.state(blockStateIndex, Block.AIR.stateId());
+                    b.state(0, Block.AIR.stateId());
                     b.wakeup(Neighbors.NEUMANN_3D_SELF);
                 });
                 resultingActions.add(becomeAir);
@@ -88,7 +85,7 @@ public final class LiquidRule implements CellRule {
         // Rule 2: If I am replaceable, and liquid is above me, I become that liquid.
         if (isReplaceableByLiquid(currentBlock)) {
             Point upPos = Neighbors.UP;
-            Block blockAbove = Block.fromStateId((int) query.stateAt(upPos.blockX(), upPos.blockY(), upPos.blockZ(), blockStateIndex));
+            Block blockAbove = query.blockAt(upPos.blockX(), upPos.blockY(), upPos.blockZ());
 
             if (isLiquid(blockAbove)) {
                 Block liquidBaseTypeAbove = blockAbove.compare(Block.WATER) ? Block.WATER : Block.LAVA;
@@ -96,7 +93,7 @@ public final class LiquidRule implements CellRule {
                 Block newSelf = getLiquidBlock(liquidBaseTypeAbove, levelAbove);
 
                 Action becomeLiquidFromAbove = Action.action(b -> {
-                    b.state(blockStateIndex, newSelf.stateId());
+                    b.state(0, newSelf.stateId());
                     b.wakeup(Neighbors.NEUMANN_3D_SELF);
                 });
                 resultingActions.add(becomeLiquidFromAbove);
@@ -107,7 +104,7 @@ public final class LiquidRule implements CellRule {
         // New Rule: If I am liquid and there's same type of liquid above me, take the strongest level
         if (isLiquid(currentBlock)) {
             Point upPos = Neighbors.UP;
-            Block blockAbove = Block.fromStateId((int) query.stateAt(upPos.blockX(), upPos.blockY(), upPos.blockZ(), blockStateIndex));
+            Block blockAbove = query.blockAt(upPos.blockX(), upPos.blockY(), upPos.blockZ());
 
             if (areSameLiquidType(currentBlock, blockAbove)) {
                 int currentLevel = getLiquidLevel(currentBlock);
@@ -119,7 +116,7 @@ public final class LiquidRule implements CellRule {
                     Block newSelf = getLiquidBlock(liquidBaseType, aboveLevel);
 
                     Action becomeStrongerLiquid = Action.action(b -> {
-                        b.state(blockStateIndex, newSelf.stateId());
+                        b.state(0, newSelf.stateId());
                         b.wakeup(Neighbors.NEUMANN_3D_SELF); // Update surrounding blocks
                     });
                     resultingActions.add(becomeStrongerLiquid);
@@ -142,14 +139,14 @@ public final class LiquidRule implements CellRule {
 
         if (canBeSpreadInto) {
             // Check if there's a solid block below (necessary for horizontal spread)
-            Point downPos = Neighbors.DOWN;
-            Block blockBelow = Block.fromStateId((int) query.stateAt(downPos.blockX(), downPos.blockY(), downPos.blockZ(), blockStateIndex));
+            final Point downPos = Neighbors.DOWN;
+            final Block blockBelow = query.blockAt(downPos.blockX(), downPos.blockY(), downPos.blockZ());
 
             // If block below is not solid and we're trying to spread horizontally, return.
             // This is the key change - only allow horizontal spread if:
             // 1. There's a solid block below OR
             // 2. Current block is already liquid (for updating existing flows)
-            boolean hasSupport = isSolid(blockBelow) || isLiquid(currentBlock);
+            final boolean hasSupport = isSolid(blockBelow) || isLiquid(currentBlock);
 
             // If there's no support and this is empty space, liquid should fall straight down, not spread horizontally
             if (!hasSupport && isReplaceableByLiquid(currentBlock)) {
@@ -160,9 +157,9 @@ public final class LiquidRule implements CellRule {
             Block bestLiquidBaseTypeToBecome = null;
 
             for (Point sidePos : Neighbors.NEUMANN_2D) { // N, S, E, W
-                Block adjBlock = Block.fromStateId((int) query.stateAt(sidePos.blockX(), sidePos.blockY(), sidePos.blockZ(), blockStateIndex));
+                final Block adjBlock = query.blockAt(sidePos.blockX(), sidePos.blockY(), sidePos.blockZ());
                 if (isLiquid(adjBlock)) {
-                    int adjLevel = getLiquidLevel(adjBlock);
+                    final int adjLevel = getLiquidLevel(adjBlock);
                     Block adjBaseType = adjBlock.compare(Block.WATER) ? Block.WATER : Block.LAVA;
 
                     int prospectiveLevelFromThisSide;
@@ -208,7 +205,7 @@ public final class LiquidRule implements CellRule {
                 if (shouldBecomeThisLiquid) {
                     Block newSelf = getLiquidBlock(bestLiquidBaseTypeToBecome, bestProspectiveLevel);
                     Action spreadToMe = Action.action(b -> {
-                        b.state(blockStateIndex, newSelf.stateId());
+                        b.state(0, newSelf.stateId());
                         b.wakeup(Neighbors.NEUMANN_3D_SELF);
                     });
                     resultingActions.add(spreadToMe);
@@ -222,14 +219,14 @@ public final class LiquidRule implements CellRule {
             boolean supported = false;
             int currentL = getLiquidLevel(currentBlock);
 
-            Block blockAbove = Block.fromStateId((int) query.stateAt(Neighbors.UP.blockX(), Neighbors.UP.blockY(), Neighbors.UP.blockZ(), blockStateIndex));
+            Block blockAbove = query.blockAt(Neighbors.UP.blockX(), Neighbors.UP.blockY(), Neighbors.UP.blockZ());
             if (blockAbove.compare(Block.WATER) && getLiquidLevel(blockAbove) <= currentL) {
                 supported = true;
             }
 
             if (!supported) {
                 for (Point sidePos : Neighbors.NEUMANN_2D) {
-                    Block adjBlock = Block.fromStateId((int) query.stateAt(sidePos.blockX(), sidePos.blockY(), sidePos.blockZ(), blockStateIndex));
+                    Block adjBlock = query.blockAt(sidePos.blockX(), sidePos.blockY(), sidePos.blockZ());
                     if (adjBlock.compare(Block.WATER) && (getLiquidLevel(adjBlock) < currentL || getLiquidLevel(adjBlock) == 0)) {
                         supported = true;
                         break;
@@ -246,7 +243,7 @@ public final class LiquidRule implements CellRule {
                     newSelfState = getLiquidBlock(Block.WATER, nextLevel);
                 }
                 Action decayAction = Action.action(b -> {
-                    b.state(blockStateIndex, newSelfState.stateId());
+                    b.state(0, newSelfState.stateId());
                     b.wakeup(Neighbors.NEUMANN_3D_SELF);
                     // For slower decay, uncomment and adjust schedule ticks (e.g., 5 ticks for 1/4 second)
                     // b.schedule(5);

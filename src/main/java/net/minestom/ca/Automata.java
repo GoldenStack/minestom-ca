@@ -165,12 +165,22 @@ public final class Automata {
 
         long state(int index);
 
+        default Block block() {
+            final long state = state(0);
+            return Block.fromStateId((int) state);
+        }
+
         default long state(CellRule.State state) {
             final int index = stateIndex(state);
             return state(index);
         }
 
         long stateAt(int x, int y, int z, int index);
+
+        default Block blockAt(int x, int y, int z) {
+            final long state = stateAt(x, y, z, 0);
+            return Block.fromStateId((int) state);
+        }
 
         long[] queryIndexes();
 
