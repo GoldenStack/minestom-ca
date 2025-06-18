@@ -68,6 +68,7 @@ block = block.withProperty("level", "3");
 block = block.withProperty("level", "0");
 String level = block.getProperty("level");
 boolean solid = block.isSolid();
+boolean air = block.isAir();
 
 block = Block.REDSTONE_WIRE.withProperties(Map.of(
     "east", "up",
@@ -202,28 +203,14 @@ Common neighbor patterns:
 
 Rules that only apply to certain areas or conditions:
 
-```java
-// Check if there's solid ground below
-Block blockBelow = query.blockAt(0, -1, 0);
-boolean hasSolidSupport = !blockBelow.isAir();
-
-// Apply different logic based on spatial condition
-if (hasSolidSupport) {
-    // Logic for blocks with support
-} else {
-    // Logic for floating blocks
-}
-```
-
 ## Best Practices
 
 1. **Minimize state changes**: Only make necessary modifications
 2. **Be careful with wakeups**: Excessive wakeups can cause performance issues
 3. **Use appropriate neighbor patterns**: Only wake up blocks that need updating
-4. **Combine related rules**: Use `CellRule.rules()` for complex systems
-5. **Track efficiently**: Only return true from `tracked()` for blocks that need processing
-6. **Avoid infinite loops**: Ensure rules eventually stabilize
-7. **Use seed values**: For deterministic randomness in rules that need variation
+4. **Avoid infinite loops**: Ensure rules eventually stabilize
+5. **Use seed values**: For deterministic randomness in rules that need variation
+6. **Use constant `Action`**: Constant actions can improve performance by avoiding object creation
 
 ## Example: Simple Water Flow Rule
 

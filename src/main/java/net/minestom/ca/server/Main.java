@@ -57,7 +57,7 @@ public final class Main {
                 new RuleConfig(new RedstoneWireRule()),
                 new RuleConfig(new WireworldRule()),
                 new RuleConfig(new BlockPusher()),
-                new RuleConfig(new RuleSamples.GrassGrow())
+                new RuleConfig(new GrassSpreadingRule())
         );
 
         World world = new LazyWorld(instance, rules);
