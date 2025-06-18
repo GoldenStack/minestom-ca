@@ -2,7 +2,7 @@ package net.minestom.ca.test.lang;
 
 import net.minestom.ca.lang.Rule;
 import net.minestom.ca.lang.Rule.Expression;
-import net.minestom.ca.lang.Rule.Result.SetIndex;
+import net.minestom.ca.lang.Rule.Result.SetState;
 import net.minestom.server.instance.block.Block;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +18,7 @@ public final class RuleParsingTest {
         assertRule("#dirt -> #grass_block",
                 new Rule(
                         new Equal(Block.DIRT),
-                        new SetIndex(Block.GRASS_BLOCK)
+                        new SetState(Block.GRASS_BLOCK)
                 ));
 
         assertRule("""
@@ -30,13 +30,13 @@ public final class RuleParsingTest {
                                 new Equal(Block.AIR),
                                 new Equal(new Expression.NeighborsCount(WEST, new Equal(Block.OAK_LOG)), new Expression.Literal(1))
                         ),
-                        new SetIndex(Block.OAK_LOG)
+                        new SetState(Block.OAK_LOG)
                 ), new Rule(
                         new And(
                                 new Equal(Block.OAK_LOG),
                                 new Equal(new Expression.NeighborsCount(EAST, new Equal(Block.AIR)), new Expression.Literal(1))
                         ),
-                        new SetIndex(Block.OAK_PLANKS)
+                        new SetState(Block.OAK_PLANKS)
                 ));
 
         assertRule("""
@@ -48,13 +48,13 @@ public final class RuleParsingTest {
                                 new Equal(Block.DIRT),
                                 new Equal(new Expression.NeighborsCount(UP, new Equal(Block.AIR)), new Expression.Literal(1))
                         ),
-                        new SetIndex(Block.GRASS_BLOCK)
+                        new SetState(Block.GRASS_BLOCK)
                 ), new Rule(
                         new And(
                                 new Equal(Block.GRASS_BLOCK),
                                 new Equal(new Expression.NeighborsCount(UP, new Not(new Equal(Block.AIR))), new Expression.Literal(1))
                         ),
-                        new SetIndex(Block.DIRT)
+                        new SetState(Block.DIRT)
                 ));
 
         assertRule("""
@@ -70,7 +70,7 @@ public final class RuleParsingTest {
                                         new Expression.Literal(-1)
                                 )
                         ),
-                        new SetIndex(Block.BLACK_WOOL)
+                        new SetState(Block.BLACK_WOOL)
                 ), new Rule(
                         new And(
                                 new Equal(Block.WHITE_WOOL),
@@ -79,13 +79,13 @@ public final class RuleParsingTest {
                                         new Expression.Literal(1)
                                 )
                         ),
-                        new SetIndex(Block.BLACK_WOOL)
+                        new SetState(Block.BLACK_WOOL)
                 ), new Rule(
                         new And(
                                 new Equal(Block.BLACK_WOOL),
                                 new Equal(new Expression.NeighborsCount(MOORE_2D, new Equal(Block.WHITE_WOOL)), new Expression.Literal(3))
                         ),
-                        new SetIndex(Block.WHITE_WOOL)
+                        new SetState(Block.WHITE_WOOL)
                 )
         );
 
@@ -95,7 +95,7 @@ public final class RuleParsingTest {
                                 new Equal(Block.WHITE_WOOL),
                                 new Equal(new Expression.Index(1), new Expression.Literal(0))
                         ),
-                        new SetIndex(Block.BLACK_WOOL)
+                        new SetState(Block.BLACK_WOOL)
                 ));
 
         assertRule("""
@@ -113,29 +113,29 @@ public final class RuleParsingTest {
                                 new Equal(Block.RED_WOOL),
                                 new Equal(new Expression.NeighborsCount(UP, new Equal(Block.HAY_BLOCK)), new Expression.Literal(1))
                         ),
-                        new SetIndex(Block.ORANGE_WOOL)
+                        new SetState(Block.ORANGE_WOOL)
                 ),
                 new Rule(
                         new Equal(Block.ORANGE_WOOL),
-                        new SetIndex(Block.YELLOW_WOOL)
+                        new SetState(Block.YELLOW_WOOL)
                 ), new Rule(
                         new Equal(Block.YELLOW_WOOL),
-                        new SetIndex(Block.LIME_WOOL)
+                        new SetState(Block.LIME_WOOL)
                 ), new Rule(
                         new Equal(Block.LIME_WOOL),
-                        new SetIndex(Block.GREEN_WOOL)
+                        new SetState(Block.GREEN_WOOL)
                 ), new Rule(
                         new Equal(Block.GREEN_WOOL),
-                        new SetIndex(Block.CYAN_WOOL)
+                        new SetState(Block.CYAN_WOOL)
                 ), new Rule(
                         new Equal(Block.CYAN_WOOL),
-                        new SetIndex(Block.LIGHT_BLUE_WOOL)
+                        new SetState(Block.LIGHT_BLUE_WOOL)
                 ), new Rule(
                         new Equal(Block.LIGHT_BLUE_WOOL),
-                        new SetIndex(Block.BLUE_WOOL)
+                        new SetState(Block.BLUE_WOOL)
                 ), new Rule(
                         new Equal(Block.BLUE_WOOL),
-                        new SetIndex(Block.PURPLE_WOOL)
+                        new SetState(Block.PURPLE_WOOL)
                 ));
     }
 
@@ -152,7 +152,7 @@ public final class RuleParsingTest {
                                         new Expression.Literal(0))
                                 )
                         ),
-                        new SetIndex(Block.BLACK_WOOL)
+                        new SetState(Block.BLACK_WOOL)
                 )
         );
     }
@@ -162,23 +162,23 @@ public final class RuleParsingTest {
         assertRule("points=1 -> #dirt",
                 new Rule(
                         new Equal(new Expression.Index(1), new Expression.Literal(1)),
-                        new SetIndex(Block.DIRT)
+                        new SetState(Block.DIRT)
                 ));
         assertRule("points=0 -> points=1",
                 new Rule(
                         new Equal(new Expression.Index(1), new Expression.Literal(0)),
-                        new SetIndex(1, new Expression.Literal(1))
+                        new SetState(1, new Expression.Literal(1))
                 ));
         assertRule("points=1 -> #dirt points=2",
                 new Rule(
                         new Equal(new Expression.Index(1), new Expression.Literal(1)),
-                        new SetIndex(0, new Expression.Literal(Block.DIRT)),
-                        new SetIndex(1, new Expression.Literal(2))
+                        new SetState(0, new Expression.Literal(Block.DIRT)),
+                        new SetState(1, new Expression.Literal(2))
                 ));
         assertRule("#dirt -> points=up@points",
                 new Rule(
                         new Equal(Block.DIRT),
-                        new SetIndex(1, new Expression.NeighborIndex(0, 1, 0, 1))
+                        new SetState(1, new Expression.NeighborIndex(0, 1, 0, 1))
                 ));
     }
 
@@ -187,19 +187,19 @@ public final class RuleParsingTest {
         assertRule("#redstone_wire[power=15] -> #dirt",
                 new Rule(
                         new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE.withProperty("power", "15"))),
-                        new SetIndex(Block.DIRT)
+                        new SetState(Block.DIRT)
                 ));
         assertRule("#redstone_wire[power=15, south=side] -> #dirt",
                 new Rule(
                         new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE
                                 .withProperty("power", "15")
                                 .withProperty("south", "side"))),
-                        new SetIndex(Block.DIRT)
+                        new SetState(Block.DIRT)
                 ));
         assertRule("#redstone_wire[power=15] -> #redstone_wire[power=7]",
                 new Rule(
                         new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE.withProperty("power", "15"))),
-                        new SetIndex(Block.REDSTONE_WIRE.withProperty("power", "7"))
+                        new SetState(Block.REDSTONE_WIRE.withProperty("power", "7"))
                 ));
     }
 
@@ -222,14 +222,14 @@ public final class RuleParsingTest {
         assertRule("points!0 -> points=points+1",
                 new Rule(
                         new Not(new Equal(new Expression.Index(1), new Expression.Literal(0))),
-                        new SetIndex(1, new Expression.Operation(
+                        new SetState(1, new Expression.Operation(
                                 new Expression.Index(1), new Expression.Literal(1),
                                 Expression.Operation.Type.ADD))
                 ));
         assertRule("points!0 -> points=points-1",
                 new Rule(
                         new Not(new Equal(new Expression.Index(1), new Expression.Literal(0))),
-                        new SetIndex(1, new Expression.Operation(
+                        new SetState(1, new Expression.Operation(
                                 new Expression.Index(1), new Expression.Literal(1),
                                 Expression.Operation.Type.SUBTRACT))
                 ));
@@ -243,7 +243,7 @@ public final class RuleParsingTest {
                         """,
                 new Rule(
                         new Equal(Block.DIRT),
-                        new SetIndex(Block.GRASS_BLOCK)
+                        new SetState(Block.GRASS_BLOCK)
                 ));
         assertRule("""
                         #dirt -> #grass_block
@@ -251,7 +251,7 @@ public final class RuleParsingTest {
                         """,
                 new Rule(
                         new Equal(Block.DIRT),
-                        new SetIndex(Block.GRASS_BLOCK)
+                        new SetState(Block.GRASS_BLOCK)
                 ));
         assertRule("""
                         // Test comment
@@ -260,7 +260,7 @@ public final class RuleParsingTest {
                         """,
                 new Rule(
                         new Equal(Block.DIRT),
-                        new SetIndex(Block.GRASS_BLOCK)
+                        new SetState(Block.GRASS_BLOCK)
                 ));
     }
 }

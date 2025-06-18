@@ -47,6 +47,10 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
             public SetState(Expression expression) {
                 this(Automata.CellRule.BLOCK_STATE.name(), expression);
             }
+
+            public SetState(Block block) {
+                this(new Expression.Literal(block.stateId()));
+            }
         }
 
         record BlockCopy(int x, int y, int z) implements Result {

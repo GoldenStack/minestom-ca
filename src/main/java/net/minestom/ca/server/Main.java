@@ -1,5 +1,7 @@
 package net.minestom.ca.server;
 
+import com.dfsek.terra.minestom.TerraMinestomPlatform;
+import com.dfsek.terra.minestom.world.TerraMinestomWorld;
 import net.kyori.adventure.text.Component;
 import net.minestom.ca.Automata.RuleConfig;
 import net.minestom.ca.AutomataImpl;
@@ -13,7 +15,6 @@ import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
-import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -26,6 +27,7 @@ import static net.minestom.ca.Automata.World;
 public final class Main {
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
+        final TerraMinestomPlatform platform = new TerraMinestomPlatform();
 
         // Register commands
         MinecraftServer.getCommandManager().register(
@@ -41,15 +43,9 @@ public final class Main {
         // Create an instance
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
         instance.setChunkSupplier(LightingChunk::new);
-        instance.setGenerator(unit -> unit.modifier().fillHeight(0, 10, Block.STONE));
-        instance.enableAutoChunkLoad(false);
-        int range = 5;
-        for (int x = -range; x < range; x++) {
-            for (int z = -range; z < range; z++) {
-                instance.loadChunk(x, z).join();
-            }
-        }
-        System.out.println("Chunks loaded: " + instance.getChunks().size());
+        TerraMinestomWorld terraWorld = platform.worldBuilder(instance)
+                .defaultPack()
+                .attach();
 
         final List<RuleConfig> rules = List.of(
                 new RuleConfig(new TreeGrowthRule()),
@@ -86,7 +82,7 @@ public final class Main {
                     .withCustomName(Component.text("Automata Debug")));
 
             event.setSpawningInstance(instance);
-            player.setRespawnPoint(new Pos(0, 13, 0));
+            player.setRespawnPoint(new Pos(0, 100, 0));
         });
 
         minecraftServer.start("0.0.0.0", 25565);

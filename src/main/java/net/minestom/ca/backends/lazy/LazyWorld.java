@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.longs.LongList;
 import net.minestom.ca.Automata;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
@@ -22,6 +23,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 import static net.minestom.ca.CoordConversionPro.*;
@@ -381,6 +383,7 @@ public final class LazyWorld implements Automata.World {
 
     @Override
     public Automata.Metrics tick() {
+        processChunkQueues();
         Automata.Metrics totalMetrics = Automata.Metrics.EMPTY;
         final int iterations = Math.max(1, lightSpeed);
         for (int i = 0; i < iterations; i++) {
@@ -388,6 +391,18 @@ public final class LazyWorld implements Automata.World {
             totalMetrics = totalMetrics.add(iterationMetrics);
         }
         return totalMetrics;
+    }
+
+    private void processChunkQueues() {
+        Vec chunkPos;
+        // Process chunk loads
+        while ((chunkPos = chunksToLoad.poll()) != null) {
+            processChunkLoad(chunkPos.blockX(), chunkPos.blockZ());
+        }
+        // Process chunk unloads
+        while ((chunkPos = chunksToUnload.poll()) != null) {
+            processChunkUnload(chunkPos.blockX(), chunkPos.blockZ());
+        }
     }
 
     private Automata.Metrics singleTick() {
@@ -604,8 +619,20 @@ public final class LazyWorld implements Automata.World {
         updateAt(x, y, z, properties);
     }
 
+    private final Queue<Vec> chunksToLoad = new ConcurrentLinkedQueue<>();
+    private final Queue<Vec> chunksToUnload = new ConcurrentLinkedQueue<>();
+
     @Override
     public void handleChunkLoad(int chunkX, int chunkZ) {
+        chunksToLoad.add(new Vec(chunkX, 0, chunkZ));
+    }
+
+    @Override
+    public void handleChunkUnload(int chunkX, int chunkZ) {
+        chunksToUnload.add(new Vec(chunkX, 0, chunkZ));
+    }
+
+    private void processChunkLoad(int chunkX, int chunkZ) {
         final Chunk chunk = instance.getChunk(chunkX, chunkZ);
         if (chunk == null) return;
         final int globalX = chunk.getChunkX() * 16;
@@ -616,6 +643,13 @@ public final class LazyWorld implements Automata.World {
             final Section section = chunk.getSection(i);
             LSection startSection = sectionGlobalCompute(globalX, globalY, globalZ);
             registerSection(startSection, section);
+        }
+    }
+
+    private void processChunkUnload(int chunkX, int chunkZ) {
+        for (int sectionY = 0; sectionY < sectionCount; sectionY++) {
+            final long sectionIndex = sectionIndex(chunkX, sectionY, chunkZ);
+            this.loadedSections.remove(sectionIndex);
         }
     }
 
@@ -670,14 +704,6 @@ public final class LazyWorld implements Automata.World {
             }
         });
         trackSection(startSection);
-    }
-
-    @Override
-    public void handleChunkUnload(int chunkX, int chunkZ) {
-        for (int sectionY = 0; sectionY < sectionCount; sectionY++) {
-            final long sectionIndex = sectionIndex(chunkX, sectionY, chunkZ);
-            this.loadedSections.remove(sectionIndex);
-        }
     }
 
     @Override
