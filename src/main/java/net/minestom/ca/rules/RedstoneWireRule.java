@@ -127,8 +127,8 @@ public final class RedstoneWireRule implements CellRule {
     }
 
     @Override
-    public boolean tracked(Block block) {
-        return block.compare(Block.REDSTONE_WIRE);
+    public List<Interest> interests() {
+        return List.of(Interest.block(Block.REDSTONE_WIRE));
     }
 
     @Override

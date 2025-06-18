@@ -658,7 +658,12 @@ public final class LazyWorld implements Automata.World {
             final int blockY = sectionY * 16 + y;
             final int blockZ = sectionZ * 16 + z;
             for (Automata.CellRule rule : rules) {
-                if (value > 0 && !rule.tracked(Block.fromStateId(value))) return;
+                if (value > 0) {
+                    for (Automata.CellRule.Interest interest : rule.interests()) {
+                        if (interest.state() == Automata.CellRule.BLOCK_STATE && !interest.predicate().test(value))
+                            return;
+                    }
+                }
                 register(blockX, blockY, blockZ, startSection, Neighbors.MOORE_3D_SELF);
             }
         });

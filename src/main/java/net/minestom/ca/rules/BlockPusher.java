@@ -126,8 +126,11 @@ public final class BlockPusher implements CellRule {
     }
 
     @Override
-    public boolean tracked(Block block) {
-        return false; // Tracking doesn't depend on block state, but on push properties
+    public List<Interest> interests() {
+        return List.of(
+                Interest.state(PUSH_DIRECTION),
+                Interest.state(PUSH_STRENGTH)
+        );
     }
 
     @Override

@@ -372,11 +372,12 @@ public final class TreeGrowthRule implements CellRule {
     }
 
     @Override
-    public boolean tracked(Block block) {
-        return block.stateId() == SAPLING_STATE ||
-                block.stateId() == LOG_STATE ||
-                block.stateId() == LEAVES_STATE ||
-                block.isAir(); // Also track air blocks so they can become logs or leaves
+    public List<Interest> interests() {
+        return List.of(
+                Interest.block(Block.OAK_SAPLING),
+                Interest.block(Block.OAK_LOG),
+                Interest.block(Block.OAK_LEAVES)
+        );
     }
 
     @Override

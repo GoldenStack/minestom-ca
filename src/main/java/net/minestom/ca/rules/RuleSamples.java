@@ -45,8 +45,8 @@ public final class RuleSamples {
         }
 
         @Override
-        public boolean tracked(Block block) {
-            return block.stateId() == ALIVE_STATE;
+        public List<Interest> interests() {
+            return List.of(Interest.block(Block.WHITE_WOOL));
         }
 
         @Override
@@ -76,8 +76,8 @@ public final class RuleSamples {
         }
 
         @Override
-        public boolean tracked(Block block) {
-            return block.stateId() == DIRT_STATE;
+        public List<Interest> interests() {
+            return List.of(Interest.block(Block.DIRT));
         }
 
         @Override

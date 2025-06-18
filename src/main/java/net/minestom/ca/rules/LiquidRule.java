@@ -257,10 +257,11 @@ public final class LiquidRule implements CellRule {
     }
 
     @Override
-    public boolean tracked(Block block) {
-        // Track liquids, as they can initiate changes (flow, decay).
-        // Air blocks will be woken up by changing liquids, so they don't need to be tracked initially.
-        return isLiquid(block);
+    public List<Interest> interests() {
+        return List.of(
+                Interest.block(Block.WATER),
+                Interest.block(Block.LAVA)
+        );
     }
 
     @Override

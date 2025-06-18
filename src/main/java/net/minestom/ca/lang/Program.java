@@ -3,7 +3,6 @@ package net.minestom.ca.lang;
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.minestom.server.coordinate.Point;
-import net.minestom.server.instance.block.Block;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -108,9 +107,10 @@ public record Program(List<Rule> rules, Set<CellRule.State> variables) {
             }
 
             @Override
-            public boolean tracked(Block block) {
-                final int state = block.stateId();
-                return state >= 0 && state < trackedStates.length && trackedStates[state];
+            public List<Interest> interests() {
+                return List.of(
+                        new Interest(BLOCK_STATE, value -> value >= 0 && value < trackedStates.length && trackedStates[(int) value])
+                );
             }
 
             @Override

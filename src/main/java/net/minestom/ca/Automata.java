@@ -29,7 +29,7 @@ public final class Automata {
          */
         List<Action> process(Context context, Query query);
 
-        boolean tracked(Block block);
+        List<Interest> interests();
 
         Set<State> states();
 
@@ -38,6 +38,20 @@ public final class Automata {
                 if (bitSize < 1 || bitSize > 64) {
                     throw new IllegalArgumentException("State bit size must be between 1 and 64");
                 }
+            }
+        }
+
+        record Interest(State state, LongPredicate predicate) {
+            public static Interest block(Block block) {
+                return new Interest(BLOCK_STATE, value -> Block.fromStateId((int) value).id() == block.id());
+            }
+
+            public static Interest blockState(Block block) {
+                return new Interest(BLOCK_STATE, value -> value == block.stateId());
+            }
+
+            public static Interest state(State state) {
+                return new Interest(state, value -> value != 0);
             }
         }
 

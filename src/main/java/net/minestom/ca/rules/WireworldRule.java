@@ -98,9 +98,11 @@ public final class WireworldRule implements CellRule {
     }
 
     @Override
-    public boolean tracked(Block block) {
-        // Track both redstone wire blocks and redstone blocks
-        return block.compare(Block.REDSTONE_WIRE) || block.compare(Block.REDSTONE_BLOCK);
+    public List<Interest> interests() {
+        return List.of(
+                Interest.block(Block.REDSTONE_WIRE),
+                Interest.block(Block.REDSTONE_BLOCK)
+        );
     }
 
     @Override
