@@ -38,6 +38,9 @@ public final class Neighbors {
     public static final List<Point> NEUMANN_3D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST, UP, DOWN);
     public static final List<Point> NEUMANN_3D = List.of(NORTH, SOUTH, EAST, WEST, UP, DOWN);
 
+    public static final List<Point> RADIAL_3D_SELF;
+    public static final List<Point> RADIAL_3D;
+
     static {
         List<Point> points3d = new ArrayList<>();
         final int[] offsets = {-1, 0, 1};
@@ -53,6 +56,28 @@ public final class Neighbors {
 
         points3d.removeIf(Vec.ZERO::equals);
         MOORE_3D = List.copyOf(points3d);
+
+        // Generate radial 3D neighbors
+        List<Point> radialPoints = new ArrayList<>(NEUMANN_3D_SELF);
+        // Add diagonal points at distance √2
+        radialPoints.add(new Vec(1, 1, 0));
+        radialPoints.add(new Vec(1, -1, 0));
+        radialPoints.add(new Vec(-1, 1, 0));
+        radialPoints.add(new Vec(-1, -1, 0));
+        radialPoints.add(new Vec(1, 0, 1));
+        radialPoints.add(new Vec(1, 0, -1));
+        radialPoints.add(new Vec(-1, 0, 1));
+        radialPoints.add(new Vec(-1, 0, -1));
+        radialPoints.add(new Vec(0, 1, 1));
+        radialPoints.add(new Vec(0, 1, -1));
+        radialPoints.add(new Vec(0, -1, 1));
+        radialPoints.add(new Vec(0, -1, -1));
+
+        RADIAL_3D_SELF = List.copyOf(radialPoints);
+
+        List<Point> radialPointsNoSelf = new ArrayList<>(radialPoints);
+        radialPointsNoSelf.removeIf(Vec.ZERO::equals);
+        RADIAL_3D = List.copyOf(radialPointsNoSelf);
     }
 
     public static final Map<String, List<Point>> NAMED = Map.ofEntries(
@@ -73,6 +98,8 @@ public final class Neighbors {
             Map.entry("neumann2dself", NEUMANN_2D_SELF),
             Map.entry("neumann2d", NEUMANN_2D),
             Map.entry("neumann3dself", NEUMANN_3D_SELF),
-            Map.entry("neumann3d", NEUMANN_3D)
+            Map.entry("neumann3d", NEUMANN_3D),
+            Map.entry("radial3dself", RADIAL_3D_SELF),
+            Map.entry("radial3d", RADIAL_3D)
     );
 }

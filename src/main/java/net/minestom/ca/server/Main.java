@@ -5,7 +5,9 @@ import net.minestom.ca.Automata;
 import net.minestom.ca.AutomataImpl;
 import net.minestom.ca.backends.lazy.LazyWorld;
 import net.minestom.ca.rules.LiquidRule;
+import net.minestom.ca.rules.RedstoneWireRule;
 import net.minestom.ca.rules.TreeGrowthRule;
+import net.minestom.ca.rules.WireworldRule;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
@@ -48,7 +50,9 @@ public final class Main {
 
         final Automata.CellRule rules = Automata.CellRule.rules(
                 new TreeGrowthRule(),
-                new LiquidRule()
+                new LiquidRule(),
+                new RedstoneWireRule(),
+                new WireworldRule()
         );
 
         // Print variables
@@ -68,6 +72,7 @@ public final class Main {
             inventory.addItemStack(ItemStack.of(Material.WHITE_WOOL));
             inventory.addItemStack(ItemStack.of(Material.DIRT));
             inventory.addItemStack(ItemStack.of(Material.REDSTONE_BLOCK));
+            inventory.addItemStack(ItemStack.of(Material.REDSTONE));
             inventory.addItemStack(ItemStack.of(Material.OAK_LOG));
             inventory.addItemStack(ItemStack.of(Material.OAK_SAPLING));
             inventory.addItemStack(ItemStack.of(Material.STICK)

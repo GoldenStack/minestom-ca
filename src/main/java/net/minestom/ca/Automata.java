@@ -89,6 +89,10 @@ public final class Automata {
                     this.wakePoints = wakePoints;
                 }
 
+                public void wakeup(Point wakePoint) {
+                    this.wakePoints = List.of(wakePoint);
+                }
+
                 public void condition(int state, long value) {
                     if (conditionStates == null) conditionStates = new Int2LongOpenHashMap();
                     conditionStates.put(state, value);

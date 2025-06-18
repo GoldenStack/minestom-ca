@@ -118,15 +118,19 @@ public final class AutomataImpl {
                         .color(NamedTextColor.DARK_GRAY))
                 .build());
         player.sendMessage(Component.text()
-                .append(Component.text("Block: ").color(NamedTextColor.GRAY))
-                .append(Component.text(block.name()).color(NamedTextColor.WHITE))
+                .append(Component.text(block.state()).color(NamedTextColor.WHITE))
                 .append(Component.text(" (ID: " + block.stateId() + ")").color(NamedTextColor.DARK_GRAY))
                 .build());
-        indexes.forEach((name, value) -> player.sendMessage(Component.text()
-                .append(Component.text(name).color(NamedTextColor.GRAY))
-                .append(Component.text(": ").color(NamedTextColor.DARK_GRAY))
-                .append(Component.text(value).color(NamedTextColor.WHITE))
-                .build()));
+        for (Map.Entry<String, Long> entry : indexes.entrySet()) {
+            final String name = entry.getKey();
+            final Long value = entry.getValue();
+            if (value == null || value == 0) continue;
+            player.sendMessage(Component.text()
+                    .append(Component.text(name).color(NamedTextColor.GRAY))
+                    .append(Component.text(": ").color(NamedTextColor.DARK_GRAY))
+                    .append(Component.text(value).color(NamedTextColor.WHITE))
+                    .build());
+        }
     }
 
     private static ItemStack applyAction(Player player, Point point, ItemStack item, CellEvent event) {
