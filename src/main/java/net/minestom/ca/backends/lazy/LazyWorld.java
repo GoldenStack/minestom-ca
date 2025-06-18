@@ -50,12 +50,21 @@ public final class LazyWorld implements Automata.World {
     private final HashedWheelTimer<ScheduledChange> wheelTimer = new HashedWheelTimer<>(255);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
 
-    private static final class RuleContext {
+    private final class RuleContext {
         private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
         private final Automata.RuleConfig ruleConfig;
 
         RuleContext(Automata.RuleConfig ruleConfig) {
             this.ruleConfig = ruleConfig;
+        }
+
+        boolean interested(int index, long value) {
+            for (Automata.CellRule.Interest interest : ruleConfig.rule().interests()) {
+                final int interestIndex = query.stateIndex(interest.state());
+                if (interestIndex != index) continue;
+                if (interest.predicate().test(value)) return true;
+            }
+            return false;
         }
     }
 
@@ -428,13 +437,11 @@ public final class LazyWorld implements Automata.World {
         if (ruleIndex == -1) return Automata.Metrics.EMPTY; // Rule not found
 
         for (LSection section : trackedSections) {
-            List<BlockChange> blockChanges = new ArrayList<>();
             final long sectionIndex = section.index;
             final int sectionX = sectionIndexGetX(sectionIndex);
             final int sectionY = sectionIndexGetY(sectionIndex);
             final int sectionZ = sectionIndexGetZ(sectionIndex);
             Palette palette = paletteAtSection(sectionX, sectionY, sectionZ);
-
             BitSet trackedBlocks = section.trackedBlocks[ruleIndex];
             if (trackedBlocks == null || palette == null) continue;
 
@@ -442,6 +449,7 @@ public final class LazyWorld implements Automata.World {
             BitSet processedBlocksCopy = (BitSet) trackedBlocks.clone(); // Clone to avoid modification issues
             trackedBlocks.clear(); // Clear for next tick
 
+            List<BlockChange> blockChanges = new ArrayList<>();
             for (int blockIndex = processedBlocksCopy.nextSetBit(0);
                  blockIndex >= 0;
                  blockIndex = processedBlocksCopy.nextSetBit(blockIndex + 1)) {
@@ -599,7 +607,7 @@ public final class LazyWorld implements Automata.World {
     @Override
     public void handleChunkLoad(int chunkX, int chunkZ) {
         final Chunk chunk = instance.getChunk(chunkX, chunkZ);
-        assert chunk != null;
+        if (chunk == null) return;
         final int globalX = chunk.getChunkX() * 16;
         final int globalZ = chunk.getChunkZ() * 16;
         final int startSectionY = minY / 16;
@@ -640,9 +648,8 @@ public final class LazyWorld implements Automata.World {
             final int blockIndex = sectionBlockIndex(localX, localY, localZ);
             for (int i = 0; i < rules.size(); i++) {
                 BitSet trackedBlocks = section.trackedBlocks[i];
-                if (trackedBlocks == null) {
+                if (trackedBlocks == null)
                     trackedBlocks = section.trackedBlocks[i] = new BitSet((int) BLOCKS_PER_SECTION);
-                }
                 trackedBlocks.set(blockIndex);
             }
         }
@@ -657,13 +664,8 @@ public final class LazyWorld implements Automata.World {
             final int blockX = sectionX * 16 + x;
             final int blockY = sectionY * 16 + y;
             final int blockZ = sectionZ * 16 + z;
-            for (Automata.CellRule rule : rules) {
-                if (value > 0) {
-                    for (Automata.CellRule.Interest interest : rule.interests()) {
-                        if (interest.state() == Automata.CellRule.BLOCK_STATE && !interest.predicate().test(value))
-                            return;
-                    }
-                }
+            for (RuleContext rule : ruleContexts) {
+                if (value > 0 && !rule.interested(0, value)) return;
                 register(blockX, blockY, blockZ, startSection, Neighbors.MOORE_3D_SELF);
             }
         });
