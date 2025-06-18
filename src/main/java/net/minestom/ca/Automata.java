@@ -1,7 +1,6 @@
 package net.minestom.ca;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
-import it.unimi.dsi.fastutil.ints.Int2LongMaps;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.Chunk;
@@ -33,13 +32,6 @@ public final class Automata {
         boolean tracked(Block block);
 
         Set<State> states();
-
-        default State state(String stateName) {
-            for (State state : states()) {
-                if (state.name().equals(stateName)) return state;
-            }
-            return null;
-        }
 
         record State(String name, int bitSize) {
             public State {
@@ -111,52 +103,6 @@ public final class Automata {
                     );
                 }
             }
-        }
-
-        static CellRule rules(CellRule... rules) {
-            if (rules.length == 1) return rules[0];
-            Set<State> states = new HashSet<>();
-            for (CellRule rule : rules) states.addAll(rule.states());
-            return new CellRule() {
-                @Override
-                public void init(Map<State, Integer> mapping) {
-                    for (CellRule rule : rules) rule.init(mapping);
-                }
-
-                @Override
-                public List<Action> process(Context context, Query query) {
-                    List<Action> first = null;
-                    List<Action> result = null;
-                    for (CellRule rule : rules) {
-                        List<Action> actions = rule.process(context, query);
-                        if (actions == null || actions.isEmpty()) continue;
-                        if (first == null) {
-                            first = actions;
-                        } else {
-                            if (result == null) result = new ArrayList<>(first);
-                            result.addAll(actions);
-                        }
-                    }
-                    return result != null ? result : first;
-                }
-
-                @Override
-                public boolean tracked(Block block) {
-                    for (CellRule rule : rules) {
-                        if (rule.tracked(block)) return true;
-                    }
-                    return false;
-                }
-
-                @Override
-                public Set<State> states() {
-                    return states;
-                }
-            };
-        }
-
-        static Int2LongMap stateMap(int key, long value) {
-            return Int2LongMaps.singleton(key, value);
         }
     }
 
@@ -296,11 +242,20 @@ public final class Automata {
          */
         Instance instance();
 
-        CellRule rules();
+        List<CellRule> rules();
+
+        List<CellRule.State> states();
+
+        default CellRule.State state(String stateName) {
+            for (CellRule.State state : states()) {
+                if (state.name().equals(stateName)) return state;
+            }
+            return null;
+        }
 
         Query query();
 
-        void updateRules(Automata.CellRule newRules);
+        void updateRules(List<CellRule> newRules);
     }
 
     public record Metrics(

@@ -44,7 +44,7 @@ public final class AutomataImpl {
                 properties.put(Automata.CellRule.BLOCK_STATE, (long) block.stateId());
                 final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
                 if (item.has(DataComponents.CUSTOM_DATA)) {
-                    for (Automata.CellRule.State state : world.rules().states()) {
+                    for (Automata.CellRule.State state : world.states()) {
                         final Tag<Long> tag = AutomataImpl.CellTag(state);
                         final Long value = item.getTag(tag);
                         if (value != null) properties.put(state, value);
@@ -144,7 +144,7 @@ public final class AutomataImpl {
         ItemStack updatedItem = null;
         Map<Automata.CellRule.State, Long> properties = new HashMap<>();
         for (String key : actions.keySet()) {
-            final Automata.CellRule.State state = world.rules().state(key);
+            final Automata.CellRule.State state = world.state(key);
             if (state == null) continue;
             final Tag<CellAction> tag = AutomataImpl.CellActionTag(state);
             final CellAction action = item.getTag(tag);

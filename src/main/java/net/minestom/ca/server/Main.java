@@ -21,6 +21,8 @@ import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
+import java.util.List;
+
 public final class Main {
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
@@ -48,19 +50,20 @@ public final class Main {
         }
         System.out.println("Chunks loaded: " + instance.getChunks().size());
 
-        final Automata.CellRule rules = Automata.CellRule.rules(
+        final List<Automata.CellRule> rules = List.of(
                 new TreeGrowthRule(),
                 new LiquidRule(),
                 new RedstoneWireRule(),
                 new WireworldRule()
         );
 
+        Automata.World world = new LazyWorld(instance, rules);
+        Automata.World.register(world);
+
         // Print variables
-        System.out.println("Variables: " + rules.states().stream()
+        System.out.println("Variables: " + world.states().stream()
                 .map(Automata.CellRule.State::name)
                 .toList());
-
-        Automata.World.register(new LazyWorld(instance, rules));
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {

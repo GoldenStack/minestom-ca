@@ -87,7 +87,7 @@ dependencies {
 
 ```java
 Instance instance; // Your instance
-final Automata.CellRule rules = Automata.CellRule.rules(
+final List<Automata.CellRule> rules = List.of(
     // You can define multiple rules here
 );
 Automata.World.register(new LazyWorld(instance, rules));
