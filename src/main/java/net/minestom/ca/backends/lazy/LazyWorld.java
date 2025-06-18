@@ -43,11 +43,21 @@ public final class LazyWorld implements Automata.World {
     private Map<Automata.CellRule.State, Integer> rulesMapping;
     private StateLayout stateLayout;
 
+    private List<RuleContext> ruleContexts;
+
     private int lightSpeed;
 
     private final HashedWheelTimer<ScheduledChange> wheelTimer = new HashedWheelTimer<>(255);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
-    private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
+
+    private static final class RuleContext {
+        private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
+        private final Automata.RuleConfig ruleConfig;
+
+        RuleContext(Automata.RuleConfig ruleConfig) {
+            this.ruleConfig = ruleConfig;
+        }
+    }
 
     // Layout information for states
     private static final class StateLayout {
@@ -346,6 +356,9 @@ public final class LazyWorld implements Automata.World {
         for (Automata.CellRule rule : rules) rule.init(mapping);
         this.rules = rules;
         this.rulesMapping = mapping;
+        this.ruleContexts = ruleConfigs.stream()
+                .map(RuleContext::new)
+                .toList();
     }
 
     private record BlockChange(int sectionBlockIndex, List<Automata.CellRule.Action> actions) {
@@ -369,24 +382,26 @@ public final class LazyWorld implements Automata.World {
     }
 
     private Automata.Metrics singleTick() {
-        if (trackedSections.isEmpty() && wheelTimer.isEmpty()) return Automata.Metrics.EMPTY;
+        final List<RuleContext> rulesToTick = rulesToTick();
+        if (rulesToTick.isEmpty() && wheelTimer.isEmpty()) {
+            this.context.updateTick();
+            return Automata.Metrics.EMPTY;
+        }
         Long2ObjectMap<LongList> tickBlockChanges = new Long2ObjectOpenHashMap<>();
         Automata.Metrics metrics = Automata.Metrics.EMPTY;
 
         Queue<SectionChange> changes = new ArrayDeque<>();
         // Process timed changes first to ensure they're available for this tick
         computeTimedChanges(changes);
-
         // Process rules according to their configurations
-        for (Automata.RuleConfig config : ruleConfigs) {
-            if (context.tick() % config.tickInterval() != 0) continue;
-            final int tickCount = config.executionsPerTick();
+        for (RuleContext ruleContext : rulesToTick) {
+            final int tickCount = ruleContext.ruleConfig.executionsPerTick();
             for (int execution = 0; execution < tickCount; execution++) {
-                Automata.Metrics ruleMetrics = computeChangesForRule(changes, config);
+                Automata.Metrics ruleMetrics = computeChangesForRule(changes, ruleContext);
                 metrics = metrics.add(ruleMetrics);
             }
+            ruleContext.trackedSections.clear();
         }
-        trackedSections.clear();
 
         applyChanges(changes, tickBlockChanges);
         sendPackets(tickBlockChanges);
@@ -394,7 +409,16 @@ public final class LazyWorld implements Automata.World {
         return metrics;
     }
 
-    private Automata.Metrics computeChangesForRule(Queue<SectionChange> changes, Automata.RuleConfig ruleConfig) {
+    private List<RuleContext> rulesToTick() {
+        final long tick = this.context.tick();
+        return ruleContexts.stream()
+                .filter(context -> !context.trackedSections.isEmpty() && tick % context.ruleConfig.tickInterval() == 0)
+                .toList();
+    }
+
+    private Automata.Metrics computeChangesForRule(Queue<SectionChange> changes, RuleContext ruleContext) {
+        Set<LSection> trackedSections = ruleContext.trackedSections;
+        final Automata.RuleConfig ruleConfig = ruleContext.ruleConfig;
         final int processedSections = trackedSections.size();
         int processedBlocks = 0;
         int modifiedBlocks = 0;
@@ -478,7 +502,11 @@ public final class LazyWorld implements Automata.World {
                 processSectionAction(section, palette, currentChange.sectionBlockIndex(), action, blockChanges);
             }
         }
-        trackedSections.add(section);
+        trackSection(section);
+    }
+
+    void trackSection(LSection section) {
+        for (RuleContext ruleContext : ruleContexts) ruleContext.trackedSections.add(section);
     }
 
     private void sendPackets(Long2ObjectMap<LongList> tickBlockChanges) {
@@ -575,7 +603,7 @@ public final class LazyWorld implements Automata.World {
         if (startSection.index == sectionIndex) return startSection;
         if (sectionCache == null || sectionCache.index != sectionIndex) {
             sectionCache = sectionGlobalCompute(x, y, z);
-            trackedSections.add(sectionCache);
+            trackSection(sectionCache);
         }
         return sectionCache;
     }
@@ -583,7 +611,7 @@ public final class LazyWorld implements Automata.World {
     private void register(int x, int y, int z, LSection startSection, List<Point> wakePoints) {
         if (startSection == null) {
             startSection = sectionGlobalCompute(x, y, z);
-            trackedSections.add(startSection);
+            trackSection(startSection);
         }
         LSection sectionCache = null;
         final boolean boundary = globalSectionBoundary(x, y, z);
@@ -621,7 +649,7 @@ public final class LazyWorld implements Automata.World {
                 register(blockX, blockY, blockZ, startSection, Neighbors.MOORE_3D_SELF);
             }
         });
-        trackedSections.add(startSection);
+        trackSection(startSection);
     }
 
     @Override
@@ -642,7 +670,7 @@ public final class LazyWorld implements Automata.World {
             section.setState(localX, localY, localZ, i, 0);
         }
         //if (palette != null) palette.set(localX, localY, localZ, 0);
-        trackedSections.add(section);
+        trackSection(section);
         register(x, y, z, section, Neighbors.MOORE_3D_SELF);
     }
 
@@ -658,7 +686,7 @@ public final class LazyWorld implements Automata.World {
             final long value = properties.getOrDefault(state, 0L);
             section.setState(localX, localY, localZ, index - 1, value);
         }
-        trackedSections.add(section);
+        trackSection(section);
         register(x, y, z, section, Neighbors.MOORE_3D_SELF);
     }
 
@@ -727,7 +755,7 @@ public final class LazyWorld implements Automata.World {
                 wheelTimer.schedule(() -> new ScheduledChange(change.section(), newBlockChange), remainingTicks);
             }
         }
-        trackedSections.clear();
+        for (RuleContext ruleContext : ruleContexts) ruleContext.trackedSections.clear();
         for (LSection section : loadedSections.values()) {
             final int sectionX = sectionIndexGetX(section.index);
             final int sectionY = sectionIndexGetY(section.index);
