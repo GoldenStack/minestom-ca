@@ -50,9 +50,8 @@ public final class RedstoneWireRule implements CellRule {
         }
 
         // Create updated block with new properties
-        final Block newBlock = currentBlock.withProperties(finalConnections);
         return List.of(Action.action(action -> {
-            action.state(0, newBlock.stateId());
+            action.properties(finalConnections);
             action.wakeup(Neighbors.NEUMANN_2D_SELF);
         }));
     }
@@ -60,18 +59,18 @@ public final class RedstoneWireRule implements CellRule {
     private Map<String, String> applySpecialRules(Map<String, String> connections) {
         // Create a mutable copy of the connections
         Map<String, String> result = new HashMap<>(connections);
-        
+
         // Count non-"none" connections
         int connectionCount = 0;
         String connectedDirection = null;
-        
+
         for (Map.Entry<String, String> entry : connections.entrySet()) {
             if (!entry.getValue().equals("none")) {
                 connectionCount++;
                 connectedDirection = entry.getKey();
             }
         }
-        
+
         // Case 1: No connections - set all to "side"
         if (connectionCount == 0) {
             for (String direction : connections.keySet()) {
@@ -79,13 +78,13 @@ public final class RedstoneWireRule implements CellRule {
             }
             return result;
         }
-        
+
         // Case 2: Single connection - set opposite to "side"
         if (connectionCount == 1 && connectedDirection != null) {
             String oppositeDirection = OPPOSITE_DIRECTIONS.get(connectedDirection);
             result.put(oppositeDirection, "side");
         }
-        
+
         return result;
     }
 

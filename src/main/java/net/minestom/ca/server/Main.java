@@ -56,6 +56,7 @@ public final class Main {
                 new RuleConfig(new LiquidRule()),
                 new RuleConfig(new RedstoneWireRule()),
                 new RuleConfig(new WireworldRule()),
+                new RuleConfig(new BlockPusher()),
                 new RuleConfig(new RuleSamples.GrassGrow())
         );
 

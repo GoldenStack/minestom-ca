@@ -547,6 +547,19 @@ public final class LazyWorld implements Automata.World {
             blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, 0));
         }
         // Set states
+        final Map<String, String> updatedProperties = action.updatedProperties();
+        if (updatedProperties != null && palette != null) {
+            Block block = Block.fromStateId(palette.get(localX, localY, localZ));
+            assert block != null;
+            try {
+                block = block.withProperties(updatedProperties);
+                final int value = block.stateId();
+                palette.set(localX, localY, localZ, value);
+                blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, value));
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid properties
+            }
+        }
         final Int2LongMap updatedStates = action.updatedStates();
         if (updatedStates != null) {
             for (Int2LongMap.Entry changeEntry : updatedStates.int2LongEntrySet()) {
@@ -743,6 +756,7 @@ public final class LazyWorld implements Automata.World {
                     Int2LongMap updatedStates = remapStateIndices(action.updatedStates(), oldToNewIndex);
                     Int2LongMap conditionStates = remapStateIndices(action.conditionStates(), oldToNewIndex);
                     final Automata.CellRule.Action newAction = new Automata.CellRule.Action(
+                            action.updatedProperties(),
                             updatedStates,
                             action.clear(),
                             action.wakePoints(),

@@ -42,6 +42,9 @@ public final class Automata {
         }
 
         record Action(
+                // Block properties to update
+                Map<String, String> updatedProperties,
+                // States to update
                 Int2LongMap updatedStates,
                 // Whether states should be cleared before applying the action
                 boolean clear,
@@ -59,18 +62,33 @@ public final class Automata {
             }
 
             public Action immediate() {
-                return new Action(updatedStates, clear, wakePoints, conditionStates, 0);
+                return new Action(updatedProperties, updatedStates, clear, wakePoints, conditionStates, 0);
             }
 
             public static final class Builder {
+                Map<String, String> updatedProperties = new HashMap<>();
                 Int2LongMap updatedStates = new Int2LongOpenHashMap();
                 boolean clear;
                 List<Point> wakePoints = Neighbors.MOORE_3D_SELF;
                 @Nullable Int2LongMap conditionStates;
                 int scheduleTick;
 
+                public void property(String name, String value) {
+                    updatedProperties.put(name, value);
+                }
+
+                public void properties(Map<String, String> properties) {
+                    updatedProperties.putAll(properties);
+                }
+
                 public void state(int state, long value) {
                     updatedStates.put(state, value);
+                }
+
+                public void states(long[] states) {
+                    for (int i = 0; i < states.length; i++) {
+                        updatedStates.put(i, states[i]);
+                    }
                 }
 
                 public void clear() {
@@ -96,6 +114,7 @@ public final class Automata {
 
                 Action build() {
                     return new Action(
+                            updatedProperties,
                             updatedStates, clear,
                             wakePoints,
                             conditionStates,

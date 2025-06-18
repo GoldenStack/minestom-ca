@@ -67,20 +67,13 @@ public final class BlockPusher implements CellRule {
             // Check if we can move forward
             if (replaceable(query.stateAt(dx, dy, dz, 0))) {
                 // We can move - clear and wake up the target position
-                return List.of(new Action(
-                        null, true,
-                        wakeupPoints(pushDir),
-                        null,
-                        0
-                ));
+                return List.of(Action.action(action -> {
+                    action.clear();
+                    action.wakeup(wakeupPoints(pushDir));
+                }));
             } else {
                 // We hit a block - wait for propagation and empty space
-                return List.of(new Action(
-                        null, false,
-                        wakeupPoints(pushDir),
-                        null,
-                        0
-                ));
+                return List.of(Action.action(action -> action.wakeup(wakeupPoints(pushDir))));
             }
         } else {
             // Check if we should receive a push from any neighbor
@@ -116,23 +109,18 @@ public final class BlockPusher implements CellRule {
                 for (int i = 0; i < neighborStates.length; i++) {
                     updatedState.put(i, neighborStates[i]);
                 }
-                return List.of(new Action(
-                        updatedState, true,
-                        wakeupPoints(dir),
-                        null,
-                        0
-                ));
+                return List.of(Action.action(action -> {
+                    action.states(neighborStates);
+                    action.clear();
+                    action.wakeup(wakeupPoints(dir));
+                }));
             } else {
                 // Block should store push direction and propagate it
-                Int2LongMap updatedState = new Int2LongOpenHashMap();
-                updatedState.put(directionIndex, neighborDirValue);
-                updatedState.put(strengthIndex, neighborStrength);
-                return List.of(new Action(
-                        updatedState, false,
-                        wakeupPoints(dir),
-                        null,
-                        0
-                ));
+                return List.of(Action.action(action -> {
+                    action.state(directionIndex, neighborDirValue);
+                    action.state(strengthIndex, neighborStrength);
+                    action.wakeup(wakeupPoints(dir));
+                }));
             }
         }
     }

@@ -71,9 +71,8 @@ public final class WireworldRule implements CellRule {
         if (nextPower == currentPower) return null;
 
         // Create a new block with updated power level and wire connections
-        Block newBlock = currentBlock.withProperty("power", String.valueOf(nextPower));
         return List.of(Action.action(action -> {
-            action.state(0, newBlock.stateId());
+            action.property("power", String.valueOf(nextPower));
             action.wakeup(Neighbors.MOORE_3D);
         }));
     }
