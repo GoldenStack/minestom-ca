@@ -74,7 +74,8 @@ public final class GrassSpreadingRule implements CellRule {
             }
         }
 
-        if (hasAdjacentGrass && ThreadLocalRandom.current().nextInt(SPREAD_CHANCE) == 0) {
+        if (!hasAdjacentGrass) return null;
+        if (ThreadLocalRandom.current().nextInt(SPREAD_CHANCE) == 0) {
             return DIRT_TO_GRASS;
         } else {
             return DIRT_TRY_LATER;
