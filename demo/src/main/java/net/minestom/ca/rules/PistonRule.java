@@ -26,11 +26,12 @@ public final class PistonRule implements CellRule {
             States.PUSH_STRENGTH
     );
 
-    private Map<State, Integer> stateMapping;
+    private int pushDirectionIndex, pushStrengthIndex;
 
     @Override
     public void init(Map<State, Integer> mapping) {
-        this.stateMapping = mapping;
+        this.pushDirectionIndex = mapping.get(States.PUSH_DIRECTION);
+        this.pushStrengthIndex = mapping.get(States.PUSH_STRENGTH);
     }
 
     List<Action> processPiston(Query query) {
@@ -75,11 +76,11 @@ public final class PistonRule implements CellRule {
                     } else {
                         // Apply direction/strength states if not already set
                         return List.of(Action.action(action -> {
-                            action.state(stateMapping.get(States.PUSH_DIRECTION), direction.ordinal() + 1);
-                            action.state(stateMapping.get(States.PUSH_STRENGTH), 1);
+                            action.state(pushDirectionIndex, direction.ordinal() + 1);
+                            action.state(pushStrengthIndex, 1);
 
-                            action.condition(stateMapping.get(States.PUSH_DIRECTION), 0);
-                            action.condition(stateMapping.get(States.PUSH_STRENGTH), 0);
+                            action.condition(pushDirectionIndex, 0);
+                            action.condition(pushStrengthIndex, 0);
                         }));
                     }
                 }

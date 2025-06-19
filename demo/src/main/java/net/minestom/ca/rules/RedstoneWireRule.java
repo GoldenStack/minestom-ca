@@ -92,28 +92,25 @@ public final class RedstoneWireRule implements CellRule {
         final int dx = direction.blockX();
         final int dy = direction.blockY();
         final int dz = direction.blockZ();
-
-        // Check for redstone wire at same level
-        Block neighborBlock = query.blockAt(dx, dy, dz);
-        if (neighborBlock.compare(Block.REDSTONE_WIRE)) {
+        final Block neighborBlock = query.blockAt(dx, dy, dz);
+        if (connectable(neighborBlock)) {
             return "side";
         }
-
-        // Check for redstone wire one block up with a solid block to climb on
-        Block blockUp = query.blockAt(dx, dy + 1, dz);
-        Block blockInDirection = query.blockAt(dx, dy, dz);
-        if (blockUp.compare(Block.REDSTONE_WIRE) && blockInDirection.isSolid()) {
+        final Block blockUp = query.blockAt(dx, dy + 1, dz);
+        if (connectable(blockUp) && neighborBlock.isSolid()) {
             return "up";
         }
-
-        // Check for redstone wire one block down with no obstruction
-        Block blockDown = query.blockAt(dx, dy - 1, dz);
-        if (blockDown.compare(Block.REDSTONE_WIRE) && !blockInDirection.isSolid()) {
+        final Block blockDown = query.blockAt(dx, dy - 1, dz);
+        if (connectable(blockDown) && !neighborBlock.isSolid()) {
             return "side";
         }
 
         // No connection
         return "none";
+    }
+
+    private boolean connectable(Block block) {
+        return block.compare(Block.REDSTONE_WIRE) || block.compare(Block.REDSTONE_BLOCK);
     }
 
     private boolean hasChanged(Block currentBlock, Map<String, String> newConnections) {
