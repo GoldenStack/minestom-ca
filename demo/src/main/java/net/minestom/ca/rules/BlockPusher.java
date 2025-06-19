@@ -4,6 +4,7 @@ import net.minestom.ca.Automata.CellRule;
 import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
 import net.minestom.ca.Neighbors;
+import net.minestom.ca.States;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
@@ -15,12 +16,6 @@ import java.util.Set;
 
 public final class BlockPusher implements CellRule {
     private static final long AIR_STATE = Block.AIR.stateId();
-
-    // Direction state - stores which direction to push (0=none, Direction ordinal + 1)
-    private static final State PUSH_DIRECTION = new State("push_direction", 4);
-    // Strength state - stores how far the push should propagate
-    private static final State PUSH_STRENGTH = new State("push_strength", 8);
-
     private static final Direction[] DIRECTIONS = Direction.values();
 
     private int directionIndex;
@@ -33,15 +28,15 @@ public final class BlockPusher implements CellRule {
 
     @Override
     public void init(Map<State, Integer> mapping) {
-        directionIndex = mapping.get(PUSH_DIRECTION);
-        strengthIndex = mapping.get(PUSH_STRENGTH);
+        directionIndex = mapping.get(States.PUSH_DIRECTION);
+        strengthIndex = mapping.get(States.PUSH_STRENGTH);
     }
 
     boolean replaceable(long state) {
         return state == AIR_STATE;
     }
 
-    private static final List<Point>[] WAKEUP_POINTS_CACHE = new List[Direction.values().length];
+    private static final List<Vec>[] WAKEUP_POINTS_CACHE = new List[Direction.values().length];
 
     static {
         for (Direction dir : DIRECTIONS) {
@@ -49,7 +44,7 @@ public final class BlockPusher implements CellRule {
         }
     }
 
-    List<Point> wakeupPoints(Direction direction) {
+    List<Vec> wakeupPoints(Direction direction) {
         return WAKEUP_POINTS_CACHE[direction.ordinal()];
     }
 
@@ -122,13 +117,13 @@ public final class BlockPusher implements CellRule {
     @Override
     public List<Interest> interests() {
         return List.of(
-                Interest.state(PUSH_DIRECTION),
-                Interest.state(PUSH_STRENGTH)
+                Interest.state(States.PUSH_DIRECTION),
+                Interest.state(States.PUSH_STRENGTH)
         );
     }
 
     @Override
     public Set<State> states() {
-        return Set.of(PUSH_DIRECTION, PUSH_STRENGTH);
+        return Set.of(States.PUSH_DIRECTION, States.PUSH_STRENGTH);
     }
 }

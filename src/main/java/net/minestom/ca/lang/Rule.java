@@ -1,7 +1,6 @@
 package net.minestom.ca.lang;
 
 import net.minestom.ca.Automata;
-import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import org.jetbrains.annotations.NotNull;
@@ -73,12 +72,12 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
         record NeighborState(int x, int y, int z, String state) implements Expression {
         }
 
-        record NeighborsCount(@NotNull List<Point> offsets, @NotNull Condition condition) implements Expression {
+        record NeighborsCount(@NotNull List<Vec> offsets, @NotNull Condition condition) implements Expression {
             public NeighborsCount {
                 offsets = List.copyOf(offsets);
             }
 
-            public NeighborsCount(@NotNull Point offset, @NotNull Condition condition) {
+            public NeighborsCount(@NotNull Vec offset, @NotNull Condition condition) {
                 this(List.of(offset), condition);
             }
 

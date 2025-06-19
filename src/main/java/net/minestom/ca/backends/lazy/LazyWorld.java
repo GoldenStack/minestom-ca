@@ -10,7 +10,6 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
 import net.minestom.ca.Automata;
 import net.minestom.ca.Neighbors;
-import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
@@ -609,14 +608,28 @@ public final class LazyWorld implements Automata.World {
     }
 
     boolean actionPredicate(LSection section, Palette palette, int x, int y, int z, Automata.CellRule.Action action) {
+        final Map<String, String> conditionProperties = action.conditionProperties();
         final Int2LongMap conditionStates = action.conditionStates();
-        if (conditionStates == null || conditionStates.isEmpty()) return true;
+        if ((conditionStates == null || conditionStates.isEmpty())
+                && (conditionProperties == null || conditionProperties.isEmpty())) return true;
         context.updateLocal(section, palette, x, y, z);
         final long[] currentStates = query.queryIndexes();
-        for (Int2LongMap.Entry entry : conditionStates.int2LongEntrySet()) {
-            final int stateIndex = entry.getIntKey();
-            final long value = entry.getLongValue();
-            if (currentStates[stateIndex] != value) return false;
+        if (conditionProperties != null) {
+            final int stateId = (int) currentStates[0];
+            final Block block = Block.fromStateId(stateId);
+            for (Map.Entry<String, String> entry : conditionProperties.entrySet()) {
+                final String propertyName = entry.getKey();
+                final String expectedValue = entry.getValue();
+                final String value = block.getProperty(propertyName);
+                if (!Objects.equals(value, expectedValue)) return false;
+            }
+        }
+        if (conditionStates != null) {
+            for (Int2LongMap.Entry entry : conditionStates.int2LongEntrySet()) {
+                final int stateIndex = entry.getIntKey();
+                final long value = entry.getLongValue();
+                if (currentStates[stateIndex] != value) return false;
+            }
         }
         return true;
     }
@@ -671,14 +684,14 @@ public final class LazyWorld implements Automata.World {
         return sectionCache;
     }
 
-    private void register(int x, int y, int z, LSection startSection, List<Point> wakePoints) {
+    private void register(int x, int y, int z, LSection startSection, List<Vec> wakePoints) {
         if (startSection == null) {
             startSection = sectionGlobalCompute(x, y, z);
             trackSection(startSection);
         }
         LSection sectionCache = null;
         final boolean boundary = globalSectionBoundary(x, y, z);
-        for (Point point : wakePoints) {
+        for (Vec point : wakePoints) {
             final int nX = x + point.blockX();
             final int nY = y + point.blockY();
             final int nZ = z + point.blockZ();
@@ -801,6 +814,7 @@ public final class LazyWorld implements Automata.World {
                             updatedStates,
                             action.clear(),
                             action.wakePoints(),
+                            action.conditionProperties(),
                             conditionStates,
                             action.scheduleTick()
                     );

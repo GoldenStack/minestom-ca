@@ -31,7 +31,7 @@ public final class TreeGrowthRule implements CellRule {
     private static final int GROWTH_DELAY = 3;
 
     // Direction vectors for branches
-    private static final Point[] BRANCH_DIRECTIONS = {
+    private static final Vec[] BRANCH_DIRECTIONS = {
             Neighbors.NORTH, Neighbors.SOUTH, Neighbors.EAST, Neighbors.WEST,
             Neighbors.NORTHEAST, Neighbors.NORTHWEST, Neighbors.SOUTHEAST, Neighbors.SOUTHWEST
     };
@@ -98,7 +98,7 @@ public final class TreeGrowthRule implements CellRule {
                     airBlockStates.put(growthStageIndex, growthStage + 1); // Next growth stage
 
                     // This is the critical fix - we update the block above
-                    Point up = new Vec(0, 1, 0);
+                    Vec up = new Vec(0, 1, 0);
                     action.wakeup(List.of(up));
 
                     // Schedule the next growth
@@ -250,7 +250,7 @@ public final class TreeGrowthRule implements CellRule {
         }
 
         for (int dirIdx : directionIndices) {
-            Point direction = BRANCH_DIRECTIONS[dirIdx];
+            final Vec direction = BRANCH_DIRECTIONS[dirIdx];
             Block neighborBlock = Block.fromStateId((int) query.stateAt(
                     direction.blockX(),
                     direction.blockY(),
@@ -312,7 +312,7 @@ public final class TreeGrowthRule implements CellRule {
         }
 
         // Create leaves in a pattern around the log - directly set the air blocks to leaves
-        for (Point point : Neighbors.MOORE_3D) {
+        for (Vec point : Neighbors.MOORE_3D) {
             // Skip points directly below for a nicer tree shape
             if (point.blockY() < 0) continue;
 
@@ -347,7 +347,7 @@ public final class TreeGrowthRule implements CellRule {
         List<Action> actions = new ArrayList<>();
 
         // Spread leaves to neighbors with decreasing density - 100% chance instead of 50%
-        for (Point point : Neighbors.MOORE_3D) {
+        for (Vec point : Neighbors.MOORE_3D) {
             Block neighborBlock = Block.fromStateId((int) query.stateAt(
                     point.blockX(),
                     point.blockY(),

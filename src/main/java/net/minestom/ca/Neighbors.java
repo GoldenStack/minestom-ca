@@ -1,6 +1,5 @@
 package net.minestom.ca;
 
-import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.utils.Direction;
 
@@ -12,37 +11,37 @@ import java.util.Map;
  * Stores lists of neighbors.
  */
 public final class Neighbors {
-    public static final Point SELF = Vec.ZERO;
+    public static final Vec SELF = Vec.ZERO;
 
-    public static final Point DOWN = Direction.DOWN.vec();
-    public static final Point UP = Direction.UP.vec();
-    public static final Point NORTH = Direction.NORTH.vec();
-    public static final Point SOUTH = Direction.SOUTH.vec();
-    public static final Point WEST = Direction.WEST.vec();
-    public static final Point EAST = Direction.EAST.vec();
+    public static final Vec DOWN = Direction.DOWN.vec();
+    public static final Vec UP = Direction.UP.vec();
+    public static final Vec NORTH = Direction.NORTH.vec();
+    public static final Vec SOUTH = Direction.SOUTH.vec();
+    public static final Vec WEST = Direction.WEST.vec();
+    public static final Vec EAST = Direction.EAST.vec();
 
-    public static final Point NORTHEAST = NORTH.add(EAST);
-    public static final Point SOUTHEAST = SOUTH.add(EAST);
-    public static final Point NORTHWEST = NORTH.add(WEST);
-    public static final Point SOUTHWEST = SOUTH.add(WEST);
+    public static final Vec NORTHEAST = NORTH.add(EAST);
+    public static final Vec SOUTHEAST = SOUTH.add(EAST);
+    public static final Vec NORTHWEST = NORTH.add(WEST);
+    public static final Vec SOUTHWEST = SOUTH.add(WEST);
 
-    public static final List<Point> MOORE_2D_SELF = List.of(SELF, NORTH, EAST, SOUTH, WEST, NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST);
-    public static final List<Point> MOORE_2D = List.of(NORTH, EAST, SOUTH, WEST, NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST);
+    public static final List<Vec> MOORE_2D_SELF = List.of(SELF, NORTH, EAST, SOUTH, WEST, NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST);
+    public static final List<Vec> MOORE_2D = List.of(NORTH, EAST, SOUTH, WEST, NORTHEAST, SOUTHEAST, NORTHWEST, SOUTHWEST);
 
-    public static final List<Point> MOORE_3D_SELF;
-    public static final List<Point> MOORE_3D;
+    public static final List<Vec> MOORE_3D_SELF;
+    public static final List<Vec> MOORE_3D;
 
-    public static final List<Point> NEUMANN_2D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST);
-    public static final List<Point> NEUMANN_2D = List.of(NORTH, SOUTH, EAST, WEST);
+    public static final List<Vec> NEUMANN_2D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST);
+    public static final List<Vec> NEUMANN_2D = List.of(NORTH, SOUTH, EAST, WEST);
 
-    public static final List<Point> NEUMANN_3D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST, UP, DOWN);
-    public static final List<Point> NEUMANN_3D = List.of(NORTH, SOUTH, EAST, WEST, UP, DOWN);
+    public static final List<Vec> NEUMANN_3D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST, UP, DOWN);
+    public static final List<Vec> NEUMANN_3D = List.of(NORTH, SOUTH, EAST, WEST, UP, DOWN);
 
-    public static final List<Point> RADIAL_3D_SELF;
-    public static final List<Point> RADIAL_3D;
+    public static final List<Vec> RADIAL_3D_SELF;
+    public static final List<Vec> RADIAL_3D;
 
     static {
-        List<Point> points3d = new ArrayList<>();
+        List<Vec> points3d = new ArrayList<>();
         final int[] offsets = {-1, 0, 1};
         for (int x : offsets) {
             for (int y : offsets) {
@@ -58,7 +57,7 @@ public final class Neighbors {
         MOORE_3D = List.copyOf(points3d);
 
         // Generate radial 3D neighbors
-        List<Point> radialPoints = new ArrayList<>(NEUMANN_3D_SELF);
+        List<Vec> radialPoints = new ArrayList<>(NEUMANN_3D_SELF);
         // Add diagonal points at distance √2
         radialPoints.add(new Vec(1, 1, 0));
         radialPoints.add(new Vec(1, -1, 0));
@@ -75,12 +74,12 @@ public final class Neighbors {
 
         RADIAL_3D_SELF = List.copyOf(radialPoints);
 
-        List<Point> radialPointsNoSelf = new ArrayList<>(radialPoints);
+        List<Vec> radialPointsNoSelf = new ArrayList<>(radialPoints);
         radialPointsNoSelf.removeIf(Vec.ZERO::equals);
         RADIAL_3D = List.copyOf(radialPointsNoSelf);
     }
 
-    public static final Map<String, List<Point>> NAMED = Map.ofEntries(
+    public static final Map<String, List<Vec>> NAMED = Map.ofEntries(
             Map.entry("up", List.of(UP)),
             Map.entry("down", List.of(DOWN)),
             Map.entry("north", List.of(NORTH)),

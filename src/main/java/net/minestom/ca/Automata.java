@@ -3,6 +3,7 @@ package net.minestom.ca;
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
@@ -63,7 +64,9 @@ public final class Automata {
                 // Whether states should be cleared before applying the action
                 boolean clear,
                 // Relative points to wake up after the action is applied
-                List<Point> wakePoints,
+                List<Vec> wakePoints,
+                // Properties to check before applying the action
+                @Nullable Map<String, String> conditionProperties,
                 // States to check before applying the action
                 @Nullable Int2LongMap conditionStates,
                 // Number of ticks to wait before applying the action (including interpreting the conditions)
@@ -76,14 +79,16 @@ public final class Automata {
             }
 
             public Action immediate() {
-                return new Action(updatedProperties, updatedStates, clear, wakePoints, conditionStates, 0);
+                return new Action(updatedProperties, updatedStates, clear, wakePoints,
+                        conditionProperties, conditionStates, 0);
             }
 
             public static final class Builder {
                 Map<String, String> updatedProperties = new HashMap<>();
                 Int2LongMap updatedStates = new Int2LongOpenHashMap();
                 boolean clear;
-                List<Point> wakePoints = Neighbors.MOORE_3D_SELF;
+                List<Vec> wakePoints = Neighbors.MOORE_3D_SELF;
+                @Nullable Map<String, String> conditionProperties;
                 @Nullable Int2LongMap conditionStates;
                 int scheduleTick;
 
@@ -109,11 +114,11 @@ public final class Automata {
                     this.clear = true;
                 }
 
-                public void wakeup(List<Point> wakePoints) {
+                public void wakeup(List<Vec> wakePoints) {
                     this.wakePoints = wakePoints;
                 }
 
-                public void wakeup(Point wakePoint) {
+                public void wakeup(Vec wakePoint) {
                     this.wakePoints = List.of(wakePoint);
                 }
 
@@ -131,6 +136,7 @@ public final class Automata {
                             updatedProperties,
                             updatedStates, clear,
                             wakePoints,
+                            conditionProperties,
                             conditionStates,
                             scheduleTick
                     );
@@ -176,26 +182,26 @@ public final class Automata {
 
         Map<String, Long> queryNames(int x, int y, int z);
 
-        default int count(int index, List<Point> points, LongPredicate predicate) {
+        default int count(int index, List<Vec> points, LongPredicate predicate) {
             int count = 0;
-            for (Point point : points) {
+            for (Vec point : points) {
                 final long state = stateAt(point.blockX(), point.blockY(), point.blockZ(), index);
                 if (predicate.test(state)) count++;
             }
             return count;
         }
 
-        default int countLimit(int index, int limit, List<Point> points, LongPredicate predicate) {
+        default int countLimit(int index, int limit, List<Vec> points, LongPredicate predicate) {
             int count = 0;
-            for (Point point : points) {
+            for (Vec point : points) {
                 final long state = stateAt(point.blockX(), point.blockY(), point.blockZ(), index);
                 if (predicate.test(state) && ++count >= limit) break;
             }
             return count;
         }
 
-        default <T> T findFirst(int index, List<Point> points, Finder<T> finder) {
-            for (Point point : points) {
+        default <T> T findFirst(int index, List<Vec> points, Finder<T> finder) {
+            for (Vec point : points) {
                 final int blockX = point.blockX();
                 final int blockY = point.blockY();
                 final int blockZ = point.blockZ();
@@ -206,8 +212,8 @@ public final class Automata {
             return null;
         }
 
-        default <T> T findFirstPresent(int index, List<Point> points, Finder<T> finder) {
-            for (Point point : points) {
+        default <T> T findFirstPresent(int index, List<Vec> points, Finder<T> finder) {
+            for (Vec point : points) {
                 final int blockX = point.blockX();
                 final int blockY = point.blockY();
                 final int blockZ = point.blockZ();

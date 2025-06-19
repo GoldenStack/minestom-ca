@@ -55,6 +55,7 @@ public final class Main {
                 new RuleConfig(new LiquidRule()),
                 new RuleConfig(new RedstoneWireRule()),
                 new RuleConfig(new WireworldRule()),
+                new RuleConfig(new PistonRule()),
                 new RuleConfig(new BlockPusher()),
                 new RuleConfig(new GrassSpreadingRule())
         );
@@ -75,6 +76,7 @@ public final class Main {
             inventory.addItemStack(ItemStack.of(Material.REDSTONE));
             inventory.addItemStack(ItemStack.of(Material.OAK_LOG));
             inventory.addItemStack(ItemStack.of(Material.OAK_SAPLING));
+            inventory.addItemStack(ItemStack.of(Material.PISTON));
             inventory.addItemStack(ItemStack.of(Material.STICK)
                     .withTag(AutomataImpl.AUTOMATA_DEBUG, true)
                     .withCustomName(Component.text("Automata Debug")));

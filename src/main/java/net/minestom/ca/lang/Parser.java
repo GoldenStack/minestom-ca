@@ -2,7 +2,7 @@ package net.minestom.ca.lang;
 
 import net.minestom.ca.Automata;
 import net.minestom.ca.lang.Scanner.Token;
-import net.minestom.server.coordinate.Point;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 
 import java.util.ArrayList;
@@ -78,7 +78,7 @@ public final class Parser {
             } else {
                 // Neighbor block check
                 consume(Token.At.class, "Expected '@'");
-                final List<Point> targets = NAMED.get(value);
+                final List<Vec> targets = NAMED.get(value);
                 Rule.Expression neighborsCount = new Rule.Expression.NeighborsCount(targets, nextCondition());
                 if (countPredicate.compare) {
                     return new Rule.Condition.Equal(
@@ -153,9 +153,9 @@ public final class Parser {
                 // Block copy
                 advance();
                 Token.Identifier identifier = consume(Token.Identifier.class, "Expected identifier");
-                final List<Point> targets = NAMED.get(identifier.value());
+                final List<Vec> targets = NAMED.get(identifier.value());
                 if (targets.size() > 1) throw error("Block copy can only be used with a single target");
-                final Point first = targets.getFirst();
+                final Vec first = targets.getFirst();
                 return new Rule.Result.BlockCopy(first.blockX(), first.blockY(), first.blockZ());
             }
             case Token.Dollar _ -> {
@@ -196,8 +196,8 @@ public final class Parser {
                 } else {
                     // Neighbor state
                     advance();
-                    final List<Point> targets = NAMED.get(identifier.value());
-                    final Point first = targets.getFirst();
+                    final List<Vec> targets = NAMED.get(identifier.value());
+                    final Vec first = targets.getFirst();
                     final Token.Identifier identifier2 = consume(Token.Identifier.class, "Expected identifier");
                     final String state = identifier2.value();
                     registerState(state);
