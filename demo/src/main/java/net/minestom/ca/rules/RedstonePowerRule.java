@@ -11,29 +11,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class WireworldRule implements CellRule {
+public final class RedstonePowerRule implements CellRule {
     // Wireworld states represented by redstone power levels
     private static final int HEAD_STATE = 15;       // power=15 (max power - blue)
     private static final int TAIL_STATE = 10;       // power=10 (intermediate - red)
     private static final int CONDUCTOR_STATE = 0;   // power=0 (low power)
 
-    private static final Action POWER_WAKEUP_ACTION = Action.action(action -> action.wakeup(Neighbors.MOORE_3D));
+    private static final Action POWER_WAKEUP_ACTION = Action.action(a -> a.wakeup(Neighbors.REDSTONE_CONNECT_SELF));
 
     @Override
     public void init(Map<State, Integer> mapping) {
-        // No custom states needed, we use redstone power levels
     }
 
     @Override
     public Action process(Context context, Query query) {
         final Block currentBlock = query.block();
-        // Check if this is a redstone wire
         if (currentBlock.compare(Block.REDSTONE_WIRE)) {
             return processWire(query, currentBlock);
         }
-        // Check if this is a redstone block (power source)
         if (currentBlock.compare(Block.REDSTONE_BLOCK)) {
-            // Wake up surrounding blocks to detect the power source
             return POWER_WAKEUP_ACTION;
         }
         return null;
@@ -72,12 +68,12 @@ public final class WireworldRule implements CellRule {
         // Create a new block with updated power level and wire connections
         return Action.action(action -> {
             action.property("power", String.valueOf(nextPower));
-            action.wakeup(Neighbors.MOORE_3D);
+            action.wakeup(Neighbors.REDSTONE_CONNECT_SELF);
         });
     }
 
     private boolean isAdjacentToRedstoneBlock(Query query) {
-        for (Point point : Neighbors.NEUMANN_2D) {
+        for (Point point : Neighbors.REDSTONE_CONNECT) {
             final Block neighborBlock = query.blockAt(point.blockX(), point.blockY(), point.blockZ());
             if (neighborBlock.compare(Block.REDSTONE_BLOCK)) return true;
         }
@@ -86,7 +82,7 @@ public final class WireworldRule implements CellRule {
 
     private int countHeads(Query query) {
         int count = 0;
-        for (Point point : Neighbors.MOORE_3D) {
+        for (Point point : Neighbors.REDSTONE_CONNECT) {
             Block neighborBlock = query.blockAt(point.blockX(), point.blockY(), point.blockZ());
             if (neighborBlock.compare(Block.REDSTONE_WIRE)) {
                 final int power = blockPower(neighborBlock);

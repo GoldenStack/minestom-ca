@@ -54,7 +54,7 @@ public final class Main {
                 new RuleConfig(new TreeGrowthRule()),
                 new RuleConfig(new LiquidRule()),
                 new RuleConfig(new RedstoneWireRule()),
-                new RuleConfig(new WireworldRule()),
+                new RuleConfig(new RedstonePowerRule()),
                 new RuleConfig(new PistonRule()),
                 new RuleConfig(new BlockPusher()),
                 new RuleConfig(new GrassSpreadingRule())
