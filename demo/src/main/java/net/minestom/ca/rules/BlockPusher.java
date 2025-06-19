@@ -1,7 +1,5 @@
 package net.minestom.ca.rules;
 
-import it.unimi.dsi.fastutil.ints.Int2LongMap;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.minestom.ca.Automata.CellRule;
 import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
@@ -104,10 +102,6 @@ public final class BlockPusher implements CellRule {
                 } else {
                     neighborStates[directionIndex] = 0;
                     neighborStates[strengthIndex] = 0;
-                }
-                Int2LongMap updatedState = new Int2LongOpenHashMap(neighborStates.length);
-                for (int i = 0; i < neighborStates.length; i++) {
-                    updatedState.put(i, neighborStates[i]);
                 }
                 return List.of(Action.action(action -> {
                     action.states(neighborStates);

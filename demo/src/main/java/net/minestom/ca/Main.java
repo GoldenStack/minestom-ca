@@ -1,10 +1,7 @@
-package net.minestom.ca.server;
+package net.minestom.ca;
 
-import com.dfsek.terra.minestom.TerraMinestomPlatform;
-import com.dfsek.terra.minestom.world.TerraMinestomWorld;
 import net.kyori.adventure.text.Component;
 import net.minestom.ca.Automata.RuleConfig;
-import net.minestom.ca.AutomataImpl;
 import net.minestom.ca.backends.lazy.LazyWorld;
 import net.minestom.ca.rules.*;
 import net.minestom.server.MinecraftServer;
@@ -15,6 +12,7 @@ import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
+import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
@@ -27,7 +25,7 @@ import static net.minestom.ca.Automata.World;
 public final class Main {
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
-        final TerraMinestomPlatform platform = new TerraMinestomPlatform();
+        //final TerraMinestomPlatform platform = new TerraMinestomPlatform();
 
         // Register commands
         MinecraftServer.getCommandManager().register(
@@ -43,9 +41,8 @@ public final class Main {
         // Create an instance
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
         instance.setChunkSupplier(LightingChunk::new);
-        TerraMinestomWorld terraWorld = platform.worldBuilder(instance)
-                .defaultPack()
-                .attach();
+        instance.setGenerator(unit -> unit.modifier().fillHeight(0, 65, Block.STONE));
+        //TerraMinestomWorld terraWorld = platform.worldBuilder(instance).defaultPack().attach();
 
         final List<RuleConfig> rules = List.of(
                 new RuleConfig(new TreeGrowthRule()),
