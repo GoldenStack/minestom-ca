@@ -36,10 +36,9 @@ public final class PistonRule implements CellRule {
 
     List<Action> processPiston(Query query) {
         final boolean isPowered = isRedstonePowered(query);
-        if (isPowered) {
-            // Reverse the piston state if powered
-            final boolean extended = query.block().getProperty("extended").equals("true");
-            return List.of(Action.action(action -> action.property("extended", String.valueOf(!extended))));
+        final boolean extended = query.block().getProperty("extended").equals("true");
+        if (isPowered != extended) {
+            return List.of(Action.action(action -> action.property("extended", String.valueOf(isPowered))));
         }
         return null;
     }
