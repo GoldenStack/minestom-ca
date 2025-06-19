@@ -49,7 +49,7 @@ public final class BlockPusher implements CellRule {
     }
 
     @Override
-    public List<Action> process(Context context, Query query) {
+    public Action process(Context context, Query query) {
         final long dirValue = query.state(directionIndex);
         if (dirValue != 0) {
             // We're a block being pushed
@@ -60,13 +60,13 @@ public final class BlockPusher implements CellRule {
             // Check if we can move forward
             if (replaceable(query.stateAt(dx, dy, dz, 0))) {
                 // We can move - clear and wake up the target position
-                return List.of(Action.action(action -> {
+                return Action.action(action -> {
                     action.clear();
                     action.wakeup(wakeupPoints(pushDir));
-                }));
+                });
             } else {
                 // We hit a block - wait for propagation and empty space
-                return List.of(Action.action(action -> action.wakeup(wakeupPoints(pushDir))));
+                return Action.action(action -> action.wakeup(wakeupPoints(pushDir)));
             }
         } else {
             // Check if we should receive a push from any neighbor
@@ -98,18 +98,18 @@ public final class BlockPusher implements CellRule {
                     neighborStates[directionIndex] = 0;
                     neighborStates[strengthIndex] = 0;
                 }
-                return List.of(Action.action(action -> {
+                return Action.action(action -> {
                     action.states(neighborStates);
                     action.clear();
                     action.wakeup(wakeupPoints(dir));
-                }));
+                });
             } else {
                 // Block should store push direction and propagate it
-                return List.of(Action.action(action -> {
+                return Action.action(action -> {
                     action.state(directionIndex, neighborDirValue);
                     action.state(strengthIndex, neighborStrength);
                     action.wakeup(wakeupPoints(dir));
-                }));
+                });
             }
         }
     }

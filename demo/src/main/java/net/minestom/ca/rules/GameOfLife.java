@@ -12,21 +12,21 @@ public final class GameOfLife implements Automata.CellRule {
     private static final long VOID_STATE = Block.AIR.stateId();
     private static final long ALIVE_STATE = Block.WHITE_WOOL.stateId();
 
-    private static final List<Action> KILL_ACTION = List.of(Action.action(action -> {
+    private static final Action KILL_ACTION = Action.action(action -> {
         action.state(0, VOID_STATE);
         action.wakeup(Neighbors.MOORE_2D_SELF);
-    }));
-    private static final List<Action> REPRODUCE_ACTION = List.of(Action.action(action -> {
+    });
+    private static final Action REPRODUCE_ACTION = Action.action(action -> {
         action.state(0, ALIVE_STATE);
         action.wakeup(Neighbors.MOORE_2D_SELF);
-    }));
+    });
 
     @Override
     public void init(Map<State, Integer> mapping) {
     }
 
     @Override
-    public List<Action> process(Automata.Context context, Automata.Query query) {
+    public Action process(Automata.Context context, Automata.Query query) {
         final int neighbors = query.countLimit(0, 4, Neighbors.MOORE_2D,
                 state -> state == ALIVE_STATE);
         final long currentState = query.state(0);

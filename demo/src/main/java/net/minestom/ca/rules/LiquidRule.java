@@ -7,7 +7,6 @@ import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -48,10 +47,8 @@ public final class LiquidRule implements CellRule {
     }
 
     @Override
-    public List<Action> process(Context context, Query query) {
+    public Action process(Context context, Query query) {
         final Block currentBlock = query.block();
-        List<Action> resultingActions = new ArrayList<>();
-
         // Rule 1: If I am liquid and can flow downwards, I become air.
         // "Flow downwards" means into air/replaceable OR into a weaker liquid of the same type.
         if (isLiquid(currentBlock)) {
@@ -73,12 +70,10 @@ public final class LiquidRule implements CellRule {
             }
 
             if (canFlowIntoReplaceable || canFlowIntoWeakerSameLiquid) {
-                Action becomeAir = Action.action(b -> {
+                return Action.action(b -> {
                     b.state(0, Block.AIR.stateId());
                     b.wakeup(Neighbors.NEUMANN_3D_SELF);
                 });
-                resultingActions.add(becomeAir);
-                return resultingActions; // This liquid block has done its action for falling.
             }
         }
 
@@ -92,12 +87,10 @@ public final class LiquidRule implements CellRule {
                 int levelAbove = getLiquidLevel(blockAbove);
                 Block newSelf = getLiquidBlock(liquidBaseTypeAbove, levelAbove);
 
-                Action becomeLiquidFromAbove = Action.action(b -> {
+                return Action.action(b -> {
                     b.state(0, newSelf.stateId());
                     b.wakeup(Neighbors.NEUMANN_3D_SELF);
                 });
-                resultingActions.add(becomeLiquidFromAbove);
-                return resultingActions;
             }
         }
 
@@ -115,12 +108,10 @@ public final class LiquidRule implements CellRule {
                     Block liquidBaseType = currentBlock.compare(Block.WATER) ? Block.WATER : Block.LAVA;
                     Block newSelf = getLiquidBlock(liquidBaseType, aboveLevel);
 
-                    Action becomeStrongerLiquid = Action.action(b -> {
+                    return Action.action(b -> {
                         b.state(0, newSelf.stateId());
                         b.wakeup(Neighbors.NEUMANN_3D_SELF); // Update surrounding blocks
                     });
-                    resultingActions.add(becomeStrongerLiquid);
-                    return resultingActions;
                 }
             }
         }
@@ -150,7 +141,7 @@ public final class LiquidRule implements CellRule {
 
             // If there's no support and this is empty space, liquid should fall straight down, not spread horizontally
             if (!hasSupport && isReplaceableByLiquid(currentBlock)) {
-                return resultingActions;
+                return null;
             }
 
             int bestProspectiveLevel = 8; // Lower is "stronger"
@@ -204,18 +195,16 @@ public final class LiquidRule implements CellRule {
 
                 if (shouldBecomeThisLiquid) {
                     Block newSelf = getLiquidBlock(bestLiquidBaseTypeToBecome, bestProspectiveLevel);
-                    Action spreadToMe = Action.action(b -> {
+                    return Action.action(b -> {
                         b.state(0, newSelf.stateId());
                         b.wakeup(Neighbors.NEUMANN_3D_SELF);
                     });
-                    resultingActions.add(spreadToMe);
-                    return resultingActions;
                 }
             }
         }
 
         // Rule 4: Decay of unsupported flowing water (not lava)
-        if (currentBlock.compare(Block.WATER) && getLiquidLevel(currentBlock) > 0 && resultingActions.isEmpty()) {
+        if (currentBlock.compare(Block.WATER) && getLiquidLevel(currentBlock) > 0) {
             boolean supported = false;
             int currentL = getLiquidLevel(currentBlock);
 
@@ -242,18 +231,16 @@ public final class LiquidRule implements CellRule {
                 } else {
                     newSelfState = getLiquidBlock(Block.WATER, nextLevel);
                 }
-                Action decayAction = Action.action(b -> {
+                return Action.action(b -> {
                     b.state(0, newSelfState.stateId());
                     b.wakeup(Neighbors.NEUMANN_3D_SELF);
                     // For slower decay, uncomment and adjust schedule ticks (e.g., 5 ticks for 1/4 second)
                     // b.schedule(5);
                 });
-                resultingActions.add(decayAction);
-                return resultingActions;
             }
         }
 
-        return resultingActions.isEmpty() ? null : resultingActions;
+        return null;
     }
 
     @Override

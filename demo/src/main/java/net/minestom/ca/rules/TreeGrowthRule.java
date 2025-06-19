@@ -51,7 +51,7 @@ public final class TreeGrowthRule implements CellRule {
     }
 
     @Override
-    public List<Action> process(Context context, Query query) {
+    public Action process(Context context, Query query) {
         final long blockState = query.state(0);
         final long seedValue = query.state(seedIndex);
         final long growthStage = query.state(growthStageIndex);
@@ -60,19 +60,19 @@ public final class TreeGrowthRule implements CellRule {
 
         // Case 1: Initial sapling with no seed - initialize tree growth
         if (blockState == SAPLING_STATE && seedValue == 0) {
-            return List.of(Action.action(action -> {
+            return Action.action(action -> {
                 // Generate a random seed
                 action.state(seedIndex, new Random().nextInt());
                 // Set initial growth stage
                 action.state(growthStageIndex, 1);
                 // Schedule first growth
                 action.schedule(GROWTH_DELAY);
-            }));
+            });
         }
 
         // Case 2: Sapling with seed - begin trunk growth
         if (blockState == SAPLING_STATE && seedValue != 0 && growthStage == 1) {
-            return List.of(Action.action(action -> {
+            return Action.action(action -> {
                 // Turn sapling into log
                 action.state(0, LOG_STATE);
                 // Increment growth stage
@@ -81,7 +81,7 @@ public final class TreeGrowthRule implements CellRule {
                 action.wakeup(Neighbors.NEUMANN_3D_SELF);
                 // Schedule next growth
                 action.schedule(GROWTH_DELAY);
-            }));
+            });
         }
 
         // Case 3: Log needs to grow upward
@@ -89,7 +89,7 @@ public final class TreeGrowthRule implements CellRule {
             // Check if there's air above
             Block blockAbove = Block.fromStateId((int) query.stateAt(0, 1, 0, 0));
             if (blockAbove.isAir()) {
-                return List.of(Action.action(action -> {
+                return Action.action(action -> {
                     // Don't change this log, just tell the air block above to transform
                     // We directly set states for the air block above
                     Int2LongMap airBlockStates = new Int2LongOpenHashMap();
@@ -103,7 +103,7 @@ public final class TreeGrowthRule implements CellRule {
 
                     // Schedule the next growth
                     action.schedule(GROWTH_DELAY);
-                }));
+                });
             } else {
                 // We can't grow upward anymore, but we can start creating leaves
                 if (growthStage >= MAX_TREE_HEIGHT - 2) {
@@ -123,7 +123,7 @@ public final class TreeGrowthRule implements CellRule {
 
                 // Only grow if the log below is part of a growing tree
                 if (belowSeed != 0 && belowStage >= 2 && belowStage < MAX_TREE_HEIGHT) {
-                    return List.of(Action.action(action -> {
+                    return Action.action(action -> {
                         // Transform this air into a log
                         action.state(0, LOG_STATE);
                         // Copy seed from below
@@ -134,7 +134,7 @@ public final class TreeGrowthRule implements CellRule {
                         action.wakeup(Neighbors.MOORE_3D_SELF); // Use MOORE instead of NEUMANN to wake up diagonal blocks too
                         // Schedule next growth
                         action.schedule(GROWTH_DELAY);
-                    }));
+                    });
                 }
             }
 
@@ -146,19 +146,12 @@ public final class TreeGrowthRule implements CellRule {
 
         // Case 4: Creating branches at various heights
         if (blockState == LOG_STATE && growthStage >= 3) {
-            List<Action> branchActions = handleBranchCreation(query, seedValue, growthStage, branchDirection);
+            Action branchAction = handleBranchCreation(query, seedValue, growthStage, branchDirection);
             // If we're at a high enough stage, also generate leaves
             if (growthStage >= MAX_TREE_HEIGHT - 2) {
-                List<Action> leafActions = createLeafLayer(query, seedValue, growthStage, leafDensity);
-                if (branchActions != null && leafActions != null) {
-                    List<Action> combinedActions = new ArrayList<>(branchActions);
-                    combinedActions.addAll(leafActions);
-                    return combinedActions;
-                } else if (leafActions != null) {
-                    return leafActions;
-                }
+                return createLeafLayer(query, seedValue, growthStage, leafDensity);
             }
-            return branchActions;
+            return branchAction;
         }
 
         // Case 5: Growing leaves around branches and top
@@ -201,7 +194,7 @@ public final class TreeGrowthRule implements CellRule {
     }
 
     // Helper method to make an air block become a leaf
-    private List<Action> becomeLeaf(Query query) {
+    private Action becomeLeaf(Query query) {
         // Find a nearby log or leaf to get the seed and density from
         for (Point point : Neighbors.MOORE_3D) {
             int dx = point.blockX(), dy = point.blockY(), dz = point.blockZ();
@@ -215,7 +208,7 @@ public final class TreeGrowthRule implements CellRule {
                 long newDensity = (neighborBlock.stateId() == LOG_STATE) ?
                         neighborDensity : Math.max(1, neighborDensity - 1);
 
-                return List.of(Action.action(action -> {
+                return Action.action(action -> {
                     // Transform this air into a leaf
                     action.state(0, LEAVES_STATE);
                     // Copy seed from neighbor
@@ -224,13 +217,13 @@ public final class TreeGrowthRule implements CellRule {
                     action.state(leafDensityIndex, newDensity);
                     // Wake neighbors for potential spreading
                     action.wakeup(Neighbors.MOORE_3D_SELF);
-                }));
+                });
             }
         }
         return null;
     }
 
-    private List<Action> handleBranchCreation(Query query, long seedValue, long growthStage, long existingDirection) {
+    private Action handleBranchCreation(Query query, long seedValue, long growthStage, long existingDirection) {
         // Skip if this block already has a branch direction
         if (existingDirection != 0) return null;
 
@@ -240,8 +233,6 @@ public final class TreeGrowthRule implements CellRule {
         // Use seed to determine branch directions
         Random random = new Random(seedValue + growthStage);
         int branchCount = 1 + random.nextInt(3); // 1-3 branches
-
-        List<Action> actions = new ArrayList<>();
 
         // Choose random directions for branches
         Set<Integer> directionIndices = new HashSet<>();
@@ -258,7 +249,7 @@ public final class TreeGrowthRule implements CellRule {
                     0));
 
             if (neighborBlock.isAir()) {
-                actions.add(Action.action(action -> {
+                return Action.action(action -> {
                     // Create a branch in the neighbor position by waking it up
                     // Wake up the neighbor to create the branch
                     action.wakeup(List.of(direction));
@@ -274,30 +265,29 @@ public final class TreeGrowthRule implements CellRule {
                     branchStates.put(growthStageIndex, growthStage);
                     branchStates.put(branchDirectionIndex, dirIdx + 1);
                     branchStates.put(leafDensityIndex, 3);
-                }));
+                });
             }
         }
 
         // If we reached the top, create a leaf crown
         if (growthStage >= MAX_TREE_HEIGHT - 1) {
-            actions.add(Action.action(action -> {
+            return Action.action(action -> {
                 action.state(leafDensityIndex, 4); // Maximum leaf density for the top
                 action.schedule(GROWTH_DELAY);
                 // Wake up all surrounding blocks to create leaves
                 action.wakeup(Neighbors.MOORE_3D);
-            }));
+            });
         }
-
-        return actions.isEmpty() ? null : actions;
+        return null;
     }
 
-    private List<Action> createLeafLayer(Query query, long seedValue, long growthStage, long leafDensity) {
+    private Action createLeafLayer(Query query, long seedValue, long growthStage, long leafDensity) {
         if (leafDensity == 0) {
-            return List.of(Action.action(action -> {
+            return Action.action(action -> {
                 action.state(leafDensityIndex, 3); // Set initial leaf density
                 action.wakeup(Neighbors.MOORE_3D); // Wake up all surrounding blocks
                 action.schedule(GROWTH_DELAY);
-            }));
+            });
         }
 
         Random random = new Random(seedValue * growthStage);
@@ -324,7 +314,7 @@ public final class TreeGrowthRule implements CellRule {
 
             if (neighborBlock.isAir()) {
                 // Always create leaves (no random chance)
-                actions.add(Action.action(action -> {
+                return Action.action(action -> {
                     // Directly modify the air block to become a leaf
                     Int2LongMap leafStates = new Int2LongOpenHashMap();
                     leafStates.put(0, LEAVES_STATE);
@@ -333,19 +323,15 @@ public final class TreeGrowthRule implements CellRule {
 
                     // Wake up the neighbor to create the leaf
                     action.wakeup(List.of(point));
-                }));
+                });
             }
         }
 
-        return actions.isEmpty() ? null : actions;
+        return null;
     }
 
-    private List<Action> spreadLeaves(Query query, long seedValue, long leafDensity) {
+    private Action spreadLeaves(Query query, long seedValue, long leafDensity) {
         if (leafDensity <= 1) return null; // Don't spread further
-
-        Random random = new Random(seedValue ^ (leafDensity * 31));
-        List<Action> actions = new ArrayList<>();
-
         // Spread leaves to neighbors with decreasing density - 100% chance instead of 50%
         for (Vec point : Neighbors.MOORE_3D) {
             Block neighborBlock = Block.fromStateId((int) query.stateAt(
@@ -355,7 +341,7 @@ public final class TreeGrowthRule implements CellRule {
                     0));
 
             if (neighborBlock.isAir()) {
-                actions.add(Action.action(action -> {
+                return Action.action(action -> {
                     // Directly set the air block to a leaf
                     Int2LongMap leafStates = new Int2LongOpenHashMap();
                     leafStates.put(0, LEAVES_STATE);
@@ -364,11 +350,11 @@ public final class TreeGrowthRule implements CellRule {
 
                     // Wake up the neighbor
                     action.wakeup(List.of(point));
-                }));
+                });
             }
         }
 
-        return actions.isEmpty() ? null : actions;
+        return null;
     }
 
     @Override

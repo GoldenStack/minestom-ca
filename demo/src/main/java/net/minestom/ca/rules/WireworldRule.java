@@ -17,8 +17,7 @@ public final class WireworldRule implements CellRule {
     private static final int TAIL_STATE = 10;       // power=10 (intermediate - red)
     private static final int CONDUCTOR_STATE = 0;   // power=0 (low power)
 
-    private static final List<Action> POWER_WAKEUP_ACTION =
-            List.of(Action.action(action -> action.wakeup(Neighbors.MOORE_3D)));
+    private static final Action POWER_WAKEUP_ACTION = Action.action(action -> action.wakeup(Neighbors.MOORE_3D));
 
     @Override
     public void init(Map<State, Integer> mapping) {
@@ -26,7 +25,7 @@ public final class WireworldRule implements CellRule {
     }
 
     @Override
-    public List<Action> process(Context context, Query query) {
+    public Action process(Context context, Query query) {
         final Block currentBlock = query.block();
         // Check if this is a redstone wire
         if (currentBlock.compare(Block.REDSTONE_WIRE)) {
@@ -46,7 +45,7 @@ public final class WireworldRule implements CellRule {
         return Integer.parseInt(powerStr);
     }
 
-    private List<Action> processWire(Query query, Block currentBlock) {
+    private Action processWire(Query query, Block currentBlock) {
         final int currentPower = blockPower(currentBlock);
 
         // Determine the next state based on Wireworld rules
@@ -71,10 +70,10 @@ public final class WireworldRule implements CellRule {
         if (nextPower == currentPower) return null;
 
         // Create a new block with updated power level and wire connections
-        return List.of(Action.action(action -> {
+        return Action.action(action -> {
             action.property("power", String.valueOf(nextPower));
             action.wakeup(Neighbors.MOORE_3D);
-        }));
+        });
     }
 
     private boolean isAdjacentToRedstoneBlock(Query query) {

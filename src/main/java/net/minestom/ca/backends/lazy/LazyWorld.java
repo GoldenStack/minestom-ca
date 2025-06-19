@@ -373,7 +373,7 @@ public final class LazyWorld implements Automata.World {
                 .toList();
     }
 
-    private record BlockChange(int sectionBlockIndex, List<Automata.CellRule.Action> actions) {
+    private record BlockChange(int sectionBlockIndex, Automata.CellRule.Action action) {
     }
 
     private record ScheduledChange(LSection section, BlockChange change) {
@@ -480,10 +480,10 @@ public final class LazyWorld implements Automata.World {
                 final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
                 final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
                 context.updateLocal(section, palette, x, y, z);
-                final List<Automata.CellRule.Action> actions = rule.process(context, query);
-                if (actions != null) {
+                final Automata.CellRule.Action action = rule.process(context, query);
+                if (action != null) {
                     modifiedBlocks++;
-                    blockChanges.add(new BlockChange(blockIndex, actions));
+                    blockChanges.add(new BlockChange(blockIndex, action));
                 }
             }
             if (!blockChanges.isEmpty()) {
@@ -528,9 +528,7 @@ public final class LazyWorld implements Automata.World {
         Palette palette = sectionChange.palette();
         LongList blockChanges = tickBlockChanges.computeIfAbsent(section.index, _ -> new LongArrayList());
         for (BlockChange currentChange : sectionChange.blockChanges()) {
-            for (Automata.CellRule.Action action : currentChange.actions()) {
-                processSectionAction(section, palette, currentChange.sectionBlockIndex(), action, blockChanges);
-            }
+            processSectionAction(section, palette, currentChange.sectionBlockIndex(), currentChange.action(), blockChanges);
         }
         trackSection(section);
     }
@@ -558,7 +556,7 @@ public final class LazyWorld implements Automata.World {
 
     void processSectionAction(LSection section, Palette palette, int sectionBlockIndex, Automata.CellRule.Action action, LongList blockChanges) {
         if (action.scheduleTick() > 0) {
-            wheelTimer.schedule(() -> new ScheduledChange(section, new BlockChange(sectionBlockIndex, List.of(action.immediate()))), action.scheduleTick());
+            wheelTimer.schedule(() -> new ScheduledChange(section, new BlockChange(sectionBlockIndex, action.immediate())), action.scheduleTick());
             return;
         }
         final int localX = sectionBlockIndexGetX(sectionBlockIndex);
@@ -805,22 +803,19 @@ public final class LazyWorld implements Automata.World {
             final int remainingTicks = entry.getKey();
             for (ScheduledChange change : entry.getValue()) {
                 BlockChange oldChange = change.change();
-                List<Automata.CellRule.Action> newActions = new ArrayList<>();
-                for (Automata.CellRule.Action action : oldChange.actions()) {
-                    Int2LongMap updatedStates = remapStateIndices(action.updatedStates(), oldToNewIndex);
-                    Int2LongMap conditionStates = remapStateIndices(action.conditionStates(), oldToNewIndex);
-                    final Automata.CellRule.Action newAction = new Automata.CellRule.Action(
-                            action.updatedProperties(),
-                            updatedStates,
-                            action.clear(),
-                            action.wakePoints(),
-                            action.conditionProperties(),
-                            conditionStates,
-                            action.scheduleTick()
-                    );
-                    newActions.add(newAction);
-                }
-                BlockChange newBlockChange = new BlockChange(oldChange.sectionBlockIndex(), newActions);
+                final Automata.CellRule.Action oldAction = oldChange.action();
+                final Int2LongMap updatedStates = remapStateIndices(oldAction.updatedStates(), oldToNewIndex);
+                final Int2LongMap conditionStates = remapStateIndices(oldAction.conditionStates(), oldToNewIndex);
+                final Automata.CellRule.Action newAction = new Automata.CellRule.Action(
+                        oldAction.updatedProperties(),
+                        updatedStates,
+                        oldAction.clear(),
+                        oldAction.wakePoints(),
+                        oldAction.conditionProperties(),
+                        conditionStates,
+                        oldAction.scheduleTick()
+                );
+                BlockChange newBlockChange = new BlockChange(oldChange.sectionBlockIndex(), newAction);
                 wheelTimer.schedule(() -> new ScheduledChange(change.section(), newBlockChange), remainingTicks);
             }
         }

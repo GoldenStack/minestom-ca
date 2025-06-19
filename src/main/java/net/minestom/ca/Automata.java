@@ -28,7 +28,7 @@ public final class Automata {
          * @param query   query the current block and its neighbors
          * @return actions to apply to the world
          */
-        List<Action> process(Context context, Query query);
+        Action process(Context context, Query query);
 
         List<Interest> interests();
 

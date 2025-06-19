@@ -15,17 +15,6 @@ import java.util.Set;
 import static net.minestom.ca.Automata.*;
 
 public final class PistonRule implements CellRule {
-    private static final List<Interest> INTERESTS = List.of(
-            Interest.block(Block.PISTON),
-            Interest.block(Block.PISTON_HEAD),
-            Interest.block(Block.STICKY_PISTON)
-    );
-
-    private static final Set<State> STATES = Set.of(
-            States.PUSH_DIRECTION,
-            States.PUSH_STRENGTH
-    );
-
     private int pushDirectionIndex, pushStrengthIndex;
 
     @Override
@@ -34,11 +23,11 @@ public final class PistonRule implements CellRule {
         this.pushStrengthIndex = mapping.get(States.PUSH_STRENGTH);
     }
 
-    List<Action> processPiston(Query query) {
+    Action processPiston(Query query) {
         final boolean isPowered = isRedstonePowered(query);
         final boolean extended = query.block().getProperty("extended").equals("true");
         if (isPowered != extended) {
-            return List.of(Action.action(action -> action.property("extended", String.valueOf(isPowered))));
+            return Action.action(action -> action.property("extended", String.valueOf(isPowered)));
         }
         return null;
     }
@@ -50,7 +39,7 @@ public final class PistonRule implements CellRule {
                 Math.abs(v1.z() - v2.z()) < epsilon;
     }
 
-    List<Action> processBlock(Block block, Query query) {
+    Action processBlock(Block block, Query query) {
         // Find if there is any near piston block waiting to extend
         for (Vec neighbor : Neighbors.NEUMANN_2D) {
             final int nx = neighbor.blockX();
@@ -68,19 +57,19 @@ public final class PistonRule implements CellRule {
                     if (block.isAir()) {
                         // Become piston head
                         final Block pistonHead = Block.PISTON_HEAD.withProperty("facing", facing);
-                        return List.of(Action.action(action -> {
+                        return Action.action(action -> {
                             action.state(0, pistonHead.stateId());
                             action.condition(0, 0);
-                        }));
+                        });
                     } else {
                         // Apply direction/strength states if not already set
-                        return List.of(Action.action(action -> {
+                        return Action.action(action -> {
                             action.state(pushDirectionIndex, direction.ordinal() + 1);
                             action.state(pushStrengthIndex, 1);
 
                             action.condition(pushDirectionIndex, 0);
                             action.condition(pushStrengthIndex, 0);
-                        }));
+                        });
                     }
                 }
             }
@@ -89,7 +78,7 @@ public final class PistonRule implements CellRule {
     }
 
     @Override
-    public List<Action> process(Context context, Query query) {
+    public Action process(Context context, Query query) {
         final Block block = query.block();
         if (block.compare(Block.PISTON_HEAD)) {
             // Change to air if there is no piston block behind
@@ -100,9 +89,7 @@ public final class PistonRule implements CellRule {
             final Block pistonBlock = query.blockAt(behind.blockX(), behind.blockY(), behind.blockZ());
             if (!isPiston(pistonBlock) || pistonBlock.getProperty("extended").equals("false")) {
                 // If no piston behind, convert piston head to air
-                return List.of(Action.action(action -> {
-                    action.state(0, 0);
-                }));
+                return Action.action(action -> action.state(0, 0));
             } else {
                 return null;
             }
@@ -116,12 +103,10 @@ public final class PistonRule implements CellRule {
     }
 
     private boolean isRedstonePowered(Query query) {
-        // Check all neighbors for redstone power
         for (Point neighbor : Neighbors.MOORE_3D) {
             final int nx = neighbor.blockX();
             final int ny = neighbor.blockY();
             final int nz = neighbor.blockZ();
-
             final Block neighborBlock = query.blockAt(nx, ny, nz);
             if (neighborBlock.compare(Block.REDSTONE_WIRE)) {
                 // Check if the redstone wire has power
@@ -140,11 +125,18 @@ public final class PistonRule implements CellRule {
 
     @Override
     public List<Interest> interests() {
-        return INTERESTS;
+        return List.of(
+                Interest.block(Block.PISTON),
+                Interest.block(Block.PISTON_HEAD),
+                Interest.block(Block.STICKY_PISTON)
+        );
     }
 
     @Override
     public Set<State> states() {
-        return STATES;
+        return Set.of(
+                States.PUSH_DIRECTION,
+                States.PUSH_STRENGTH
+        );
     }
 }

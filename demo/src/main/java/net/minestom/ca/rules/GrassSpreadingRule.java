@@ -20,27 +20,27 @@ public final class GrassSpreadingRule implements CellRule {
     private static final long GRASS_BLOCK_STATE = Block.GRASS_BLOCK.stateId();
     private static final long DIRT_STATE = Block.DIRT.stateId();
 
-    public static final List<Action> GRASS_TO_DIRT = List.of(Action.action(action -> {
+    public static final Action GRASS_TO_DIRT = Action.action(action -> {
         action.state(0, DIRT_STATE);
         action.condition(0, GRASS_BLOCK_STATE);
         action.wakeup(Neighbors.MOORE_3D_SELF);
-    }));
-    public static final List<Action> DIRT_TO_GRASS = List.of(Action.action(action -> {
+    });
+    public static final Action DIRT_TO_GRASS = Action.action(action -> {
         action.state(0, GRASS_BLOCK_STATE);
         action.condition(0, DIRT_STATE);
         action.wakeup(Neighbors.MOORE_3D_SELF);
-    }));
-    public static final List<Action> DIRT_TRY_LATER = List.of(Action.action(action -> {
+    });
+    public static final Action DIRT_TRY_LATER = Action.action(action -> {
         action.wakeup(Neighbors.SELF);
         action.schedule(SPREAD_DELAY);
-    }));
+    });
 
     @Override
     public void init(Map<State, Integer> mapping) {
     }
 
     @Override
-    public List<Action> process(Context context, Query query) {
+    public Action process(Context context, Query query) {
         final Block currentBlock = query.block();
         // Rule 1: If I'm a grass block, try to spread to adjacent dirt blocks
         if (currentBlock.compare(Block.GRASS_BLOCK)) {
@@ -53,13 +53,13 @@ public final class GrassSpreadingRule implements CellRule {
         return null;
     }
 
-    private List<Action> processGrassBlock(Query query) {
+    private Action processGrassBlock(Query query) {
         // Check if there's a block above that would prevent grass from surviving/spreading
         final Block blockAbove = query.blockAt(0, 1, 0);
         return blockAbove.isSolid() ? GRASS_TO_DIRT : null;
     }
 
-    private List<Action> processDirtBlock(Query query) {
+    private Action processDirtBlock(Query query) {
         // Check if there's a block above that would prevent grass growth
         Block blockAbove = query.blockAt(0, 1, 0);
         if (blockAbove.isSolid()) return null;

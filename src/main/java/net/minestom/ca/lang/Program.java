@@ -62,7 +62,7 @@ public record Program(List<Rule> rules, Set<CellRule.State> variables) {
             }
 
             @Override
-            public List<Action> process(Context context, Query query) {
+            public Action process(Context context, Query query) {
                 Int2LongMap block = null;
                 for (Rule rule : rules) {
                     if (!verifyCondition(0, 0, 0, query, rule.condition())) continue;
@@ -99,11 +99,11 @@ public record Program(List<Rule> rules, Set<CellRule.State> variables) {
                 }
                 if (block == null) return null;
                 final Int2LongMap finalBlock = block;
-                return List.of(CellRule.Action.action(action -> {
+                return CellRule.Action.action(action -> {
                     for (Int2LongMap.Entry entry : finalBlock.int2LongEntrySet()) {
                         action.state(entry.getIntKey(), entry.getLongValue());
                     }
-                }));
+                });
             }
 
             @Override

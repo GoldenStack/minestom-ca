@@ -27,7 +27,7 @@ public final class RedstoneWireRule implements CellRule {
     }
 
     @Override
-    public List<Action> process(Context context, Query query) {
+    public Action process(Context context, Query query) {
         final Block currentBlock = query.block();
         if (!currentBlock.compare(Block.REDSTONE_WIRE)) {
             return null;
@@ -50,10 +50,10 @@ public final class RedstoneWireRule implements CellRule {
         }
 
         // Create updated block with new properties
-        return List.of(Action.action(action -> {
+        return Action.action(action -> {
             action.properties(finalConnections);
             action.wakeup(Neighbors.NEUMANN_2D_SELF);
-        }));
+        });
     }
 
     private Map<String, String> applySpecialRules(Map<String, String> connections) {
