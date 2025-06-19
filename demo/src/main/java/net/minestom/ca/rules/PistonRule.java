@@ -15,6 +15,7 @@ import java.util.Set;
 import static net.minestom.ca.Automata.*;
 
 public final class PistonRule implements CellRule {
+    private static final Action SET_AIR_ACTION = Action.action(action -> action.state(0, 0));
     private int pushDirectionIndex, pushStrengthIndex;
 
     @Override
@@ -41,7 +42,7 @@ public final class PistonRule implements CellRule {
 
     Action processBlock(Block block, Query query) {
         // Find if there is any near piston block waiting to extend
-        for (Vec neighbor : Neighbors.NEUMANN_2D) {
+        for (Vec neighbor : Neighbors.NEUMANN_3D) {
             final int nx = neighbor.blockX();
             final int ny = neighbor.blockY();
             final int nz = neighbor.blockZ();
@@ -88,8 +89,7 @@ public final class PistonRule implements CellRule {
             final Vec behind = direction.opposite().vec();
             final Block pistonBlock = query.blockAt(behind.blockX(), behind.blockY(), behind.blockZ());
             if (!isPiston(pistonBlock) || pistonBlock.getProperty("extended").equals("false")) {
-                // If no piston behind, convert piston head to air
-                return Action.action(action -> action.state(0, 0));
+                return SET_AIR_ACTION;
             } else {
                 return null;
             }
@@ -103,7 +103,7 @@ public final class PistonRule implements CellRule {
     }
 
     private boolean isRedstonePowered(Query query) {
-        for (Point neighbor : Neighbors.MOORE_3D) {
+        for (Point neighbor : Neighbors.NEUMANN_2D) {
             final int nx = neighbor.blockX();
             final int ny = neighbor.blockY();
             final int nz = neighbor.blockZ();
@@ -128,15 +128,13 @@ public final class PistonRule implements CellRule {
         return List.of(
                 Interest.block(Block.PISTON),
                 Interest.block(Block.PISTON_HEAD),
-                Interest.block(Block.STICKY_PISTON)
+                Interest.block(Block.STICKY_PISTON),
+                Interest.block(Block.REDSTONE_WIRE)
         );
     }
 
     @Override
     public Set<State> states() {
-        return Set.of(
-                States.PUSH_DIRECTION,
-                States.PUSH_STRENGTH
-        );
+        return Set.of();
     }
 }
