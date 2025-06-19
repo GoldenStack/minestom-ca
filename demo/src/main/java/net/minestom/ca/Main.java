@@ -16,6 +16,8 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import org.everbuild.blocksandstuff.blocks.BlockPlacementRuleRegistrations;
+import org.everbuild.blocksandstuff.blocks.behavior.BlockBehaviorRuleRegistrations;
 
 import java.util.List;
 
@@ -26,6 +28,9 @@ public final class Main {
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
         //final TerraMinestomPlatform platform = new TerraMinestomPlatform();
+
+        BlockPlacementRuleRegistrations.registerDefault();
+        BlockBehaviorRuleRegistrations.registerDefault();
 
         // Register commands
         MinecraftServer.getCommandManager().register(
@@ -42,7 +47,7 @@ public final class Main {
         // Create an instance
         InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
         instance.setChunkSupplier(LightingChunk::new);
-        instance.setGenerator(unit -> unit.modifier().fillHeight(0, 65, Block.STONE));
+        instance.setGenerator(unit -> unit.modifier().fillHeight(0, 85, Block.STONE));
         //TerraMinestomWorld terraWorld = platform.worldBuilder(instance).defaultPack().attach();
 
         final List<RuleConfig> rules = List.of(
@@ -53,14 +58,9 @@ public final class Main {
                 new RuleConfig(new BlockPusher()),
                 new RuleConfig(new GrassSpreadingRule())
         );
-
         World world = new LazyWorld(instance, rules);
         World.register(world);
-
-        // Print variables
-        System.out.println("Variables: " + world.states().stream()
-                .map(CellRule.State::name)
-                .toList());
+        System.out.println("Variables: " + world.states().stream().map(CellRule.State::name).toList());
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {

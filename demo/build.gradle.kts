@@ -16,11 +16,19 @@ java {
 
 repositories {
     mavenCentral()
+
+    // For placement rules
+    maven {
+        name = "asordaPublic"
+        url = uri("https://mvn.everbuild.org/public")
+    }
 }
 
 dependencies {
     implementation(rootProject)
     implementation(files("artefacts/Terra.jar"))
+
+    implementation("org.everbuild.blocksandstuff:blocksandstuff-blocks:1.1.0-SNAPSHOT")
 }
 
 tasks.test {
