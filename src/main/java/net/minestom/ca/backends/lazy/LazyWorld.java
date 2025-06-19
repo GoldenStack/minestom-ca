@@ -47,7 +47,9 @@ public final class LazyWorld implements Automata.World {
 
     private List<RuleContext> ruleContexts;
 
-    private int lightSpeed;
+    private int lightSpeed = 1;  // Controls how many iterations per tick (speedup)
+    private int tickInterval = 1; // Controls how frequently ticks happen (slowdown)
+    private int tickCounter = 0; // Tracks progress toward next tick
 
     private final HashedWheelTimer<ScheduledChange> wheelTimer = new HashedWheelTimer<>(255);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
@@ -384,6 +386,12 @@ public final class LazyWorld implements Automata.World {
     @Override
     public Automata.Metrics tick() {
         processChunkQueues();
+
+        // Increment counter and check if we should process this tick
+        tickCounter++;
+        if (tickCounter < tickInterval) return Automata.Metrics.EMPTY;
+        tickCounter = 0;
+
         Automata.Metrics totalMetrics = Automata.Metrics.EMPTY;
         final int iterations = Math.max(1, lightSpeed);
         for (int i = 0; i < iterations; i++) {
@@ -860,5 +868,16 @@ public final class LazyWorld implements Automata.World {
     @Override
     public void updateLightSpeed(int lightSpeed) {
         this.lightSpeed = lightSpeed;
+    }
+
+    @Override
+    public int tickInterval() {
+        return tickInterval;
+    }
+
+    @Override
+    public void updateTickInterval(int tickInterval) {
+        this.tickInterval = Math.max(1, tickInterval);
+        this.tickCounter = 0;
     }
 }

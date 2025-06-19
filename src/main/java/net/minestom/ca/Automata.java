@@ -309,6 +309,10 @@ public final class Automata {
         int lightSpeed();
 
         void updateLightSpeed(int lightSpeed);
+
+        int tickInterval();
+
+        void updateTickInterval(int tickInterval);
     }
 
     public record Metrics(

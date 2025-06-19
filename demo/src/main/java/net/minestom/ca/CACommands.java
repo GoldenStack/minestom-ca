@@ -205,4 +205,25 @@ public final class CACommands {
             }, speed);
         }
     }
+
+    public static final class SetTickInterval extends Command {
+        public SetTickInterval() {
+            super("tickinterval");
+            setCondition(Conditions::playerOnly);
+            final var interval = Integer("interval");
+
+            addSyntax((sender, context) -> {
+                Player player = (Player) sender;
+                final Automata.World world = Automata.World.get(player.getInstance());
+                if (world == null) {
+                    player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
+                    return;
+                }
+
+                final int tickInterval = context.get(interval);
+                world.updateTickInterval(tickInterval);
+                player.sendMessage(Component.text("Tick interval updated to: " + tickInterval).color(NamedTextColor.GREEN));
+            }, interval);
+        }
+    }
 }

@@ -35,7 +35,8 @@ public final class Main {
                 new CACommands.Action(),
                 new CACommands.ListStates(),
                 new CACommands.SetBlock(),
-                new CACommands.SetLightSpeed()
+                new CACommands.SetLightSpeed(),
+                new CACommands.SetTickInterval()
         );
 
         // Create an instance
