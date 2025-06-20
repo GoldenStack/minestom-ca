@@ -66,7 +66,7 @@ public final class LiquidRule implements Rule {
             int currentLvl = getLiquidLevel(currentBlock);
 
             Point downPos = Neighbors.DOWN;
-            Block blockBelow = query.blockAt(downPos.blockX(), downPos.blockY(), downPos.blockZ());
+            Block blockBelow = query.blockAt(downPos);
 
             boolean canFlowIntoReplaceable = isReplaceableByLiquid(blockBelow);
             boolean canFlowIntoWeakerSameLiquid = false;
@@ -90,7 +90,7 @@ public final class LiquidRule implements Rule {
         // Rule 2: If I am replaceable, and liquid is above me, I become that liquid.
         if (isReplaceableByLiquid(currentBlock)) {
             Point upPos = Neighbors.UP;
-            Block blockAbove = query.blockAt(upPos.blockX(), upPos.blockY(), upPos.blockZ());
+            Block blockAbove = query.blockAt(upPos);
 
             if (isLiquid(blockAbove)) {
                 Block liquidBaseTypeAbove = blockAbove.compare(Block.WATER) ? Block.WATER : Block.LAVA;
@@ -107,7 +107,7 @@ public final class LiquidRule implements Rule {
         // New Rule: If I am liquid and there's same type of liquid above me, take the strongest level
         if (isLiquid(currentBlock)) {
             Point upPos = Neighbors.UP;
-            Block blockAbove = query.blockAt(upPos.blockX(), upPos.blockY(), upPos.blockZ());
+            Block blockAbove = query.blockAt(upPos);
 
             if (areSameLiquidType(currentBlock, blockAbove)) {
                 int currentLevel = getLiquidLevel(currentBlock);
@@ -141,7 +141,7 @@ public final class LiquidRule implements Rule {
         if (canBeSpreadInto) {
             // Check if there's a solid block below (necessary for horizontal spread)
             final Point downPos = Neighbors.DOWN;
-            final Block blockBelow = query.blockAt(downPos.blockX(), downPos.blockY(), downPos.blockZ());
+            final Block blockBelow = query.blockAt(downPos);
 
             // If block below is not solid and we're trying to spread horizontally, return.
             // This is the key change - only allow horizontal spread if:
@@ -158,7 +158,7 @@ public final class LiquidRule implements Rule {
             Block bestLiquidBaseTypeToBecome = null;
 
             for (Point sidePos : Neighbors.NEUMANN_2D) { // N, S, E, W
-                final Block adjBlock = query.blockAt(sidePos.blockX(), sidePos.blockY(), sidePos.blockZ());
+                final Block adjBlock = query.blockAt(sidePos);
                 if (isLiquid(adjBlock)) {
                     final int adjLevel = getLiquidLevel(adjBlock);
                     Block adjBaseType = adjBlock.compare(Block.WATER) ? Block.WATER : Block.LAVA;
@@ -218,14 +218,14 @@ public final class LiquidRule implements Rule {
             boolean supported = false;
             int currentL = getLiquidLevel(currentBlock);
 
-            Block blockAbove = query.blockAt(Neighbors.UP.blockX(), Neighbors.UP.blockY(), Neighbors.UP.blockZ());
+            Block blockAbove = query.blockAt(Neighbors.UP);
             if (blockAbove.compare(Block.WATER) && getLiquidLevel(blockAbove) <= currentL) {
                 supported = true;
             }
 
             if (!supported) {
                 for (Point sidePos : Neighbors.NEUMANN_2D) {
-                    Block adjBlock = query.blockAt(sidePos.blockX(), sidePos.blockY(), sidePos.blockZ());
+                    Block adjBlock = query.blockAt(sidePos);
                     if (adjBlock.compare(Block.WATER) && (getLiquidLevel(adjBlock) < currentL || getLiquidLevel(adjBlock) == 0)) {
                         supported = true;
                         break;

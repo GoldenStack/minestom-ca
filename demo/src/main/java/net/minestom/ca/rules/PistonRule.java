@@ -56,17 +56,13 @@ public final class PistonRule implements Rule {
     Action processBlock(Block block, Query query) {
         // Find if there is any near piston block waiting to extend
         for (Vec neighbor : Neighbors.NEUMANN_3D) {
-            final int nx = neighbor.blockX();
-            final int ny = neighbor.blockY();
-            final int nz = neighbor.blockZ();
-
-            final Block neighborBlock = query.blockAt(nx, ny, nz);
+            final Block neighborBlock = query.blockAt(neighbor);
             if (isPiston(neighborBlock)) {
                 final boolean extended = neighborBlock.getProperty("extended").equals("true");
+                if (!extended) continue;
                 final String facing = neighborBlock.getProperty("facing");
                 final Direction direction = facingDirection(facing);
-                // Check if the piston is extending towards this block
-                final boolean towardsBlock = extended && compareVectors(direction.vec(), neighbor.neg());
+                final boolean towardsBlock = compareVectors(direction.vec(), neighbor.neg());
                 if (towardsBlock) {
                     if (block.isAir()) {
                         // Become piston head
@@ -81,6 +77,7 @@ public final class PistonRule implements Rule {
                             action.state(pushDirectionIndex, direction.ordinal() + 1);
                             action.state(pushStrengthIndex, 1);
 
+                            action.condition(0, block.stateId());
                             action.condition(pushDirectionIndex, 0);
                             action.condition(pushStrengthIndex, 0);
                         });
@@ -100,7 +97,7 @@ public final class PistonRule implements Rule {
             if (facing == null) return null;
             final Direction direction = facingDirection(facing);
             final Vec behind = direction.opposite().vec();
-            final Block pistonBlock = query.blockAt(behind.blockX(), behind.blockY(), behind.blockZ());
+            final Block pistonBlock = query.blockAt(behind);
             if (!isPiston(pistonBlock) || pistonBlock.getProperty("extended").equals("false")) {
                 return SET_AIR_ACTION;
             } else {
@@ -117,10 +114,7 @@ public final class PistonRule implements Rule {
 
     private boolean isRedstonePowered(Query query) {
         for (Point neighbor : Neighbors.NEUMANN_2D) {
-            final int nx = neighbor.blockX();
-            final int ny = neighbor.blockY();
-            final int nz = neighbor.blockZ();
-            final Block neighborBlock = query.blockAt(nx, ny, nz);
+            final Block neighborBlock = query.blockAt(neighbor);
             if (neighborBlock.compare(Block.REDSTONE_WIRE)) {
                 // Check if the redstone wire has power
                 final String powerProp = neighborBlock.getProperty("power");

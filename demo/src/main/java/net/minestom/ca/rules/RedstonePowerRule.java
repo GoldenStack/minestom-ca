@@ -85,7 +85,7 @@ public final class RedstonePowerRule implements Rule {
 
     private boolean isAdjacentToRedstoneBlock(Query query) {
         for (Point point : Neighbors.REDSTONE_CONNECT) {
-            final Block neighborBlock = query.blockAt(point.blockX(), point.blockY(), point.blockZ());
+            final Block neighborBlock = query.blockAt(point);
             if (neighborBlock.compare(Block.REDSTONE_BLOCK)) return true;
         }
         return false;
@@ -94,7 +94,7 @@ public final class RedstonePowerRule implements Rule {
     private int countHeads(Query query) {
         int count = 0;
         for (Point point : Neighbors.REDSTONE_CONNECT) {
-            Block neighborBlock = query.blockAt(point.blockX(), point.blockY(), point.blockZ());
+            Block neighborBlock = query.blockAt(point);
             if (neighborBlock.compare(Block.REDSTONE_WIRE)) {
                 final int power = blockPower(neighborBlock);
                 if (power == HEAD_STATE) count++;

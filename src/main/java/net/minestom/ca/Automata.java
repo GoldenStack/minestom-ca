@@ -177,6 +177,10 @@ public final class Automata {
             return Block.fromStateId((int) state);
         }
 
+        default Block blockAt(Point point) {
+            return blockAt(point.blockX(), point.blockY(), point.blockZ());
+        }
+
         long[] queryIndexes();
 
         default long stateAt(int x, int y, int z, Rule.State state) {
@@ -184,14 +188,22 @@ public final class Automata {
             return stateAt(x, y, z, index);
         }
 
+        default long stateAt(Point point, int index) {
+            return stateAt(point.blockX(), point.blockY(), point.blockZ(), index);
+        }
+
         long[] queryIndexes(int x, int y, int z);
+
+        default long[] queryIndexes(Point point) {
+            return queryIndexes(point.blockX(), point.blockY(), point.blockZ());
+        }
 
         Map<String, Long> queryNames(int x, int y, int z);
 
         default int count(int index, List<Vec> points, LongPredicate predicate) {
             int count = 0;
             for (Vec point : points) {
-                final long state = stateAt(point.blockX(), point.blockY(), point.blockZ(), index);
+                final long state = stateAt(point, index);
                 if (predicate.test(state)) count++;
             }
             return count;
@@ -200,7 +212,7 @@ public final class Automata {
         default int countLimit(int index, int limit, List<Vec> points, LongPredicate predicate) {
             int count = 0;
             for (Vec point : points) {
-                final long state = stateAt(point.blockX(), point.blockY(), point.blockZ(), index);
+                final long state = stateAt(point, index);
                 if (predicate.test(state) && ++count >= limit) break;
             }
             return count;

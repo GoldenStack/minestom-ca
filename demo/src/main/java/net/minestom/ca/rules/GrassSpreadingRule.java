@@ -78,7 +78,7 @@ public final class GrassSpreadingRule implements Rule {
         // Check if there's at least one adjacent grass block
         boolean hasAdjacentGrass = false;
         for (Point point : Neighbors.MOORE_2D) {
-            final Block neighborBlock = query.blockAt(point.blockX(), point.blockY(), point.blockZ());
+            final Block neighborBlock = query.blockAt(point);
             if (neighborBlock.compare(Block.GRASS_BLOCK)) {
                 hasAdjacentGrass = true;
                 break;

@@ -69,9 +69,8 @@ public final class BlockPusher implements Rule {
             final Direction pushDir = direction((int) dirValue);
             assert pushDir != null;
             final Point dirPoint = pushDir.vec();
-            final int dx = dirPoint.blockX(), dy = dirPoint.blockY(), dz = dirPoint.blockZ();
             // Check if we can move forward
-            if (replaceable(query.stateAt(dx, dy, dz, 0))) {
+            if (replaceable(query.stateAt(dirPoint, 0))) {
                 // We can move - clear and wake up the target position
                 return Action.action(action -> {
                     action.clear();
@@ -96,13 +95,12 @@ public final class BlockPusher implements Rule {
             if (neighborDir == null) return null;
             final Direction dir = neighborDir.opposite();
             final Vec dirPoint = dir.vec();
-            final int nx = dirPoint.blockX(), ny = dirPoint.blockY(), nz = dirPoint.blockZ();
             final long neighborDirValue = neighborDir.ordinal() + 1;
-            final long neighborStrength = query.stateAt(nx, ny, nz, strengthIndex);
+            final long neighborStrength = query.stateAt(dirPoint, strengthIndex);
             final long blockState = query.state(0);
             if (replaceable(blockState) && neighborStrength > 0) {
                 // Become the neighbor's block
-                long[] neighborStates = query.queryIndexes(nx, ny, nz);
+                long[] neighborStates = query.queryIndexes(dirPoint);
                 final long newStrength = neighborStrength - 1;
                 if (newStrength > 0) {
                     neighborStates[directionIndex] = neighborDirValue;
