@@ -1,8 +1,9 @@
 package net.minestom.ca.rules;
 
-import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata;
 import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
+import net.minestom.ca.Automata.Rule;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
@@ -12,7 +13,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-public final class GrassSpreadingRule implements CellRule {
+public final class GrassSpreadingRule implements Rule {
+    private static final Automata.Rule.Info INFO = new Info(
+            "Grass Spreading",
+            "Simulates the natural spreading of grass from grass blocks to adjacent dirt blocks.",
+            List.of(
+                    Interest.block(Block.GRASS_BLOCK),
+                    Interest.block(Block.DIRT)
+            ),
+            Set.of()
+    );
+
     // Configurable parameters
     private static final int SPREAD_CHANCE = 20;  // 1 in X chance per attempt (higher = slower)
     private static final int SPREAD_DELAY = 40;  // Ticks between spread attempts
@@ -83,15 +94,7 @@ public final class GrassSpreadingRule implements CellRule {
     }
 
     @Override
-    public List<Interest> interests() {
-        return List.of(
-                Interest.block(Block.GRASS_BLOCK),
-                Interest.block(Block.DIRT)
-        );
-    }
-
-    @Override
-    public Set<State> states() {
-        return Set.of();
+    public Info info() {
+        return INFO;
     }
 }

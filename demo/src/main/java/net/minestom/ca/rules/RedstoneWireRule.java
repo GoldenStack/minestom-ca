@@ -1,8 +1,9 @@
 package net.minestom.ca.rules;
 
-import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata;
 import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
+import net.minestom.ca.Automata.Rule;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
@@ -12,7 +13,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class RedstoneWireRule implements CellRule {
+public final class RedstoneWireRule implements Rule {
+    private static final Automata.Rule.Info INFO = new Automata.Rule.Info(
+            "Redstone Wire Rule",
+            "Simulates the behavior of redstone wires in a Minecraft-like automaton.",
+            List.of(
+                    Interest.block(Block.REDSTONE_WIRE)
+            ),
+            Set.of()
+    );
 
     // Direction pairs for opposite sides
     private static final Map<String, String> OPPOSITE_DIRECTIONS = Map.of(
@@ -124,12 +133,7 @@ public final class RedstoneWireRule implements CellRule {
     }
 
     @Override
-    public List<Interest> interests() {
-        return List.of(Interest.block(Block.REDSTONE_WIRE));
-    }
-
-    @Override
-    public Set<State> states() {
-        return Set.of();
+    public Info info() {
+        return INFO;
     }
 }

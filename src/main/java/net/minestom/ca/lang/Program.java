@@ -2,6 +2,7 @@ package net.minestom.ca.lang;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import net.minestom.ca.Automata;
 import net.minestom.server.coordinate.Point;
 
 import java.io.IOException;
@@ -11,9 +12,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static net.minestom.ca.Automata.*;
+import static net.minestom.ca.Automata.Context;
+import static net.minestom.ca.Automata.Query;
 
-public record Program(List<Rule> rules, Set<CellRule.State> variables) {
+public record Program(List<Rule> rules, Set<Automata.Rule.State> variables) {
     public Program {
         rules = List.copyOf(rules);
         variables = Set.copyOf(variables);
@@ -39,8 +41,8 @@ public record Program(List<Rule> rules, Set<CellRule.State> variables) {
         return parser.program();
     }
 
-    private CellRule.State var(String name) {
-        for (CellRule.State state : variables) {
+    private Automata.Rule.State var(String name) {
+        for (Automata.Rule.State state : variables) {
             if (state.name().equals(name)) {
                 return state;
             }
@@ -48,7 +50,7 @@ public record Program(List<Rule> rules, Set<CellRule.State> variables) {
         throw new IllegalArgumentException("Unknown variable: " + name);
     }
 
-    public CellRule makeCellRule() {
+    public Automata.Rule makeCellRule() {
         boolean[] trackedStates = new boolean[Short.MAX_VALUE];
         for (Rule rule : rules) {
             RuleAnalysis.queryExpression(rule.condition(), Rule.Expression.Literal.class, literal -> {
@@ -56,7 +58,7 @@ public record Program(List<Rule> rules, Set<CellRule.State> variables) {
                 trackedStates[literal.value()] = true;
             });
         }
-        return new CellRule() {
+        return new Automata.Rule() {
             @Override
             public void init(Map<State, Integer> mapping) {
             }
@@ -99,7 +101,7 @@ public record Program(List<Rule> rules, Set<CellRule.State> variables) {
                 }
                 if (block == null) return null;
                 final Int2LongMap finalBlock = block;
-                return CellRule.Action.action(action -> {
+                return Automata.Rule.Action.action(action -> {
                     for (Int2LongMap.Entry entry : finalBlock.int2LongEntrySet()) {
                         action.state(entry.getIntKey(), entry.getLongValue());
                     }
@@ -107,15 +109,14 @@ public record Program(List<Rule> rules, Set<CellRule.State> variables) {
             }
 
             @Override
-            public List<Interest> interests() {
-                return List.of(
-                        new Interest(BLOCK_STATE, value -> value >= 0 && value < trackedStates.length && trackedStates[(int) value])
+            public Info info() {
+                return new Automata.Rule.Info(
+                        "Cellular Automata Rule",
+                        "A rule that processes cellular automata based on defined conditions and expressions.",
+                        List.of(new Interest(BLOCK_STATE, value -> value >= 0 && value < trackedStates.length && trackedStates[(int) value])
+                        ),
+                        variables
                 );
-            }
-
-            @Override
-            public Set<State> states() {
-                return variables;
             }
         };
     }

@@ -71,7 +71,7 @@ public final class CACommands {
                 ItemStack.Builder itemStack = player.getItemInMainHand().builder();
                 for (CommandContext states : context.get(loop)) {
                     final String stateName = states.get("state_name");
-                    final Automata.CellRule.State state = world.state(stateName);
+                    final Automata.Rule.State state = world.state(stateName);
                     if (state == null) continue;
                     final long stateValue = states.get("state_value");
                     player.sendMessage(Component.text(" * Applying: " + stateName + " = " + stateValue));
@@ -88,7 +88,7 @@ public final class CACommands {
             return (sender, context, suggestion) -> {
                 if (!(sender instanceof Player player)) return;
                 final Automata.World world = Automata.World.get(player.getInstance());
-                for (Automata.CellRule.State state : world.states()) {
+                for (Automata.Rule.State state : world.states()) {
                     suggestion.addEntry(new SuggestionEntry(state.name(), Component.empty()));
                 }
             };
@@ -117,7 +117,7 @@ public final class CACommands {
                 ItemStack.Builder itemStack = player.getItemInMainHand().builder();
                 for (CommandContext states : context.get(loop)) {
                     final String stateName = states.get("state_name");
-                    final Automata.CellRule.State state = world.state(stateName);
+                    final Automata.Rule.State state = world.state(stateName);
                     if (state == null) continue;
                     final AutomataImpl.CellEvent event = states.get("state_event");
                     final String stateExpression = states.get("state_expression");
@@ -150,13 +150,13 @@ public final class CACommands {
                 return;
             }
 
-            final List<Automata.CellRule.State> states = world.states();
+            final List<Automata.Rule.State> states = world.states();
             if (states.isEmpty()) {
                 player.sendMessage(Component.text("No states defined in this automata world.").color(NamedTextColor.YELLOW));
                 return;
             }
             player.sendMessage(Component.text("Available states:").color(NamedTextColor.GOLD));
-            for (Automata.CellRule.State state : states) {
+            for (Automata.Rule.State state : states) {
                 player.sendMessage(Component.text(" • " + state.name() + " (" + state.bitSize() + " bits)")
                         .color(NamedTextColor.WHITE));
             }
@@ -178,7 +178,7 @@ public final class CACommands {
 
                 final Automata.World world = Automata.World.get(instance);
                 if (world != null) {
-                    final Map<Automata.CellRule.State, Long> properties = Map.of(Automata.CellRule.BLOCK_STATE, (long) blockToPlace.stateId());
+                    final Map<Automata.Rule.State, Long> properties = Map.of(Automata.Rule.BLOCK_STATE, (long) blockToPlace.stateId());
                     world.handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
                 }
             }, position, block);
@@ -224,6 +224,61 @@ public final class CACommands {
                 world.updateTickInterval(tickInterval);
                 player.sendMessage(Component.text("Tick interval updated to: " + tickInterval).color(NamedTextColor.GREEN));
             }, interval);
+        }
+    }
+
+    public static final class ListRules extends Command {
+        public ListRules() {
+            super("listrules");
+            setCondition(Conditions::playerOnly);
+            setDefaultExecutor(this::execute);
+        }
+
+        private void execute(CommandSender sender, CommandContext context) {
+            Player player = (Player) sender;
+            final Automata.World world = Automata.World.get(player.getInstance());
+            if (world == null) {
+                player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
+                return;
+            }
+
+            final List<Automata.Rule> rules = world.rules();
+            if (rules.isEmpty()) {
+                player.sendMessage(Component.text("No rules defined in this automata world.").color(NamedTextColor.YELLOW));
+                return;
+            }
+
+            player.sendMessage(Component.text("Registered Rules:").color(NamedTextColor.GOLD));
+
+            for (Automata.Rule rule : rules) {
+                Automata.Rule.Info info = rule.info();
+
+                // Create hoverable component with description
+                Component ruleComponent = Component.text(" • " + info.name())
+                        .color(NamedTextColor.WHITE)
+                        .hoverEvent(Component.text(info.description()).color(NamedTextColor.GRAY));
+
+                // Add interests information if available
+                if (!info.interests().isEmpty()) {
+                    Component interestsComponent = Component.text(" [");
+
+                    for (int i = 0; i < info.interests().size(); i++) {
+                        Automata.Rule.Interest interest = info.interests().get(i);
+                        if (i > 0) interestsComponent = interestsComponent.append(Component.text(", "));
+
+                        Component interestText = Component.text(interest.state().name())
+                                .color(NamedTextColor.AQUA);
+                        interestsComponent = interestsComponent.append(interestText);
+                    }
+
+                    interestsComponent = interestsComponent.append(Component.text("]"))
+                            .color(NamedTextColor.GRAY);
+
+                    ruleComponent = ruleComponent.append(interestsComponent);
+                }
+
+                player.sendMessage(ruleComponent);
+            }
         }
     }
 }

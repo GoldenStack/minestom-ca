@@ -8,7 +8,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class GameOfLife implements Automata.CellRule {
+public final class GameOfLife implements Automata.Rule {
+    private static final Automata.Rule.Info INFO = new Info(
+            "Game of Life",
+            "A classic cellular automaton simulating life and death based on neighbor counts.",
+            List.of(Interest.block(Block.WHITE_WOOL)),
+            Set.of()
+    );
+
     private static final long VOID_STATE = Block.AIR.stateId();
     private static final long ALIVE_STATE = Block.WHITE_WOOL.stateId();
 
@@ -41,12 +48,7 @@ public final class GameOfLife implements Automata.CellRule {
     }
 
     @Override
-    public List<Interest> interests() {
-        return List.of(Interest.block(Block.WHITE_WOOL));
-    }
-
-    @Override
-    public Set<State> states() {
-        return Set.of();
+    public Info info() {
+        return INFO;
     }
 }

@@ -40,11 +40,11 @@ public final class AutomataImpl {
                 final Block block = event.getBlock();
                 Automata.World world = Automata.World.get(event.getPlayer().getInstance());
 
-                Map<Automata.CellRule.State, Long> properties = new HashMap<>();
-                properties.put(Automata.CellRule.BLOCK_STATE, (long) block.stateId());
+                Map<Automata.Rule.State, Long> properties = new HashMap<>();
+                properties.put(Automata.Rule.BLOCK_STATE, (long) block.stateId());
                 final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
                 if (item.has(DataComponents.CUSTOM_DATA)) {
-                    for (Automata.CellRule.State state : world.states()) {
+                    for (Automata.Rule.State state : world.states()) {
                         final Tag<Long> tag = AutomataImpl.CellTag(state);
                         final Long value = item.getTag(tag);
                         if (value != null) properties.put(state, value);
@@ -142,9 +142,9 @@ public final class AutomataImpl {
         if (actions.isEmpty()) return null;
 
         ItemStack updatedItem = null;
-        Map<Automata.CellRule.State, Long> properties = new HashMap<>();
+        Map<Automata.Rule.State, Long> properties = new HashMap<>();
         for (String key : actions.keySet()) {
-            final Automata.CellRule.State state = world.state(key);
+            final Automata.Rule.State state = world.state(key);
             if (state == null) continue;
             final Tag<CellAction> tag = AutomataImpl.CellActionTag(state);
             final CellAction action = item.getTag(tag);
@@ -213,11 +213,11 @@ public final class AutomataImpl {
         }
     }
 
-    public static Tag<Long> CellTag(Automata.CellRule.State state) {
+    public static Tag<Long> CellTag(Automata.Rule.State state) {
         return Tag.Long(state.name()).path("cell_states");
     }
 
-    public static Tag<CellAction> CellActionTag(Automata.CellRule.State state) {
+    public static Tag<CellAction> CellActionTag(Automata.Rule.State state) {
         return Tag.Structure(state.name(), CELL_ACTION_SERIALIZER).path("cell_actions");
     }
 }

@@ -21,7 +21,7 @@ import org.everbuild.blocksandstuff.blocks.behavior.BlockBehaviorRuleRegistratio
 
 import java.util.List;
 
-import static net.minestom.ca.Automata.CellRule;
+import static net.minestom.ca.Automata.Rule;
 import static net.minestom.ca.Automata.World;
 
 public final class Main {
@@ -41,7 +41,8 @@ public final class Main {
                 new CACommands.ListStates(),
                 new CACommands.SetBlock(),
                 new CACommands.SetLightSpeed(),
-                new CACommands.SetTickInterval()
+                new CACommands.SetTickInterval(),
+                new CACommands.ListRules()
         );
 
         // Create an instance
@@ -61,7 +62,7 @@ public final class Main {
         );
         World world = new LazyWorld(instance, rules);
         World.register(world);
-        System.out.println("Variables: " + world.states().stream().map(CellRule.State::name).toList());
+        System.out.println("Variables: " + world.states().stream().map(Rule.State::name).toList());
 
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
         globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {

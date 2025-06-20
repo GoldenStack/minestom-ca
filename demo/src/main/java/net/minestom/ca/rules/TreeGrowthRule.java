@@ -2,9 +2,10 @@ package net.minestom.ca.rules;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata;
 import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
+import net.minestom.ca.Automata.Rule;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
@@ -12,12 +13,23 @@ import net.minestom.server.instance.block.Block;
 
 import java.util.*;
 
-public final class TreeGrowthRule implements CellRule {
+public final class TreeGrowthRule implements Rule {
     // Custom states for the tree growth
     public static final State SEED_STATE = new State("tree_seed", 32);
     public static final State GROWTH_STAGE = new State("growth_stage", 8);
     public static final State BRANCH_DIRECTION = new State("branch_direction", 4);
     public static final State LEAF_DENSITY = new State("leaf_density", 4);
+
+    private static final Automata.Rule.Info INFO = new Automata.Rule.Info(
+            "Tree Growth Rule",
+            "Simulates the growth of trees from saplings to full trees with branches and leaves.",
+            List.of(
+                    Interest.block(Block.OAK_SAPLING),
+                    Interest.block(Block.OAK_LOG),
+                    Interest.block(Block.OAK_LEAVES)
+            ),
+            Set.of(SEED_STATE, GROWTH_STAGE, BRANCH_DIRECTION, LEAF_DENSITY)
+    );
 
     // Block state IDs
     private static final long SAPLING_STATE = Block.OAK_SAPLING.stateId();
@@ -358,16 +370,7 @@ public final class TreeGrowthRule implements CellRule {
     }
 
     @Override
-    public List<Interest> interests() {
-        return List.of(
-                Interest.block(Block.OAK_SAPLING),
-                Interest.block(Block.OAK_LOG),
-                Interest.block(Block.OAK_LEAVES)
-        );
-    }
-
-    @Override
-    public Set<State> states() {
-        return Set.of(SEED_STATE, GROWTH_STAGE, BRANCH_DIRECTION, LEAF_DENSITY);
+    public Info info() {
+        return INFO;
     }
 }

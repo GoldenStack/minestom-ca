@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 import java.util.function.LongPredicate;
 
 public final class Automata {
-    public interface CellRule {
+    public interface Rule {
         // The default state for the block, used to track the block's state
         // Its index is always 0
         State BLOCK_STATE = new State("block_state", 32);
@@ -30,9 +30,7 @@ public final class Automata {
          */
         Action process(Context context, Query query);
 
-        List<Interest> interests();
-
-        Set<State> states();
+        Info info();
 
         record State(String name, int bitSize) {
             public State {
@@ -54,6 +52,14 @@ public final class Automata {
             public static Interest state(State state) {
                 return new Interest(state, value -> value != 0);
             }
+        }
+
+        record Info(
+                String name,
+                String description,
+                List<Interest> interests,
+                Set<State> states
+        ) {
         }
 
         record Action(
@@ -150,7 +156,7 @@ public final class Automata {
     }
 
     public interface Query {
-        int stateIndex(CellRule.State state);
+        int stateIndex(Rule.State state);
 
         long state(int index);
 
@@ -159,7 +165,7 @@ public final class Automata {
             return Block.fromStateId((int) state);
         }
 
-        default long state(CellRule.State state) {
+        default long state(Rule.State state) {
             final int index = stateIndex(state);
             return state(index);
         }
@@ -173,7 +179,7 @@ public final class Automata {
 
         long[] queryIndexes();
 
-        default long stateAt(int x, int y, int z, CellRule.State state) {
+        default long stateAt(int x, int y, int z, Rule.State state) {
             final int index = stateIndex(state);
             return stateAt(x, y, z, index);
         }
@@ -232,17 +238,17 @@ public final class Automata {
     }
 
     public record RuleConfig(
-            Automata.CellRule rule,
+            Rule rule,
             // How often the rule executes (1 = every tick, 2 = every other tick)
             int tickInterval,
             // How many times the rule executes within a single tick
             int executionsPerTick
     ) {
-        public RuleConfig(Automata.CellRule rule, int tickInterval) {
+        public RuleConfig(Rule rule, int tickInterval) {
             this(rule, tickInterval, 1);
         }
 
-        public RuleConfig(Automata.CellRule rule) {
+        public RuleConfig(Rule rule) {
             this(rule, 1, 1);
         }
     }
@@ -275,11 +281,11 @@ public final class Automata {
         /**
          * Handles an external block change (e.g. block place or break)
          */
-        void handlePlacement(int x, int y, int z, Map<CellRule.State, Long> properties);
+        void handlePlacement(int x, int y, int z, Map<Rule.State, Long> properties);
 
         default void handlePlacement(Point point, Block block) {
             handlePlacement(point.blockX(), point.blockY(), point.blockZ(),
-                    Map.of(CellRule.BLOCK_STATE, (long) block.stateId()));
+                    Map.of(Rule.BLOCK_STATE, (long) block.stateId()));
         }
 
         void handleChunkLoad(int chunkX, int chunkZ);
@@ -288,7 +294,7 @@ public final class Automata {
 
         void clearAt(int x, int y, int z);
 
-        void updateAt(int x, int y, int z, Map<CellRule.State, Long> properties);
+        void updateAt(int x, int y, int z, Map<Rule.State, Long> properties);
 
         /**
          * Gets the instance that is being ticked
@@ -297,12 +303,12 @@ public final class Automata {
          */
         Instance instance();
 
-        List<CellRule> rules();
+        List<Rule> rules();
 
-        List<CellRule.State> states();
+        List<Rule.State> states();
 
-        default CellRule.State state(String stateName) {
-            for (CellRule.State state : states()) {
+        default Rule.State state(String stateName) {
+            for (Rule.State state : states()) {
                 if (state.name().equals(stateName)) return state;
             }
             return null;

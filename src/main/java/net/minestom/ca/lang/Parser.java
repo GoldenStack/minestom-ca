@@ -18,7 +18,7 @@ public final class Parser {
     private int index;
 
     private final Set<String> properties = new HashSet<>();
-    private final Set<Automata.CellRule.State> states = new HashSet<>();
+    private final Set<Automata.Rule.State> states = new HashSet<>();
     private final List<Rule> rules = new ArrayList<>();
 
     public Parser() {
@@ -211,8 +211,8 @@ public final class Parser {
         }
         if (expression == null) throw error("Expected number");
         final Rule.Expression.Operation.Type type = switch (peek()) {
-            case Token.Plus ignored -> Rule.Expression.Operation.Type.ADD;
-            case Token.Minus ignored -> Rule.Expression.Operation.Type.SUBTRACT;
+            case Token.Plus ignored -> net.minestom.ca.lang.Rule.Expression.Operation.Type.ADD;
+            case Token.Minus ignored -> net.minestom.ca.lang.Rule.Expression.Operation.Type.SUBTRACT;
             default -> null;
         };
         if (type != null) {
@@ -256,7 +256,7 @@ public final class Parser {
 
     void registerState(String identifier) {
         if (properties.add(identifier)) {
-            states.add(new Automata.CellRule.State(identifier, 64));
+            states.add(new Automata.Rule.State(identifier, 64));
         }
     }
 

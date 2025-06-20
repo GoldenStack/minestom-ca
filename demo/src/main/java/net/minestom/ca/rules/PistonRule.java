@@ -1,5 +1,6 @@
 package net.minestom.ca.rules;
 
+import net.minestom.ca.Automata;
 import net.minestom.ca.Neighbors;
 import net.minestom.ca.States;
 import net.minestom.server.coordinate.Point;
@@ -14,7 +15,19 @@ import java.util.Set;
 
 import static net.minestom.ca.Automata.*;
 
-public final class PistonRule implements CellRule {
+public final class PistonRule implements Rule {
+    private static final Automata.Rule.Info INFO = new Info(
+            "Piston Mechanism",
+            "Simulates the behavior of pistons and sticky pistons in Minecraft, allowing blocks to be pushed or pulled.",
+            List.of(
+                    Interest.block(Block.PISTON),
+                    Interest.block(Block.STICKY_PISTON),
+                    Interest.block(Block.PISTON_HEAD),
+                    Interest.block(Block.REDSTONE_WIRE)
+            ),
+            Set.of()
+    );
+
     private static final Action SET_AIR_ACTION = Action.action(action -> action.state(0, 0));
     private int pushDirectionIndex, pushStrengthIndex;
 
@@ -124,17 +137,7 @@ public final class PistonRule implements CellRule {
     }
 
     @Override
-    public List<Interest> interests() {
-        return List.of(
-                Interest.block(Block.PISTON),
-                Interest.block(Block.PISTON_HEAD),
-                Interest.block(Block.STICKY_PISTON),
-                Interest.block(Block.REDSTONE_WIRE)
-        );
-    }
-
-    @Override
-    public Set<State> states() {
-        return Set.of();
+    public Info info() {
+        return INFO;
     }
 }

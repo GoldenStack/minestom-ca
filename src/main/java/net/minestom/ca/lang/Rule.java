@@ -36,7 +36,7 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
 
         record Equal(@NotNull Expression first, @NotNull Expression second) implements Condition {
             public Equal(Block block) {
-                this(new Expression.State(Automata.CellRule.BLOCK_STATE.name()), new Expression.Literal(block.stateId()));
+                this(new Expression.State(Automata.Rule.BLOCK_STATE.name()), new Expression.Literal(block.stateId()));
             }
         }
     }
@@ -44,7 +44,7 @@ public record Rule(@NotNull Condition condition, List<Result> results) {
     public sealed interface Result {
         record SetState(String state, Expression expression) implements Result {
             public SetState(Expression expression) {
-                this(Automata.CellRule.BLOCK_STATE.name(), expression);
+                this(Automata.Rule.BLOCK_STATE.name(), expression);
             }
 
             public SetState(Block block) {

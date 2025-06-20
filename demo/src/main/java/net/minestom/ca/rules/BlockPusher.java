@@ -1,8 +1,8 @@
 package net.minestom.ca.rules;
 
-import net.minestom.ca.Automata.CellRule;
 import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
+import net.minestom.ca.Automata.Rule;
 import net.minestom.ca.Neighbors;
 import net.minestom.ca.States;
 import net.minestom.server.coordinate.Point;
@@ -14,7 +14,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class BlockPusher implements CellRule {
+public final class BlockPusher implements Rule {
+    private static final Rule.Info INFO = new Info(
+            "Block Pusher",
+            "A rule that simulates a block pushing mechanism, allowing blocks to be pushed in a specified direction with a defined strength.",
+            List.of(
+                    Interest.state(States.PUSH_DIRECTION),
+                    Interest.state(States.PUSH_STRENGTH)
+            ),
+            Set.of(
+                    States.PUSH_DIRECTION,
+                    States.PUSH_STRENGTH
+            )
+    );
+
     private static final long AIR_STATE = Block.AIR.stateId();
     private static final Direction[] DIRECTIONS = Direction.values();
 
@@ -115,15 +128,7 @@ public final class BlockPusher implements CellRule {
     }
 
     @Override
-    public List<Interest> interests() {
-        return List.of(
-                Interest.state(States.PUSH_DIRECTION),
-                Interest.state(States.PUSH_STRENGTH)
-        );
-    }
-
-    @Override
-    public Set<State> states() {
-        return Set.of(States.PUSH_DIRECTION, States.PUSH_STRENGTH);
+    public Info info() {
+        return INFO;
     }
 }

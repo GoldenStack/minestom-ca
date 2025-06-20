@@ -1,8 +1,9 @@
 package net.minestom.ca.rules;
 
-import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata;
 import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
+import net.minestom.ca.Automata.Rule;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
@@ -11,7 +12,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class RedstonePowerRule implements CellRule {
+public final class RedstonePowerRule implements Rule {
+    private static final Automata.Rule.Info INFO = new Automata.Rule.Info(
+            "Redstone Power Rule",
+            "Simulates the behavior of redstone wires and blocks in a Wireworld-like automaton.",
+            List.of(
+                    Interest.block(Block.REDSTONE_WIRE),
+                    Interest.block(Block.REDSTONE_BLOCK)
+            ),
+            Set.of()
+    );
+
     // Wireworld states represented by redstone power levels
     private static final int HEAD_STATE = 15;       // power=15 (max power - blue)
     private static final int TAIL_STATE = 10;       // power=10 (intermediate - red)
@@ -93,16 +104,7 @@ public final class RedstonePowerRule implements CellRule {
     }
 
     @Override
-    public List<Interest> interests() {
-        return List.of(
-                Interest.block(Block.REDSTONE_WIRE),
-                Interest.block(Block.REDSTONE_BLOCK)
-        );
-    }
-
-    @Override
-    public Set<State> states() {
-        // We don't use custom states, we use the power property of redstone wire
-        return Set.of();
+    public Info info() {
+        return INFO;
     }
 }

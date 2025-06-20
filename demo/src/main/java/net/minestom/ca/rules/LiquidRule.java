@@ -1,8 +1,9 @@
 package net.minestom.ca.rules;
 
-import net.minestom.ca.Automata.CellRule;
+import net.minestom.ca.Automata;
 import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
+import net.minestom.ca.Automata.Rule;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
@@ -11,7 +12,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class LiquidRule implements CellRule {
+public final class LiquidRule implements Rule {
+    private static final Automata.Rule.Info INFO = new Automata.Rule.Info(
+            "Liquid Rule",
+            "Simulates the behavior of liquids (water and lava) in a cellular automaton.",
+            List.of(
+                    Interest.block(Block.WATER),
+                    Interest.block(Block.LAVA)
+            ),
+            Set.of()
+    );
 
     @Override
     public void init(Map<State, Integer> mapping) {
@@ -244,15 +254,7 @@ public final class LiquidRule implements CellRule {
     }
 
     @Override
-    public List<Interest> interests() {
-        return List.of(
-                Interest.block(Block.WATER),
-                Interest.block(Block.LAVA)
-        );
-    }
-
-    @Override
-    public Set<State> states() {
-        return Set.of(); // Only uses BLOCK_STATE implicitly
+    public Info info() {
+        return INFO;
     }
 }
