@@ -13,6 +13,7 @@ import net.minestom.server.instance.block.Block;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class RedstonePowerRule implements Rule {
     private static final Automata.Rule.Info INFO = new Automata.Rule.Info(
@@ -56,49 +57,60 @@ public final class RedstonePowerRule implements Rule {
     }
 
     private Action processWire(Query query, Block currentBlock) {
-        final int currentPower = blockPower(currentBlock);
-        int nextPower;
+        final int currentProperty = blockPower(currentBlock);
+        final long currentValue = query.state(dataIndex);
+
+        final long powerReceived = receivedPower(query);
+        int nextProperty;
+        long nextValue;
         // Check if a redstone block is adjacent, which would make this a HEAD
-        if (receivePower(query)) {
-            nextPower = HEAD_STATE;
-        } else if (currentPower == HEAD_STATE) {
+        if (powerReceived != 0) {
+            nextProperty = HEAD_STATE;
+            nextValue = powerReceived;
+        } else if (currentProperty == HEAD_STATE) {
             // Electron head -> Electron tail
-            nextPower = TAIL_STATE;
-        } else if (currentPower == TAIL_STATE) {
+            nextProperty = TAIL_STATE;
+            nextValue = 0;
+        } else if (currentProperty == TAIL_STATE) {
             // Electron tail -> Conductor
-            nextPower = CONDUCTOR_STATE;
+            nextProperty = CONDUCTOR_STATE;
+            nextValue = 0;
         } else {
             // All other redstone wire states are treated as conductors
             // Conductor -> Electron head if exactly 1 or 2 neighboring electron heads
-            final int headCount = countHeads(query);
-            nextPower = (headCount == 1 || headCount == 2) ? HEAD_STATE : CONDUCTOR_STATE;
+            final long headsValue = computeHeads(query);
+            if (headsValue != 0) {
+                nextProperty = HEAD_STATE;
+                nextValue = headsValue;
+            } else {
+                nextProperty = CONDUCTOR_STATE;
+                nextValue = 0;
+            }
         }
-        if (nextPower == currentPower) return null;
+        if (currentProperty == nextProperty && currentValue == nextValue) return null;
         return Action.action(action -> {
-            action.property("power", String.valueOf(nextPower));
-            action.state(dataIndex, nextPower > 0 ? 1 : 0);
+            action.property("power", String.valueOf(nextProperty));
+            action.state(dataIndex, nextValue);
             action.wakeup(POWER_WAKEUP_NEIGHBORS);
         });
     }
 
-    private boolean receivePower(Query query) {
+    private long receivedPower(Query query) {
         for (Point point : Neighbors.REDSTONE_CONNECT) {
             final Block neighborBlock = query.blockAt(point);
-            if (neighborBlock.compare(Block.REDSTONE_BLOCK)) return true;
+            if (neighborBlock.compare(Block.REDSTONE_BLOCK)) return 1;
         }
-        return false;
+        return 0;
     }
 
-    private int countHeads(Query query) {
-        int count = 0;
-        for (Point point : Neighbors.REDSTONE_CONNECT) {
-            Block neighborBlock = query.blockAt(point);
-            if (neighborBlock.compare(Block.REDSTONE_WIRE)) {
-                final int power = blockPower(neighborBlock);
-                if (power == HEAD_STATE) count++;
-            }
-        }
-        return count;
+    private long computeHeads(Query query) {
+        AtomicLong result = new AtomicLong();
+        query.count(dataIndex, Neighbors.REDSTONE_CONNECT, value -> {
+            final long current = result.getPlain();
+            result.setPlain(current | value);
+            return true;
+        });
+        return result.getPlain();
     }
 
     @Override
