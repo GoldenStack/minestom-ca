@@ -81,6 +81,9 @@ public final class Main {
             inventory.addItemStack(ItemStack.of(Material.STICK)
                     .withTag(AutomataImpl.AUTOMATA_DEBUG, true)
                     .withCustomName(Component.text("Automata Debug")));
+            inventory.addItemStack(ItemStack.of(Material.COMPASS)
+                    .withTag(AutomataImpl.AUTOMATA_STOPWATCH, true)
+                    .withCustomName(Component.text("Stopwatch")));
 
             event.setSpawningInstance(instance);
             player.setRespawnPoint(new Pos(0, 100, 0));

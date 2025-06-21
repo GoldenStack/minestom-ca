@@ -14,6 +14,7 @@ import net.minestom.server.event.instance.InstanceTickEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
+import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
@@ -34,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class AutomataImpl {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
     public static final Tag<Boolean> AUTOMATA_DEBUG = Tag.Boolean("automata_debug").defaultValue(false);
+    public static final Tag<Boolean> AUTOMATA_STOPWATCH = Tag.Boolean("automata_stopwatch").defaultValue(false);
     public static final EventNode<InstanceEvent> AUTOMATA_EVENT_NODE = EventNode.type("automata", EventFilter.INSTANCE)
             .addListener(PlayerBlockPlaceEvent.class, event -> {
                 final Point point = event.getBlockPosition();
@@ -65,6 +67,11 @@ public final class AutomataImpl {
                 final ItemStack update = applyAction(player, point, item, CellEvent.INTERACT);
                 if (update != null) player.setItemInHand(event.getHand(), update);
             })
+            .addListener(PlayerUseItemEvent.class, event -> {
+                final Player player = event.getPlayer();
+                final ItemStack item = event.getItemStack();
+                if (item.getTag(AUTOMATA_STOPWATCH)) useStopwatch(player);
+            })
             .addListener(InstanceChunkLoadEvent.class, event -> {
                 Automata.World world = Automata.World.get(event.getInstance());
                 world.handleChunkLoad(event.getChunkX(), event.getChunkZ());
@@ -76,33 +83,38 @@ public final class AutomataImpl {
             .addListener(InstanceTickEvent.class, event -> {
                 if (!RUNNING.get()) return;
                 final Instance eventInstance = event.getInstance();
-                final long start = System.nanoTime();
-
-                Automata.World world = Automata.World.get(eventInstance);
-                final Automata.Metrics metrics = world.tick();
-
-                final long duration = System.nanoTime() - start;
-                final double mspt = duration / 1.0e6;
-
-                // Calculate modification ratio (percentage of processed blocks that were modified)
-                String ratio = "0%";
-                if (metrics.processedBlocks() > 0) {
-                    final int modRatio = (metrics.modifiedBlocks() * 100) / metrics.processedBlocks();
-                    ratio = modRatio + "%";
-                }
-
-                Component header = Component.text()
-                        .append(Component.text("§b■ §fMSPT: §a" + String.format("%.2f", mspt) + "ms"))
-                        .append(Component.newline())
-                        .append(Component.text("§b■ §fProcessed Sections: §a" + String.format("%,d", metrics.processedSections())))
-                        .append(Component.newline())
-                        .append(Component.text("§b■ §fProcessed Blocks: §a" + String.format("%,d", metrics.processedBlocks())))
-                        .append(Component.newline())
-                        .append(Component.text("§b■ §fModified Blocks: §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a" + ratio + "§f)"))
-                        .build();
-
-                eventInstance.sendPlayerListHeader(header);
+                worldTick(eventInstance);
             });
+
+    private static void worldTick(Instance instance) {
+        Automata.World world = Automata.World.get(instance);
+        if (world == null) return;
+
+        final long start = System.nanoTime();
+        final Automata.Metrics metrics = world.tick();
+
+        final long duration = System.nanoTime() - start;
+        final double mspt = duration / 1.0e6;
+
+        // Calculate modification ratio (percentage of processed blocks that were modified)
+        String ratio = "0%";
+        if (metrics.processedBlocks() > 0) {
+            final int modRatio = (metrics.modifiedBlocks() * 100) / metrics.processedBlocks();
+            ratio = modRatio + "%";
+        }
+
+        Component header = Component.text()
+                .append(Component.text("§b■ §fMSPT: §a" + String.format("%.2f", mspt) + "ms"))
+                .append(Component.newline())
+                .append(Component.text("§b■ §fProcessed Sections: §a" + String.format("%,d", metrics.processedSections())))
+                .append(Component.newline())
+                .append(Component.text("§b■ §fProcessed Blocks: §a" + String.format("%,d", metrics.processedBlocks())))
+                .append(Component.newline())
+                .append(Component.text("§b■ §fModified Blocks: §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a" + ratio + "§f)"))
+                .build();
+
+        instance.sendPlayerListHeader(header);
+    }
 
     private static void showBlockInfo(Player player, Point point) {
         final Instance instance = player.getInstance();
@@ -131,6 +143,18 @@ public final class AutomataImpl {
                     .append(Component.text(value).color(NamedTextColor.WHITE))
                     .build());
         }
+    }
+
+    private static void useStopwatch(Player player) {
+        // Pause if running
+        if (RUNNING.compareAndExchange(true, false)) {
+            player.sendMessage(Component.text("Automata paused").color(NamedTextColor.YELLOW));
+        }
+        // Manually tick the world
+        final Instance instance = player.getInstance();
+        if (instance == null) return;
+        worldTick(instance);
+        player.sendMessage(Component.text("Automata ticked manually").color(NamedTextColor.GREEN));
     }
 
     private static ItemStack applyAction(Player player, Point point, ItemStack item, CellEvent event) {
