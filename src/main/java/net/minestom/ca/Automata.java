@@ -156,6 +156,12 @@ public final class Automata {
     }
 
     public interface Query {
+        Query offset(int x, int y, int z);
+
+        default Query offset(Vec offset) {
+            return offset(offset.blockX(), offset.blockY(), offset.blockZ());
+        }
+
         int stateIndex(Rule.State state);
 
         long state(int index);

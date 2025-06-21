@@ -32,8 +32,7 @@ import static net.minestom.server.coordinate.CoordConversion.globalToSectionRela
 @SuppressWarnings("UnstableApiUsage")
 public final class LazyWorld implements Automata.World {
     private final Instance instance;
-    private final ContextImpl context = new ContextImpl();
-    private final QueryImpl query = new QueryImpl();
+    private final QueryImpl query = new QueryImpl(new ContextImpl());
     private final int sectionCount;
     private final int minY;
 
@@ -225,6 +224,34 @@ public final class LazyWorld implements Automata.World {
     }
 
     private final class QueryImpl implements Automata.Query {
+        private final ContextImpl context;
+
+        QueryImpl(ContextImpl context) {
+            this.context = context;
+        }
+
+        LSection querySection(int sectionX, int sectionY, int sectionZ) {
+            final long sectionIndex = sectionIndex(sectionX, sectionY, sectionZ);
+            if (context.section != null && sectionIndex == context.section.index) return context.section;
+            return loadedSections.get(sectionIndex);
+        }
+
+        Palette queryPalette(int sectionX, int sectionY, int sectionZ) {
+            final long sectionIndex = sectionIndex(sectionX, sectionY, sectionZ);
+            if (context.section != null && sectionIndex == context.section.index) return context.palette;
+            return paletteAtSection(sectionX, sectionY, sectionZ);
+        }
+
+        @Override
+        public Automata.Query offset(int x, int y, int z) {
+            QueryImpl query = new QueryImpl(new ContextImpl());
+            final LSection section = querySection(x, y, z);
+            final Palette palette = queryPalette(x, y, z);
+            query.context.updateLocal(section, palette,
+                    context.localX + x, context.localY + y, context.localZ + z);
+            return query;
+        }
+
         @Override
         public int stateIndex(Automata.Rule.State state) {
             if (state == Automata.Rule.BLOCK_STATE) return 0;
@@ -259,18 +286,6 @@ public final class LazyWorld implements Automata.World {
             }
             context.localStates = indexes;
             return indexes;
-        }
-
-        LSection querySection(int sectionX, int sectionY, int sectionZ) {
-            final long sectionIndex = sectionIndex(sectionX, sectionY, sectionZ);
-            if (context.section != null && sectionIndex == context.section.index) return context.section;
-            return loadedSections.get(sectionIndex);
-        }
-
-        Palette queryPalette(int sectionX, int sectionY, int sectionZ) {
-            final long sectionIndex = sectionIndex(sectionX, sectionY, sectionZ);
-            if (context.section != null && sectionIndex == context.section.index) return context.palette;
-            return paletteAtSection(sectionX, sectionY, sectionZ);
         }
 
         @Override
@@ -409,7 +424,7 @@ public final class LazyWorld implements Automata.World {
     private Automata.Metrics singleTick() {
         final List<RuleContext> rulesToTick = rulesToTick();
         if (rulesToTick.isEmpty() && wheelTimer.isEmpty()) {
-            this.context.updateTick();
+            this.query.context.updateTick();
             return Automata.Metrics.EMPTY;
         }
         Long2ObjectMap<LongList> tickBlockChanges = new Long2ObjectOpenHashMap<>();
@@ -430,12 +445,12 @@ public final class LazyWorld implements Automata.World {
         }
         applyChanges(changes, tickBlockChanges);
         sendPackets(tickBlockChanges);
-        this.context.updateTick();
+        this.query.context.updateTick();
         return metrics;
     }
 
     private List<RuleContext> rulesToTick() {
-        final long tick = this.context.tick();
+        final long tick = this.query.context.tick();
         return ruleContexts.stream()
                 .filter(context -> !context.trackedSections.isEmpty() && tick % context.tickInterval == 0)
                 .toList();
@@ -469,8 +484,8 @@ public final class LazyWorld implements Automata.World {
                 final int x = sectionBlockIndexGetX(blockIndex) + sectionX * 16;
                 final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
                 final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
-                context.updateLocal(section, palette, x, y, z);
-                final Automata.Rule.Action action = rule.process(context, query);
+                query.context.updateLocal(section, palette, x, y, z);
+                final Automata.Rule.Action action = rule.process(query.context, query);
                 if (action != null) {
                     modifiedBlocks++;
                     blockChanges.add(new BlockChange(blockIndex, action));
@@ -600,7 +615,7 @@ public final class LazyWorld implements Automata.World {
         final Int2LongMap conditionStates = action.conditionStates();
         if ((conditionStates == null || conditionStates.isEmpty())
                 && (conditionProperties == null || conditionProperties.isEmpty())) return true;
-        context.updateLocal(section, palette, x, y, z);
+        query.context.updateLocal(section, palette, x, y, z);
         final long[] currentStates = query.queryIndexes();
         if (conditionProperties != null) {
             final int stateId = (int) currentStates[0];
