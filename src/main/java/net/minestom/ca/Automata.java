@@ -224,6 +224,22 @@ public final class Automata {
             return count;
         }
 
+        default boolean any(int index, List<Vec> points, LongPredicate predicate) {
+            for (Vec point : points) {
+                final long state = stateAt(point, index);
+                if (predicate.test(state)) return true;
+            }
+            return false;
+        }
+
+        default boolean anyPresent(int index, List<Vec> points) {
+            for (Vec point : points) {
+                final long state = stateAt(point, index);
+                if (state != 0) return true;
+            }
+            return false;
+        }
+
         default <T> T findFirst(int index, List<Vec> points, Finder<T> finder) {
             for (Vec point : points) {
                 final int blockX = point.blockX();

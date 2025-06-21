@@ -129,15 +129,22 @@ public final class LazyWorld implements Automata.World {
 
             final int blockIndex = sectionBlockIndex(x, y, z);
             final int bitSize = stateLayout.stateBitSizes[stateIndex];
-            final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
-            final long mask = stateLayout.stateMasks[stateIndex];
 
-            final int longIndex = blockIndex / valuesPerLong;
-            final int bitOffset = (blockIndex % valuesPerLong) * bitSize;
-            final long offset = (long) longIndex * Long.BYTES;
+            if (bitSize == 64) {
+                // When using full 64 bits, simply read the entire long
+                final long offset = (long) blockIndex * Long.BYTES;
+                return segment.get(ValueLayout.JAVA_LONG, offset);
+            } else {
+                // For smaller bit sizes, use bit shifting
+                final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
+                final long mask = stateLayout.stateMasks[stateIndex];
+                final int longIndex = blockIndex / valuesPerLong;
+                final int bitOffset = (blockIndex % valuesPerLong) * bitSize;
+                final long offset = (long) longIndex * Long.BYTES;
 
-            final long packed = segment.get(ValueLayout.JAVA_LONG, offset);
-            return (packed >>> bitOffset) & mask;
+                final long packed = segment.get(ValueLayout.JAVA_LONG, offset);
+                return (packed >>> bitOffset) & mask;
+            }
         }
 
         void setState(int x, int y, int z, int stateIndex, long value) {
@@ -145,43 +152,26 @@ public final class LazyWorld implements Automata.World {
             if (value == 0 && segment == null) return; // No need to allocate for zero values
 
             segment = ensureSegmentAllocated(stateIndex);
-
             final int blockIndex = sectionBlockIndex(x, y, z);
             final int bitSize = stateLayout.stateBitSizes[stateIndex];
-            final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
-            final long mask = stateLayout.stateMasks[stateIndex];
 
-            final int longIndex = blockIndex / valuesPerLong;
-            final int bitOffset = (blockIndex % valuesPerLong) * bitSize;
-            final long offset = (long) longIndex * Long.BYTES;
+            if (bitSize == 64) {
+                // When using full 64 bits, simply write the entire long
+                final long offset = (long) blockIndex * Long.BYTES;
+                segment.set(ValueLayout.JAVA_LONG, offset, value);
+            } else {
+                // For smaller bit sizes, use bit manipulation
+                final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
+                final long mask = stateLayout.stateMasks[stateIndex];
+                final int longIndex = blockIndex / valuesPerLong;
+                final int bitOffset = (blockIndex % valuesPerLong) * bitSize;
+                final long offset = (long) longIndex * Long.BYTES;
 
-            final long packed = segment.get(ValueLayout.JAVA_LONG, offset);
-            final long cleared = packed & ~(mask << bitOffset);
-            final long updated = cleared | ((value & mask) << bitOffset);
-            segment.set(ValueLayout.JAVA_LONG, offset, updated);
-        }
-
-        boolean anyState(int x, int y, int z) {
-            final int blockIndex = sectionBlockIndex(x, y, z);
-            for (int stateIndex = 0; stateIndex < stateSegments.length; stateIndex++) {
-                if (getStateByBlockIndex(blockIndex, stateIndex) != 0) return true;
+                final long packed = segment.get(ValueLayout.JAVA_LONG, offset);
+                final long cleared = packed & ~(mask << bitOffset);
+                final long updated = cleared | ((value & mask) << bitOffset);
+                segment.set(ValueLayout.JAVA_LONG, offset, updated);
             }
-            return false;
-        }
-
-        private long getStateByBlockIndex(int blockIndex, int stateIndex) {
-            if (stateSegments[stateIndex] == null) return 0; // Segment not allocated = all zeros
-
-            final int bitSize = stateLayout.stateBitSizes[stateIndex];
-            final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
-            final long mask = stateLayout.stateMasks[stateIndex];
-
-            final int longIndex = blockIndex / valuesPerLong;
-            final int bitOffset = (blockIndex % valuesPerLong) * bitSize;
-            final long offset = (long) longIndex * Long.BYTES;
-
-            final long packed = stateSegments[stateIndex].get(ValueLayout.JAVA_LONG, offset);
-            return (packed >>> bitOffset) & mask;
         }
     }
 
@@ -214,6 +204,15 @@ public final class LazyWorld implements Automata.World {
             this.localX = x;
             this.localY = y;
             this.localZ = z;
+            this.localStates = null;
+        }
+
+        void resetLocal() {
+            this.section = null;
+            this.palette = null;
+            this.localX = 0;
+            this.localY = 0;
+            this.localZ = 0;
             this.localStates = null;
         }
 
@@ -446,6 +445,7 @@ public final class LazyWorld implements Automata.World {
         applyChanges(changes, tickBlockChanges);
         sendPackets(tickBlockChanges);
         this.query.context.updateTick();
+        this.query.context.resetLocal();
         return metrics;
     }
 

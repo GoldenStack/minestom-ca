@@ -5,6 +5,7 @@ import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
 import net.minestom.ca.Automata.Rule;
 import net.minestom.ca.Neighbors;
+import net.minestom.ca.States;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
@@ -21,7 +22,7 @@ public final class RedstonePowerRule implements Rule {
                     Interest.block(Block.REDSTONE_WIRE),
                     Interest.block(Block.REDSTONE_BLOCK)
             ),
-            Set.of()
+            Set.of(States.DATA)
     );
 
     // Wireworld states represented by redstone power levels
@@ -33,8 +34,11 @@ public final class RedstonePowerRule implements Rule {
 
     private static final List<Vec> POWER_WAKEUP_NEIGHBORS = Neighbors.mooreRadius(2, false);
 
+    private int dataIndex;
+
     @Override
     public void init(Map<State, Integer> mapping) {
+        this.dataIndex = mapping.get(States.DATA);
     }
 
     @Override
@@ -72,6 +76,7 @@ public final class RedstonePowerRule implements Rule {
         if (nextPower == currentPower) return null;
         return Action.action(action -> {
             action.property("power", String.valueOf(nextPower));
+            action.state(dataIndex, nextPower > 0 ? 1 : 0);
             action.wakeup(POWER_WAKEUP_NEIGHBORS);
         });
     }

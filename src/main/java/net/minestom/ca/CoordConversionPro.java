@@ -31,6 +31,13 @@ public final class CoordConversionPro {
         return z;
     }
 
+    public static String sectionIndexGetString(long sectionIndex) {
+        final int x = sectionIndexGetX(sectionIndex);
+        final int y = sectionIndexGetY(sectionIndex);
+        final int z = sectionIndexGetZ(sectionIndex);
+        return String.format("[%d, %d, %d]", x, y, z);
+    }
+
     public static long sectionIndexGlobal(int x, int y, int z) {
         final int sectionX = globalToChunk(x);
         final int sectionY = globalToChunk(y);

@@ -3,7 +3,6 @@ package net.minestom.ca.rules;
 import net.minestom.ca.Automata;
 import net.minestom.ca.Neighbors;
 import net.minestom.ca.States;
-import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.utils.Direction;
@@ -23,18 +22,21 @@ public final class PistonRule implements Rule {
                     Interest.block(Block.PISTON),
                     Interest.block(Block.STICKY_PISTON),
                     Interest.block(Block.PISTON_HEAD),
-                    Interest.block(Block.REDSTONE_WIRE)
+                    Interest.block(Block.REDSTONE_WIRE),
+                    Interest.state(States.DATA)
             ),
             Set.of()
     );
 
     private static final Action SET_AIR_ACTION = Action.action(action -> action.state(0, 0));
     private int pushDirectionIndex, pushStrengthIndex;
+    private int dataIndex;
 
     @Override
     public void init(Map<State, Integer> mapping) {
         this.pushDirectionIndex = mapping.get(States.PUSH_DIRECTION);
         this.pushStrengthIndex = mapping.get(States.PUSH_STRENGTH);
+        this.dataIndex = mapping.get(States.DATA);
     }
 
     Action processPistonHead(Block block, Query query) {
@@ -43,11 +45,11 @@ public final class PistonRule implements Rule {
         final Direction direction = facingDirection(facing);
         final Vec behind = direction.opposite().vec();
         final Block pistonBlock = query.blockAt(behind);
-        return !isPiston(pistonBlock) || !isRedstonePowered(query.offset(behind)) ? SET_AIR_ACTION : null;
+        return !isPiston(pistonBlock) || !poweredAt(query.offset(behind)) ? SET_AIR_ACTION : null;
     }
 
     Action processPiston(Block block, Query query) {
-        final boolean isPowered = isRedstonePowered(query);
+        final boolean isPowered = poweredAt(query);
         final boolean extended = block.getProperty("extended").equals("true");
         if (isPowered != extended) {
             return Action.action(action -> action.property("extended", String.valueOf(isPowered)));
@@ -71,7 +73,7 @@ public final class PistonRule implements Rule {
             final Direction direction = facingDirection(facing);
             final boolean towardsBlock = compareVectors(direction.vec(), neighbor.neg());
             if (!towardsBlock) continue;
-            final boolean powered = isRedstonePowered(query.offset(neighbor));
+            final boolean powered = poweredAt(query.offset(neighbor));
             if (!powered) continue;
             if (block.isAir()) {
                 // Become piston head
@@ -107,18 +109,8 @@ public final class PistonRule implements Rule {
         return block.compare(Block.PISTON) || block.compare(Block.STICKY_PISTON);
     }
 
-    private boolean isRedstonePowered(Query query) {
-        for (Point neighbor : Neighbors.NEUMANN_2D) {
-            final Block neighborBlock = query.blockAt(neighbor);
-            if (neighborBlock.compare(Block.REDSTONE_WIRE)) {
-                // Check if the redstone wire has power
-                final String powerProp = neighborBlock.getProperty("power");
-                if (powerProp != null && Integer.parseInt(powerProp) > 0) {
-                    return true;
-                }
-            }
-        }
-        return false;
+    private boolean poweredAt(Query query) {
+        return query.anyPresent(dataIndex, Neighbors.NEUMANN_2D);
     }
 
     private Direction facingDirection(String facing) {
