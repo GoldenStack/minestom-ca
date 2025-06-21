@@ -32,6 +32,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static net.minestom.ca.Automata.*;
+
 public final class AutomataImpl {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
     public static final Tag<Boolean> AUTOMATA_DEBUG = Tag.Boolean("automata_debug").defaultValue(false);
@@ -40,13 +42,13 @@ public final class AutomataImpl {
             .addListener(PlayerBlockPlaceEvent.class, event -> {
                 final Point point = event.getBlockPosition();
                 final Block block = event.getBlock();
-                Automata.World world = Automata.World.get(event.getPlayer().getInstance());
+                World world = World.get(event.getPlayer().getInstance());
 
-                Map<Automata.Rule.State, Long> properties = new HashMap<>();
-                properties.put(Automata.Rule.BLOCK_STATE, (long) block.stateId());
+                Map<Rule.State, Long> properties = new HashMap<>();
+                properties.put(Rule.BLOCK_STATE, (long) block.stateId());
                 final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
                 if (item.has(DataComponents.CUSTOM_DATA)) {
-                    for (Automata.Rule.State state : world.states()) {
+                    for (Rule.State state : world.states()) {
                         final Tag<Long> tag = AutomataImpl.CellTag(state);
                         final Long value = item.getTag(tag);
                         if (value != null) properties.put(state, value);
@@ -56,7 +58,7 @@ public final class AutomataImpl {
             })
             .addListener(PlayerBlockBreakEvent.class, event -> {
                 final Point point = event.getBlockPosition();
-                Automata.World world = Automata.World.get(event.getPlayer().getInstance());
+                World world = World.get(event.getPlayer().getInstance());
                 world.handlePlacement(point, Block.AIR);
             })
             .addListener(PlayerBlockInteractEvent.class, event -> {
@@ -73,11 +75,11 @@ public final class AutomataImpl {
                 if (item.getTag(AUTOMATA_STOPWATCH)) useStopwatch(player);
             })
             .addListener(InstanceChunkLoadEvent.class, event -> {
-                Automata.World world = Automata.World.get(event.getInstance());
+                World world = World.get(event.getInstance());
                 world.handleChunkLoad(event.getChunkX(), event.getChunkZ());
             })
             .addListener(InstanceChunkUnloadEvent.class, event -> {
-                Automata.World world = Automata.World.get(event.getInstance());
+                World world = World.get(event.getInstance());
                 world.handleChunkUnload(event.getChunkX(), event.getChunkZ());
             })
             .addListener(InstanceTickEvent.class, event -> {
@@ -87,11 +89,11 @@ public final class AutomataImpl {
             });
 
     private static void worldTick(Instance instance) {
-        Automata.World world = Automata.World.get(instance);
+        World world = World.get(instance);
         if (world == null) return;
 
         final long start = System.nanoTime();
-        final Automata.Metrics metrics = world.tick();
+        final Metrics metrics = world.tick();
 
         final long duration = System.nanoTime() - start;
         final double mspt = duration / 1.0e6;
@@ -118,10 +120,10 @@ public final class AutomataImpl {
 
     private static void showBlockInfo(Player player, Point point) {
         final Instance instance = player.getInstance();
-        final Automata.World world = Automata.World.get(instance);
+        final World world = World.get(instance);
         if (world == null) return;
         final Block block = instance.getBlock(point);
-        final Map<String, Long> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
+        final Map<Rule.State, Long> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
         player.sendMessage(Component.text()
                 .append(Component.text("Block States").color(NamedTextColor.GRAY)
                         .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
@@ -133,14 +135,15 @@ public final class AutomataImpl {
                 .append(Component.text(block.state()).color(NamedTextColor.WHITE))
                 .append(Component.text(" (ID: " + block.stateId() + ")").color(NamedTextColor.DARK_GRAY))
                 .build());
-        for (Map.Entry<String, Long> entry : indexes.entrySet()) {
-            final String name = entry.getKey();
+        for (Map.Entry<Rule.State, Long> entry : indexes.entrySet()) {
+            final Rule.State state = entry.getKey();
             final Long value = entry.getValue();
             if (value == null || value == 0) continue;
+            final String stateString = state.visualizer().apply(value);
             player.sendMessage(Component.text()
-                    .append(Component.text(name).color(NamedTextColor.GRAY))
+                    .append(Component.text(state.name()).color(NamedTextColor.GRAY))
                     .append(Component.text(": ").color(NamedTextColor.DARK_GRAY))
-                    .append(Component.text(value).color(NamedTextColor.WHITE))
+                    .append(Component.text(stateString).color(NamedTextColor.WHITE))
                     .build());
         }
     }
@@ -158,7 +161,7 @@ public final class AutomataImpl {
     }
 
     private static ItemStack applyAction(Player player, Point point, ItemStack item, CellEvent event) {
-        Automata.World world = Automata.World.get(player.getInstance());
+        World world = World.get(player.getInstance());
         if (world == null) return null;
         final CustomData data = item.get(DataComponents.CUSTOM_DATA);
         if (data == null) return null;
@@ -166,9 +169,9 @@ public final class AutomataImpl {
         if (actions.isEmpty()) return null;
 
         ItemStack updatedItem = null;
-        Map<Automata.Rule.State, Long> properties = new HashMap<>();
+        Map<Rule.State, Long> properties = new HashMap<>();
         for (String key : actions.keySet()) {
-            final Automata.Rule.State state = world.state(key);
+            final Rule.State state = world.state(key);
             if (state == null) continue;
             final Tag<CellAction> tag = AutomataImpl.CellActionTag(state);
             final CellAction action = item.getTag(tag);
@@ -237,11 +240,11 @@ public final class AutomataImpl {
         }
     }
 
-    public static Tag<Long> CellTag(Automata.Rule.State state) {
+    public static Tag<Long> CellTag(Rule.State state) {
         return Tag.Long(state.name()).path("cell_states");
     }
 
-    public static Tag<CellAction> CellActionTag(Automata.Rule.State state) {
+    public static Tag<CellAction> CellActionTag(Rule.State state) {
         return Tag.Structure(state.name(), CELL_ACTION_SERIALIZER).path("cell_actions");
     }
 }

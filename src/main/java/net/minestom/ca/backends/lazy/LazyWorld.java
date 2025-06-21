@@ -324,23 +324,23 @@ public final class LazyWorld implements Automata.World {
         }
 
         @Override
-        public Map<String, Long> queryNames(int x, int y, int z) {
+        public Map<Automata.Rule.State, Long> queryNames(int x, int y, int z) {
             final long[] indexes = queryIndexes(x, y, z);
-            if (indexes.length == 1) return Map.of(Automata.Rule.BLOCK_STATE.name(), indexes[0]);
-            Map<Integer, String> variables = new HashMap<>();
+            if (indexes.length == 1) return Map.of(Automata.Rule.BLOCK_STATE, indexes[0]);
+            Map<Integer, Automata.Rule.State> variables = new HashMap<>();
             for (Map.Entry<Automata.Rule.State, Integer> entry : rulesMapping.entrySet()) {
                 final Automata.Rule.State state = entry.getKey();
                 final int index = entry.getValue();
-                variables.put(index, state.name());
+                variables.put(index, state);
             }
-            Map<String, Long> names = new HashMap<>();
+            Map<Automata.Rule.State, Long> states = new HashMap<>();
             for (int i = 0; i < variables.size(); i++) {
-                final String name = variables.get(i);
+                final Automata.Rule.State state = variables.get(i);
                 final long value = indexes[i];
-                assert name != null;
-                names.put(name, value);
+                assert state != null;
+                states.put(state, value);
             }
-            return names;
+            return states;
         }
     }
 

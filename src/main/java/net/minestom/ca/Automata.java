@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.LongFunction;
 import java.util.function.LongPredicate;
 
 public final class Automata {
@@ -32,11 +33,16 @@ public final class Automata {
 
         Info info();
 
-        record State(String name, int bitSize) {
+        record State(String name, int bitSize,
+                     LongFunction<String> visualizer) {
             public State {
                 if (bitSize < 1 || bitSize > 64) {
                     throw new IllegalArgumentException("State bit size must be between 1 and 64");
                 }
+            }
+
+            public State(String name, int bitSize) {
+                this(name, bitSize, String::valueOf);
             }
         }
 
@@ -204,7 +210,7 @@ public final class Automata {
             return queryIndexes(point.blockX(), point.blockY(), point.blockZ());
         }
 
-        Map<String, Long> queryNames(int x, int y, int z);
+        Map<Rule.State, Long> queryNames(int x, int y, int z);
 
         default int count(int index, List<Vec> points, LongPredicate predicate) {
             int count = 0;
