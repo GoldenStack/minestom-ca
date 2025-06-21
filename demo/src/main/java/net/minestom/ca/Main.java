@@ -78,12 +78,14 @@ public final class Main {
             inventory.addItemStack(ItemStack.of(Material.OAK_LOG));
             inventory.addItemStack(ItemStack.of(Material.OAK_SAPLING));
             inventory.addItemStack(ItemStack.of(Material.PISTON));
-            inventory.addItemStack(ItemStack.of(Material.STICK)
-                    .withTag(AutomataImpl.AUTOMATA_DEBUG, true)
-                    .withCustomName(Component.text("Automata Debug")));
-            inventory.addItemStack(ItemStack.of(Material.COMPASS)
-                    .withTag(AutomataImpl.AUTOMATA_STOPWATCH, true)
-                    .withCustomName(Component.text("Stopwatch")));
+            inventory.addItemStack(ItemStack.builder(Material.STICK)
+                    .set(AutomataImpl.AUTOMATA_DEBUG, true)
+                    .customName(Component.text("Automata Debug"))
+                    .build());
+            inventory.addItemStack(ItemStack.builder(Material.COMPASS)
+                    .set(AutomataImpl.AUTOMATA_STOPWATCH, true)
+                    .customName(Component.text("Stopwatch"))
+                    .build());
 
             event.setSpawningInstance(instance);
             player.setRespawnPoint(new Pos(0, 100, 0));

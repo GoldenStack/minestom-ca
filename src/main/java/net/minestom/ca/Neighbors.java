@@ -112,4 +112,39 @@ public final class Neighbors {
             Map.entry("radial3dself", RADIAL_3D_SELF),
             Map.entry("radial3d", RADIAL_3D)
     );
+
+    public static List<Vec> mooreRadius(int radius, boolean includeSelf) {
+        if (radius < 0) throw new IllegalArgumentException("Radius cannot be negative");
+        if (radius == 0) return includeSelf ? List.of(SELF) : List.of();
+        if (radius == 1) return includeSelf ? MOORE_3D_SELF : MOORE_3D;
+        List<Vec> result = new ArrayList<>();
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -radius; y <= radius; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    if (includeSelf || x != 0 || y != 0 || z != 0) {
+                        result.add(new Vec(x, y, z));
+                    }
+                }
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    public static List<Vec> neumannRadius(int radius, boolean includeSelf) {
+        if (radius < 0) throw new IllegalArgumentException("Radius cannot be negative");
+        if (radius == 0) return includeSelf ? List.of(SELF) : List.of();
+        if (radius == 1) return includeSelf ? NEUMANN_3D_SELF : NEUMANN_3D;
+        List<Vec> result = new ArrayList<>();
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -radius; y <= radius; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    final int distance = Math.abs(x) + Math.abs(y) + Math.abs(z);
+                    if (distance <= radius && (includeSelf || distance > 0)) {
+                        result.add(new Vec(x, y, z));
+                    }
+                }
+            }
+        }
+        return List.copyOf(result);
+    }
 }

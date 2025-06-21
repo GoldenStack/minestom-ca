@@ -37,9 +37,18 @@ public final class PistonRule implements Rule {
         this.pushStrengthIndex = mapping.get(States.PUSH_STRENGTH);
     }
 
-    Action processPiston(Query query) {
+    Action processPistonHead(Block block, Query query) {
+        // Change to air if there is no piston block behind or if piston is not powered
+        final String facing = block.getProperty("facing");
+        final Direction direction = facingDirection(facing);
+        final Vec behind = direction.opposite().vec();
+        final Block pistonBlock = query.blockAt(behind);
+        return !isPiston(pistonBlock) || !isRedstonePowered(query.offset(behind)) ? SET_AIR_ACTION : null;
+    }
+
+    Action processPiston(Block block, Query query) {
         final boolean isPowered = isRedstonePowered(query);
-        final boolean extended = query.block().getProperty("extended").equals("true");
+        final boolean extended = block.getProperty("extended").equals("true");
         if (isPowered != extended) {
             return Action.action(action -> action.property("extended", String.valueOf(isPowered)));
         }
@@ -57,32 +66,30 @@ public final class PistonRule implements Rule {
         // Find if there is any near piston block waiting to extend
         for (Vec neighbor : Neighbors.NEUMANN_3D) {
             final Block neighborBlock = query.blockAt(neighbor);
-            if (isPiston(neighborBlock)) {
-                final boolean extended = neighborBlock.getProperty("extended").equals("true");
-                if (!extended) continue;
-                final String facing = neighborBlock.getProperty("facing");
-                final Direction direction = facingDirection(facing);
-                final boolean towardsBlock = compareVectors(direction.vec(), neighbor.neg());
-                if (towardsBlock) {
-                    if (block.isAir()) {
-                        // Become piston head
-                        final Block pistonHead = Block.PISTON_HEAD.withProperty("facing", facing);
-                        return Action.action(action -> {
-                            action.state(0, pistonHead.stateId());
-                            action.condition(0, 0);
-                        });
-                    } else {
-                        // Apply direction/strength states if not already set
-                        return Action.action(action -> {
-                            action.state(pushDirectionIndex, direction.ordinal() + 1);
-                            action.state(pushStrengthIndex, 1);
+            if (!isPiston(neighborBlock)) continue;
+            final String facing = neighborBlock.getProperty("facing");
+            final Direction direction = facingDirection(facing);
+            final boolean towardsBlock = compareVectors(direction.vec(), neighbor.neg());
+            if (!towardsBlock) continue;
+            final boolean powered = isRedstonePowered(query.offset(neighbor));
+            if (!powered) continue;
+            if (block.isAir()) {
+                // Become piston head
+                final Block pistonHead = Block.PISTON_HEAD.withProperty("facing", facing);
+                return Action.action(action -> {
+                    action.state(0, pistonHead.stateId());
+                    action.condition(0, 0);
+                });
+            } else {
+                // Apply direction/strength states if not already set
+                return Action.action(action -> {
+                    action.state(pushDirectionIndex, direction.ordinal() + 1);
+                    action.state(pushStrengthIndex, 1);
 
-                            action.condition(0, block.stateId());
-                            action.condition(pushDirectionIndex, 0);
-                            action.condition(pushStrengthIndex, 0);
-                        });
-                    }
-                }
+                    action.condition(0, block.stateId());
+                    action.condition(pushDirectionIndex, 0);
+                    action.condition(pushStrengthIndex, 0);
+                });
             }
         }
         return null;
@@ -91,20 +98,8 @@ public final class PistonRule implements Rule {
     @Override
     public Action process(Context context, Query query) {
         final Block block = query.block();
-        if (block.compare(Block.PISTON_HEAD)) {
-            // Change to air if there is no piston block behind
-            final String facing = block.getProperty("facing");
-            if (facing == null) return null;
-            final Direction direction = facingDirection(facing);
-            final Vec behind = direction.opposite().vec();
-            final Block pistonBlock = query.blockAt(behind);
-            if (!isPiston(pistonBlock) || pistonBlock.getProperty("extended").equals("false")) {
-                return SET_AIR_ACTION;
-            } else {
-                return null;
-            }
-        }
-        if (isPiston(block)) return processPiston(query);
+        if (block.compare(Block.PISTON_HEAD)) return processPistonHead(block, query);
+        if (isPiston(block)) return processPiston(block, query);
         return processBlock(block, query);
     }
 

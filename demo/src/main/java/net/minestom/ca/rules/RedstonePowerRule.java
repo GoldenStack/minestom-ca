@@ -6,6 +6,7 @@ import net.minestom.ca.Automata.Query;
 import net.minestom.ca.Automata.Rule;
 import net.minestom.ca.Neighbors;
 import net.minestom.server.coordinate.Point;
+import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.block.Block;
 
 import java.util.List;
@@ -30,6 +31,8 @@ public final class RedstonePowerRule implements Rule {
 
     private static final Action POWER_WAKEUP_ACTION = Action.action(a -> a.wakeup(Neighbors.REDSTONE_CONNECT_SELF));
 
+    private static final List<Vec> POWER_WAKEUP_NEIGHBORS = Neighbors.mooreRadius(2, false);
+
     @Override
     public void init(Map<State, Integer> mapping) {
     }
@@ -37,12 +40,8 @@ public final class RedstonePowerRule implements Rule {
     @Override
     public Action process(Context context, Query query) {
         final Block currentBlock = query.block();
-        if (currentBlock.compare(Block.REDSTONE_WIRE)) {
-            return processWire(query, currentBlock);
-        }
-        if (currentBlock.compare(Block.REDSTONE_BLOCK)) {
-            return POWER_WAKEUP_ACTION;
-        }
+        if (currentBlock.compare(Block.REDSTONE_WIRE)) return processWire(query, currentBlock);
+        if (currentBlock.compare(Block.REDSTONE_BLOCK)) return POWER_WAKEUP_ACTION;
         return null;
     }
 
@@ -54,11 +53,9 @@ public final class RedstonePowerRule implements Rule {
 
     private Action processWire(Query query, Block currentBlock) {
         final int currentPower = blockPower(currentBlock);
-
-        // Determine the next state based on Wireworld rules
         int nextPower;
         // Check if a redstone block is adjacent, which would make this a HEAD
-        if (isAdjacentToRedstoneBlock(query)) {
+        if (receivePower(query)) {
             nextPower = HEAD_STATE;
         } else if (currentPower == HEAD_STATE) {
             // Electron head -> Electron tail
@@ -72,18 +69,14 @@ public final class RedstonePowerRule implements Rule {
             final int headCount = countHeads(query);
             nextPower = (headCount == 1 || headCount == 2) ? HEAD_STATE : CONDUCTOR_STATE;
         }
-
-        // Only create an action if the state changes
         if (nextPower == currentPower) return null;
-
-        // Create a new block with updated power level and wire connections
         return Action.action(action -> {
             action.property("power", String.valueOf(nextPower));
-            action.wakeup(Neighbors.REDSTONE_CONNECT_SELF);
+            action.wakeup(POWER_WAKEUP_NEIGHBORS);
         });
     }
 
-    private boolean isAdjacentToRedstoneBlock(Query query) {
+    private boolean receivePower(Query query) {
         for (Point point : Neighbors.REDSTONE_CONNECT) {
             final Block neighborBlock = query.blockAt(point);
             if (neighborBlock.compare(Block.REDSTONE_BLOCK)) return true;
