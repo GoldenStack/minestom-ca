@@ -113,6 +113,11 @@ public final class TreeGrowthRule implements Rule {
                     Vec up = new Vec(0, 1, 0);
                     action.wakeup(List.of(up));
 
+                    // Clear this log's states since it has finished its growth role
+                    action.state(seedIndex, 0);
+                    action.state(growthStageIndex, 0);
+                    action.state(branchDirectionIndex, 0);
+
                     // Schedule the next growth
                     action.schedule(GROWTH_DELAY);
                 });
@@ -168,12 +173,37 @@ public final class TreeGrowthRule implements Rule {
 
         // Case 5: Growing leaves around branches and top
         if (blockState == LOG_STATE && growthStage >= MAX_TREE_HEIGHT - 2) {
-            return createLeafLayer(query, seedValue, growthStage, leafDensity);
+            Action leafAction = createLeafLayer(query, seedValue, growthStage, leafDensity);
+            if (leafAction != null) {
+                return Action.action(action -> {
+                    // Create the leaves
+                    action.wakeup(Neighbors.MOORE_3D);
+                    action.schedule(GROWTH_DELAY);
+
+                    // Clear this log's states after generating leaves
+                    action.state(seedIndex, 0);
+                    action.state(growthStageIndex, 0);
+                    action.state(branchDirectionIndex, 0);
+                    action.state(leafDensityIndex, 0);
+                });
+            }
+            return null;
         }
 
         // Case 6: Leaves spread
         if (blockState == LEAVES_STATE && leafDensity > 0) {
-            return spreadLeaves(query, seedValue, leafDensity);
+            Action spreadAction = spreadLeaves(query, seedValue, leafDensity);
+            if (spreadAction != null) {
+                return spreadAction;
+            } else if (leafDensity > 1) {
+                // If we couldn't spread but have a density > 1, clear our states
+                // This means we've completed our spreading role
+                return Action.action(action -> {
+                    action.state(seedIndex, 0);
+                    action.state(leafDensityIndex, 0);
+                });
+            }
+            return null;
         }
 
         return null;
@@ -229,6 +259,8 @@ public final class TreeGrowthRule implements Rule {
                     action.state(leafDensityIndex, newDensity);
                     // Wake neighbors for potential spreading
                     action.wakeup(Neighbors.MOORE_3D_SELF);
+                    // Schedule next growth for continuous leaf spreading
+                    action.schedule(GROWTH_DELAY);
                 });
             }
         }
@@ -288,6 +320,11 @@ public final class TreeGrowthRule implements Rule {
                 action.schedule(GROWTH_DELAY);
                 // Wake up all surrounding blocks to create leaves
                 action.wakeup(Neighbors.MOORE_3D);
+
+                // Clear growth-related states after creating the leaf crown
+                action.state(seedIndex, 0);
+                action.state(growthStageIndex, 0);
+                action.state(branchDirectionIndex, 0);
             });
         }
         return null;
@@ -325,7 +362,6 @@ public final class TreeGrowthRule implements Rule {
                     0));
 
             if (neighborBlock.isAir()) {
-                // Always create leaves (no random chance)
                 return Action.action(action -> {
                     // Directly modify the air block to become a leaf
                     Int2LongMap leafStates = new Int2LongOpenHashMap();
@@ -335,16 +371,25 @@ public final class TreeGrowthRule implements Rule {
 
                     // Wake up the neighbor to create the leaf
                     action.wakeup(List.of(point));
+
+                    // Only clear our own states after all neighbors have been processed
+                    // Don't clear states here as it stops propagation
+                    action.schedule(GROWTH_DELAY);
                 });
             }
         }
 
-        return null;
+        // Only clear states if no air blocks were found to convert
+        return Action.action(action -> {
+            action.state(seedIndex, 0);
+            action.state(leafDensityIndex, 0);
+        });
     }
 
     private Action spreadLeaves(Query query, long seedValue, long leafDensity) {
         if (leafDensity <= 1) return null; // Don't spread further
-        // Spread leaves to neighbors with decreasing density - 100% chance instead of 50%
+
+        // Spread leaves to neighbors with decreasing density
         for (Vec point : Neighbors.MOORE_3D) {
             Block neighborBlock = Block.fromStateId((int) query.stateAt(
                     point.blockX(),
@@ -354,19 +399,22 @@ public final class TreeGrowthRule implements Rule {
 
             if (neighborBlock.isAir()) {
                 return Action.action(action -> {
-                    // Directly set the air block to a leaf
-                    Int2LongMap leafStates = new Int2LongOpenHashMap();
-                    leafStates.put(0, LEAVES_STATE);
-                    leafStates.put(seedIndex, seedValue);
-                    leafStates.put(leafDensityIndex, leafDensity - 1);
-
                     // Wake up the neighbor
                     action.wakeup(List.of(point));
+
+                    // Schedule this block for another check after the neighbor has been processed
+                    action.schedule(GROWTH_DELAY);
+
+                    // Don't clear our states yet - we need them for the neighbor to read
                 });
             }
         }
 
-        return null;
+        // If no air blocks were found, we can clear our states
+        return Action.action(action -> {
+            action.state(seedIndex, 0);
+            action.state(leafDensityIndex, 0);
+        });
     }
 
     @Override
