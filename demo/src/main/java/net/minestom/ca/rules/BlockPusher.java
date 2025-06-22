@@ -100,18 +100,18 @@ public final class BlockPusher implements Rule {
             final long blockState = query.state(0);
             if (replaceable(blockState) && neighborStrength > 0) {
                 // Become the neighbor's block
-                long[] neighborStates = query.queryIndexes(dirPoint);
+                final long[] neighborStates = query.queryIndexes(dirPoint);
                 final long newStrength = neighborStrength - 1;
-                if (newStrength > 0) {
-                    neighborStates[directionIndex] = neighborDirValue;
-                    neighborStates[strengthIndex] = newStrength;
-                } else {
-                    neighborStates[directionIndex] = 0;
-                    neighborStates[strengthIndex] = 0;
-                }
                 return Action.action(action -> {
-                    action.states(neighborStates);
                     action.clear();
+                    action.copy(neighborStates);
+                    if (newStrength > 0) {
+                        action.state(directionIndex, neighborDirValue);
+                        action.state(strengthIndex, newStrength);
+                    } else {
+                        action.state(directionIndex, 0);
+                        action.state(strengthIndex, 0);
+                    }
                     action.wakeup(wakeupPoints(dir));
                 });
             } else {

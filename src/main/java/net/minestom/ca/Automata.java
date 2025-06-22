@@ -18,7 +18,7 @@ public final class Automata {
     public interface Rule {
         // The default state for the block, used to track the block's state
         // Its index is always 0
-        State BLOCK_STATE = new State("block_state", 32, value -> Objects.requireNonNull(Block.fromStateId((int) value)).state());
+        State BLOCK_STATE = new State("block_state", 32, false, value -> Objects.requireNonNull(Block.fromStateId((int) value)).state());
 
         void init(Map<State, Integer> mapping);
 
@@ -33,7 +33,10 @@ public final class Automata {
 
         Info info();
 
-        record State(String name, int bitSize,
+        record State(String name,
+                     int bitSize,
+                     // Transient states aren't affected by copy actions
+                     boolean transient_,
                      LongFunction<String> visualizer) {
             public State {
                 if (bitSize < 1 || bitSize > 64) {
@@ -42,7 +45,7 @@ public final class Automata {
             }
 
             public State(String name, int bitSize) {
-                this(name, bitSize, String::valueOf);
+                this(name, bitSize, false, String::valueOf);
             }
         }
 
@@ -69,12 +72,14 @@ public final class Automata {
         }
 
         record Action(
+                // Whether states should be cleared before applying the action
+                boolean clear,
+                // States that emerge from a copy (ignoring transient states)
+                long @Nullable [] copy,
                 // Block properties to update
                 Map<String, String> updatedProperties,
                 // States to update
                 Int2LongMap updatedStates,
-                // Whether states should be cleared before applying the action
-                boolean clear,
                 // Trigger world actions
                 List<Trigger> triggers,
                 // Relative points to wake up after the action is applied
@@ -93,19 +98,28 @@ public final class Automata {
             }
 
             public Action immediate() {
-                return new Action(updatedProperties, updatedStates, clear, triggers,
+                return new Action(clear, copy, updatedProperties, updatedStates, triggers,
                         wakePoints, conditionProperties, conditionStates, 0);
             }
 
             public static final class Builder {
+                boolean clear;
+                long @Nullable [] copy;
                 Map<String, String> updatedProperties = new HashMap<>();
                 Int2LongMap updatedStates = new Int2LongOpenHashMap();
-                boolean clear;
                 List<Trigger> triggers = new ArrayList<>();
                 List<Vec> wakePoints = Neighbors.MOORE_3D_SELF;
                 @Nullable Map<String, String> conditionProperties;
                 @Nullable Int2LongMap conditionStates;
                 int scheduleTick;
+
+                public void clear() {
+                    this.clear = true;
+                }
+
+                public void copy(long[] copy) {
+                    this.copy = copy;
+                }
 
                 public void property(String name, String value) {
                     updatedProperties.put(name, value);
@@ -123,10 +137,6 @@ public final class Automata {
                     for (int i = 0; i < states.length; i++) {
                         updatedStates.put(i, states[i]);
                     }
-                }
-
-                public void clear() {
-                    this.clear = true;
                 }
 
                 public void trigger(Trigger trigger) {
@@ -151,7 +161,7 @@ public final class Automata {
                 }
 
                 Action build() {
-                    return new Action(updatedProperties, updatedStates, clear, triggers,
+                    return new Action(clear, copy, updatedProperties, updatedStates, triggers,
                             wakePoints, conditionProperties, conditionStates, scheduleTick
                     );
                 }

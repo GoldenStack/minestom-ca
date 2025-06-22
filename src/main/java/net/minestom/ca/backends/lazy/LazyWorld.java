@@ -580,6 +580,21 @@ public final class LazyWorld implements Automata.World {
             if (palette != null) palette.set(localX, localY, localZ, 0);
             blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, 0));
         }
+        // Copy
+        final long[] copy = action.copy();
+        if (copy != null && copy.length > 0) {
+            for (int i = 0; i < copy.length; i++) {
+                final long value = copy[i];
+                if (i == 0) {
+                    if (palette != null) palette.set(localX, localY, localZ, (int) value);
+                    blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, value));
+                } else {
+                    final Automata.Rule.State state = orderedStates.get(i - 1);
+                    if (state.transient_()) continue;
+                    section.setState(localX, localY, localZ, i - 1, value);
+                }
+            }
+        }
         // Set states
         final Map<String, String> updatedProperties = action.updatedProperties();
         if (updatedProperties != null && palette != null) {
@@ -823,7 +838,7 @@ public final class LazyWorld implements Automata.World {
                 final Int2LongMap updatedStates = remapStateIndices(oldAction.updatedStates(), oldToNewIndex);
                 final Int2LongMap conditionStates = remapStateIndices(oldAction.conditionStates(), oldToNewIndex);
                 final Automata.Rule.Action newAction = new Automata.Rule.Action(
-                        oldAction.updatedProperties(), updatedStates, oldAction.clear(), oldAction.triggers(),
+                        oldAction.clear(), oldAction.copy(), oldAction.updatedProperties(), updatedStates, oldAction.triggers(),
                         oldAction.wakePoints(), oldAction.conditionProperties(), conditionStates, oldAction.scheduleTick()
                 );
                 BlockChange newBlockChange = new BlockChange(oldChange.sectionBlockIndex(), newAction);
