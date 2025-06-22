@@ -122,7 +122,6 @@ public final class AutomataImpl {
         final Instance instance = player.getInstance();
         final World world = World.get(instance);
         if (world == null) return;
-        final Block block = instance.getBlock(point);
         final Map<Rule.State, Long> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
         player.sendMessage(Component.text()
                 .append(Component.text("Block States").color(NamedTextColor.GRAY)
@@ -130,10 +129,6 @@ public final class AutomataImpl {
                 .append(Component.space())
                 .append(Component.text(point.blockX() + "," + point.blockY() + "," + point.blockZ())
                         .color(NamedTextColor.DARK_GRAY))
-                .build());
-        player.sendMessage(Component.text()
-                .append(Component.text(block.state()).color(NamedTextColor.WHITE))
-                .append(Component.text(" (ID: " + block.stateId() + ")").color(NamedTextColor.DARK_GRAY))
                 .build());
         for (Map.Entry<Rule.State, Long> entry : indexes.entrySet()) {
             final Rule.State state = entry.getKey();

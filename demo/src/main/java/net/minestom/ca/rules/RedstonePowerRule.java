@@ -21,7 +21,8 @@ public final class RedstonePowerRule implements Rule {
             "Simulates the behavior of redstone wires and blocks in a Wireworld-like automaton.",
             List.of(
                     Interest.block(Block.REDSTONE_WIRE),
-                    Interest.block(Block.REDSTONE_BLOCK)
+                    Interest.block(Block.REDSTONE_BLOCK),
+                    Interest.state(States.DATA)
             ),
             Set.of(States.DATA)
     );

@@ -16,8 +16,8 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import org.everbuild.blocksandstuff.blocks.BlockBehaviorRuleRegistrations;
 import org.everbuild.blocksandstuff.blocks.BlockPlacementRuleRegistrations;
-import org.everbuild.blocksandstuff.blocks.behavior.BlockBehaviorRuleRegistrations;
 
 import java.util.List;
 

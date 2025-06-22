@@ -18,7 +18,7 @@ public final class Automata {
     public interface Rule {
         // The default state for the block, used to track the block's state
         // Its index is always 0
-        State BLOCK_STATE = new State("block_state", 32);
+        State BLOCK_STATE = new State("block_state", 32, value -> Objects.requireNonNull(Block.fromStateId((int) value)).state());
 
         void init(Map<State, Integer> mapping);
 
@@ -75,6 +75,8 @@ public final class Automata {
                 Int2LongMap updatedStates,
                 // Whether states should be cleared before applying the action
                 boolean clear,
+                // Trigger world actions
+                List<Trigger> triggers,
                 // Relative points to wake up after the action is applied
                 List<Vec> wakePoints,
                 // Properties to check before applying the action
@@ -91,14 +93,15 @@ public final class Automata {
             }
 
             public Action immediate() {
-                return new Action(updatedProperties, updatedStates, clear, wakePoints,
-                        conditionProperties, conditionStates, 0);
+                return new Action(updatedProperties, updatedStates, clear, triggers,
+                        wakePoints, conditionProperties, conditionStates, 0);
             }
 
             public static final class Builder {
                 Map<String, String> updatedProperties = new HashMap<>();
                 Int2LongMap updatedStates = new Int2LongOpenHashMap();
                 boolean clear;
+                List<Trigger> triggers = new ArrayList<>();
                 List<Vec> wakePoints = Neighbors.MOORE_3D_SELF;
                 @Nullable Map<String, String> conditionProperties;
                 @Nullable Int2LongMap conditionStates;
@@ -126,6 +129,10 @@ public final class Automata {
                     this.clear = true;
                 }
 
+                public void trigger(Trigger trigger) {
+                    triggers.add(trigger);
+                }
+
                 public void wakeup(List<Vec> wakePoints) {
                     this.wakePoints = wakePoints;
                 }
@@ -144,13 +151,8 @@ public final class Automata {
                 }
 
                 Action build() {
-                    return new Action(
-                            updatedProperties,
-                            updatedStates, clear,
-                            wakePoints,
-                            conditionProperties,
-                            conditionStates,
-                            scheduleTick
+                    return new Action(updatedProperties, updatedStates, clear, triggers,
+                            wakePoints, conditionProperties, conditionStates, scheduleTick
                     );
                 }
             }

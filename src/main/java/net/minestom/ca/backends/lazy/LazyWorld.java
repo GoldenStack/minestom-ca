@@ -10,6 +10,7 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
 import net.minestom.ca.Automata;
 import net.minestom.ca.Neighbors;
+import net.minestom.ca.Trigger;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
@@ -606,8 +607,22 @@ public final class LazyWorld implements Automata.World {
                 }
             }
         }
+        // Run triggers
+        final List<Trigger> triggers = action.triggers();
+        if (triggers != null && !triggers.isEmpty()) {
+            for (Trigger trigger : triggers) processTrigger(trigger, globalX, globalY, globalZ);
+        }
         // Register the point for the next tick
         register(globalX, globalY, globalZ, section, action.wakePoints());
+    }
+
+    void processTrigger(Trigger trigger, int x, int y, int z) {
+        switch (trigger) {
+            case Trigger.ProximityPacket proximityPacket -> {
+                final Chunk chunk = instance.getChunkAt(x, z);
+                if (chunk != null) chunk.sendPacketToViewers(proximityPacket.packet());
+            }
+        }
     }
 
     boolean actionPredicate(LSection section, Palette palette, int x, int y, int z, Automata.Rule.Action action) {
@@ -808,13 +823,8 @@ public final class LazyWorld implements Automata.World {
                 final Int2LongMap updatedStates = remapStateIndices(oldAction.updatedStates(), oldToNewIndex);
                 final Int2LongMap conditionStates = remapStateIndices(oldAction.conditionStates(), oldToNewIndex);
                 final Automata.Rule.Action newAction = new Automata.Rule.Action(
-                        oldAction.updatedProperties(),
-                        updatedStates,
-                        oldAction.clear(),
-                        oldAction.wakePoints(),
-                        oldAction.conditionProperties(),
-                        conditionStates,
-                        oldAction.scheduleTick()
+                        oldAction.updatedProperties(), updatedStates, oldAction.clear(), oldAction.triggers(),
+                        oldAction.wakePoints(), oldAction.conditionProperties(), conditionStates, oldAction.scheduleTick()
                 );
                 BlockChange newBlockChange = new BlockChange(oldChange.sectionBlockIndex(), newAction);
                 wheelTimer.schedule(() -> new ScheduledChange(change.section(), newBlockChange), remainingTicks);
