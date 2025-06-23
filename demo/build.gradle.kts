@@ -14,16 +14,6 @@ java {
     }
 }
 
-repositories {
-    mavenCentral()
-
-    // For placement rules
-    maven {
-        name = "asordaPublic"
-        url = uri("https://mvn.everbuild.org/public")
-    }
-}
-
 dependencies {
     implementation(rootProject)
     implementation(files("artefacts/Terra.jar"))

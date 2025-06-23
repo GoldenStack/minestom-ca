@@ -43,17 +43,8 @@ public final class AutomataImpl {
                 final Point point = event.getBlockPosition();
                 final Block block = event.getBlock();
                 World world = World.get(event.getPlayer().getInstance());
-
-                Map<Rule.State, Long> properties = new HashMap<>();
-                properties.put(Rule.BLOCK_STATE, (long) block.stateId());
                 final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
-                if (item.has(DataComponents.CUSTOM_DATA)) {
-                    for (Rule.State state : world.states()) {
-                        final Tag<Long> tag = AutomataImpl.CellTag(state);
-                        final Long value = item.getTag(tag);
-                        if (value != null) properties.put(state, value);
-                    }
-                }
+                final Map<Rule.State, Long> properties = itemStates(world, item, block);
                 world.handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
             })
             .addListener(PlayerBlockBreakEvent.class, event -> {
@@ -116,6 +107,19 @@ public final class AutomataImpl {
                 .build();
 
         instance.sendPlayerListHeader(header);
+    }
+
+    private static Map<Rule.State, Long> itemStates(World world, ItemStack item, Block block) {
+        Map<Rule.State, Long> properties = new HashMap<>();
+        properties.put(Rule.BLOCK_STATE, (long) block.stateId());
+        if (item.has(DataComponents.CUSTOM_DATA)) {
+            for (Rule.State state : world.states()) {
+                final Tag<Long> tag = AutomataImpl.CellTag(state);
+                final Long value = item.getTag(tag);
+                if (value != null) properties.put(state, value);
+            }
+        }
+        return properties;
     }
 
     private static void showBlockInfo(Player player, Point point) {
