@@ -572,55 +572,9 @@ public final class LazyWorld implements Automata.World {
         final int globalY = sectionIndexGetY(section.index) * 16 + localY;
         final int globalZ = sectionIndexGetZ(section.index) * 16 + localZ;
         if (!actionPredicate(section, palette, globalX, globalY, globalZ, action)) return;
-        // Clear states
-        if (action.clear()) {
-            for (int i = 0; i < orderedStates.size(); i++) {
-                section.setState(localX, localY, localZ, i, 0);
-            }
-            if (palette != null) palette.set(localX, localY, localZ, 0);
-            blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, 0));
-        }
-        // Copy
-        final long[] copy = action.copy();
-        if (copy != null && copy.length > 0) {
-            for (int i = 0; i < copy.length; i++) {
-                final long value = copy[i];
-                if (i == 0) {
-                    if (palette != null) palette.set(localX, localY, localZ, (int) value);
-                    blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, value));
-                } else {
-                    final Automata.Rule.State state = orderedStates.get(i - 1);
-                    if (state.transient_()) continue;
-                    section.setState(localX, localY, localZ, i - 1, value);
-                }
-            }
-        }
-        // Set states
-        final Map<String, String> updatedProperties = action.updatedProperties();
-        if (updatedProperties != null && palette != null) {
-            Block block = Block.fromStateId(palette.get(localX, localY, localZ));
-            assert block != null;
-            try {
-                block = block.withProperties(updatedProperties);
-                final int value = block.stateId();
-                palette.set(localX, localY, localZ, value);
-                blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, value));
-            } catch (IllegalArgumentException e) {
-                // Ignore invalid properties
-            }
-        }
-        final Int2LongMap updatedStates = action.updatedStates();
-        if (updatedStates != null) {
-            for (Int2LongMap.Entry changeEntry : updatedStates.int2LongEntrySet()) {
-                final int stateIndex = changeEntry.getIntKey();
-                final long value = changeEntry.getLongValue();
-                if (stateIndex == 0) {
-                    if (palette != null) palette.set(localX, localY, localZ, (int) value);
-                    blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, value));
-                } else {
-                    section.setState(localX, localY, localZ, stateIndex - 1, value);
-                }
-            }
+        // Update cell
+        if (action.anyUpdate()) {
+            processStateChange(section, palette, sectionBlockIndex, localX, localY, localZ, action, blockChanges);
         }
         // Run triggers
         final List<Trigger> triggers = action.triggers();
@@ -629,6 +583,60 @@ public final class LazyWorld implements Automata.World {
         }
         // Register the point for the next tick
         register(globalX, globalY, globalZ, section, action.wakePoints());
+    }
+
+    void processStateChange(LSection section, Palette palette,
+                            int sectionBlockIndex, int localX, int localY, int localZ,
+                            Automata.Rule.Action action, LongList blockChanges) {
+        Int2LongMap updatedStates = new Int2LongOpenHashMap();
+        updatedStates.defaultReturnValue(-1);
+        // Clear states
+        if (action.clear()) {
+            updatedStates.put(0, 0); // Block state
+            for (int i = 0; i < orderedStates.size(); i++) {
+                updatedStates.put(i + 1, 0); // +1 because index 0 is block state
+            }
+        }
+        // Copy
+        final long[] copy = action.copy();
+        if (copy != null && copy.length > 0) {
+            for (int i = 0; i < copy.length; i++) {
+                final long value = copy[i];
+                if (i == 0) {
+                    updatedStates.put(i, value);
+                } else {
+                    final Automata.Rule.State state = orderedStates.get(i - 1);
+                    if (state.transient_()) continue;
+                    updatedStates.put(i, value);
+                }
+            }
+        }
+        // Set states
+        final Map<String, String> updatedProperties = action.updatedProperties();
+        if (updatedProperties != null && palette != null) {
+            int currentState = (int) updatedStates.get(0);
+            if (currentState == -1) currentState = palette.get(localX, localY, localZ);
+            Block block = Block.fromStateId(currentState);
+            assert block != null;
+            try {
+                block = block.withProperties(updatedProperties);
+                final int value = block.stateId();
+                updatedStates.put(0, value); // Block state
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid properties
+            }
+        }
+        if (action.updatedStates() != null) updatedStates.putAll(action.updatedStates());
+        for (Int2LongMap.Entry changeEntry : updatedStates.int2LongEntrySet()) {
+            final int stateIndex = changeEntry.getIntKey();
+            final long value = changeEntry.getLongValue();
+            if (stateIndex == 0) {
+                if (palette != null) palette.set(localX, localY, localZ, (int) value);
+                blockChanges.add(encodeSectionBlockChange(sectionBlockIndex, value));
+            } else {
+                section.setState(localX, localY, localZ, stateIndex - 1, value);
+            }
+        }
     }
 
     void processTrigger(Trigger trigger, int x, int y, int z) {

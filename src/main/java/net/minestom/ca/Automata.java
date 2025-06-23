@@ -97,6 +97,10 @@ public final class Automata {
                 return b.build();
             }
 
+            public boolean anyUpdate() {
+                return clear || copy != null || !updatedProperties.isEmpty() || !updatedStates.isEmpty();
+            }
+
             public Action immediate() {
                 return new Action(clear, copy, updatedProperties, updatedStates, triggers,
                         wakePoints, conditionProperties, conditionStates, 0);
