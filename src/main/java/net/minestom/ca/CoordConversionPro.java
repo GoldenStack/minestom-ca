@@ -45,42 +45,10 @@ public final class CoordConversionPro {
         return sectionIndex(sectionX, sectionY, sectionZ);
     }
 
-    public static int sectionBlockIndex(int x, int y, int z) {
-        return (x << 8) | (z << 4) | y;
-    }
-
-    public static int sectionBlockIndexGetX(int index) {
-        return (index >> 8) & 0xF;
-    }
-
-    public static int sectionBlockIndexGetY(int index) {
-        return index & 0xF;
-    }
-
-    public static int sectionBlockIndexGetZ(int index) {
-        return (index >> 4) & 0xF;
-    }
-
-    public static boolean globalSameChunk(int x1, int y1, int z1, int x2, int y2, int z2) {
-        return globalToChunk(x1) == globalToChunk(x2) &&
-                globalToChunk(y1) == globalToChunk(y2) &&
-                globalToChunk(z1) == globalToChunk(z2);
-    }
-
     public static boolean globalSectionBoundary(int x, int y, int z) {
         final int relX = globalToSectionRelative(x);
         final int relY = globalToSectionRelative(y);
         final int relZ = globalToSectionRelative(z);
         return relX == 0 || relX == 15 || relY == 0 || relY == 15 || relZ == 0 || relZ == 15;
-    }
-
-    public static long encodeSectionBlockChange(int sectionBlockIndex, long value) {
-        // To use with `MultiBlockChangePacket`
-        final long blockState = value << 12;
-        return blockState | (long) sectionBlockIndex;
-    }
-
-    public static long encodeSectionBlockChange(int localX, int localY, int localZ, long value) {
-        return encodeSectionBlockChange(sectionBlockIndex(localX, localY, localZ), value);
     }
 }

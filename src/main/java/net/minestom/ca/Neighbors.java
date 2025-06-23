@@ -37,7 +37,7 @@ public final class Neighbors {
     public static final List<Vec> NEUMANN_3D_SELF = List.of(SELF, NORTH, SOUTH, EAST, WEST, UP, DOWN);
     public static final List<Vec> NEUMANN_3D = List.of(NORTH, SOUTH, EAST, WEST, UP, DOWN);
 
-    public static final List<Vec> REDSTONE_CONNECT_SELF = List.of(
+    public static final List<Vec> REDSTONE_CONNECT_SELF  = List.of(
             SELF,
             NORTH, EAST, SOUTH, WEST, UP, DOWN,
             NORTH.add(UP), EAST.add(UP), SOUTH.add(UP), WEST.add(UP),

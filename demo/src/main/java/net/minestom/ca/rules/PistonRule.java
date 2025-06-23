@@ -22,7 +22,6 @@ public final class PistonRule implements Rule {
                     Interest.block(Block.PISTON),
                     Interest.block(Block.STICKY_PISTON),
                     Interest.block(Block.PISTON_HEAD),
-                    Interest.block(Block.REDSTONE_WIRE),
                     Interest.state(States.DATA)
             ),
             Set.of()
