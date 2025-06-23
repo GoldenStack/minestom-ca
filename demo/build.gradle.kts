@@ -8,10 +8,6 @@ version = "1.0"
 java {
     withJavadocJar()
     withSourcesJar()
-
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
-    }
 }
 
 dependencies {

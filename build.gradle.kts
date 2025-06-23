@@ -10,10 +10,6 @@ description = "Implementing vanilla Minecraft with cellular automata"
 java {
     withJavadocJar()
     withSourcesJar()
-
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
-    }
 }
 
 dependencies {
