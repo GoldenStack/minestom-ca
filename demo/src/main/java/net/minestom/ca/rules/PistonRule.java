@@ -56,13 +56,6 @@ public final class PistonRule implements Rule {
         return null;
     }
 
-    private boolean compareVectors(Vec v1, Vec v2) {
-        final double epsilon = Vec.EPSILON;
-        return Math.abs(v1.x() - v2.x()) < epsilon &&
-                Math.abs(v1.y() - v2.y()) < epsilon &&
-                Math.abs(v1.z() - v2.z()) < epsilon;
-    }
-
     Action processBlock(Block block, Query query) {
         // Find if there is any near piston block waiting to extend
         for (Vec neighbor : Neighbors.NEUMANN_3D) {
@@ -70,7 +63,7 @@ public final class PistonRule implements Rule {
             if (!isPiston(neighborBlock)) continue;
             final String facing = neighborBlock.getProperty("facing");
             final Direction direction = facingDirection(facing);
-            final boolean towardsBlock = compareVectors(direction.vec(), neighbor.neg());
+            final boolean towardsBlock = direction.vec().samePoint(neighbor.neg());
             if (!towardsBlock) continue;
             final boolean powered = poweredAt(query.offset(neighbor));
             if (!powered) continue;
