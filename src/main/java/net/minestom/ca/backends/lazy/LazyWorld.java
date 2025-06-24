@@ -1,6 +1,9 @@
 package net.minestom.ca.backends.lazy;
 
-import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -48,18 +51,17 @@ public final class LazyWorld implements Automata.World {
     private final class RuleContext {
         private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
         private final Automata.Rule rule;
-        private final Automata.Rule.Info info;
-        private final Int2ObjectMap<List<Automata.Rule.Interest>> interests;
+        private final List<Automata.Rule.Interest>[] interests;
         private final int tickInterval;
         private final int executionsPerTick;
 
         RuleContext(Automata.RuleConfig ruleConfig) {
             this.rule = ruleConfig.rule();
-            this.info = rule.info();
-            Int2ObjectMap<List<Automata.Rule.Interest>> result = new Int2ObjectOpenHashMap<>();
-            for (Automata.Rule.Interest interest : info.interests()) {
+            List<Automata.Rule.Interest>[] result = new List[orderedStates.size() + 1];
+            for (Automata.Rule.Interest interest : rule.info().interests()) {
                 final int index = query.stateIndex(interest.state());
-                List<Automata.Rule.Interest> interests = result.computeIfAbsent(index, _ -> new ArrayList<>());
+                List<Automata.Rule.Interest> interests = result[index];
+                if (interests == null) interests = result[index] = new ArrayList<>();
                 interests.add(interest);
             }
             this.interests = result;
@@ -75,7 +77,7 @@ public final class LazyWorld implements Automata.World {
         }
 
         boolean interested(int index, long value) {
-            final List<Automata.Rule.Interest> interests = this.interests.get(index);
+            final List<Automata.Rule.Interest> interests = this.interests[index];
             if (interests == null || interests.isEmpty()) return false;
             for (Automata.Rule.Interest interest : interests) {
                 if (interest.predicate().test(value)) return true;
@@ -455,7 +457,7 @@ public final class LazyWorld implements Automata.World {
             ruleContext.trackedSections.clear();
         }
         applyChanges(changes, tickBlockChanges);
-        sendPackets(tickBlockChanges);
+        sendBlockUpdatePackets(tickBlockChanges);
         this.query.context.updateTick();
         this.query.context.resetLocal();
         return metrics;
@@ -548,23 +550,6 @@ public final class LazyWorld implements Automata.World {
             processSectionAction(section, palette, currentChange.sectionBlockIndex(), currentChange.action(), blockChanges);
         }
         trackSection(section);
-    }
-
-    private void sendPackets(Long2ObjectMap<LongList> tickBlockChanges) {
-        for (Long2ObjectMap.Entry<LongList> entry : tickBlockChanges.long2ObjectEntrySet()) {
-            final long sectionIndex = entry.getLongKey();
-            final LongList blockChanges = entry.getValue();
-            if (blockChanges.isEmpty()) continue;
-            final int sectionX = sectionIndexGetX(sectionIndex);
-            final int sectionY = sectionIndexGetY(sectionIndex);
-            final int sectionZ = sectionIndexGetZ(sectionIndex);
-            final Chunk chunk = instance.getChunk(sectionX, sectionZ);
-            if (chunk != null) {
-                chunk.invalidate();
-                final long[] blocksArray = blockChanges.toLongArray();
-                chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
-            }
-        }
     }
 
     void processSectionAction(LSection section, Palette palette, int sectionBlockIndex, Automata.Rule.Action action, LongList blockChanges) {
@@ -683,6 +668,23 @@ public final class LazyWorld implements Automata.World {
             }
         }
         return true;
+    }
+
+    private void sendBlockUpdatePackets(Long2ObjectMap<LongList> tickBlockChanges) {
+        for (Long2ObjectMap.Entry<LongList> entry : tickBlockChanges.long2ObjectEntrySet()) {
+            final long sectionIndex = entry.getLongKey();
+            final LongList blockChanges = entry.getValue();
+            if (blockChanges.isEmpty()) continue;
+            final int sectionX = sectionIndexGetX(sectionIndex);
+            final int sectionY = sectionIndexGetY(sectionIndex);
+            final int sectionZ = sectionIndexGetZ(sectionIndex);
+            final Chunk chunk = instance.getChunk(sectionX, sectionZ);
+            if (chunk != null) {
+                chunk.invalidate();
+                final long[] blocksArray = blockChanges.toLongArray();
+                chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
+            }
+        }
     }
 
     @Override
