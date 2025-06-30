@@ -5,8 +5,8 @@ import net.minestom.ca.Automata.Context;
 import net.minestom.ca.Automata.Query;
 import net.minestom.ca.Automata.Rule;
 import net.minestom.ca.Neighbors;
-import net.minestom.server.coordinate.Point;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.utils.Direction;
 
 import java.util.List;
 import java.util.Map;
@@ -54,37 +54,26 @@ public final class GrassSpreadingRule implements Rule {
     public Action process(Context context, Query query) {
         final Block currentBlock = query.block();
         // Rule 1: If I'm a grass block, try to spread to adjacent dirt blocks
-        if (currentBlock.compare(Block.GRASS_BLOCK)) {
-            return processGrassBlock(query);
-        }
+        if (currentBlock.compare(Block.GRASS_BLOCK)) return processGrassBlock(query);
         // Rule 2: If I'm dirt and adjacent to grass, potentially receive grass
-        if (currentBlock.compare(Block.DIRT)) {
-            return processDirtBlock(query);
-        }
+        if (currentBlock.compare(Block.DIRT)) return processDirtBlock(query);
         return null;
     }
 
     private Action processGrassBlock(Query query) {
         // Check if there's a block above that would prevent grass from surviving/spreading
-        final Block blockAbove = query.blockAt(0, 1, 0);
+        final Block blockAbove = query.blockAt(Direction.UP);
         return blockAbove.isSolid() ? GRASS_TO_DIRT : null;
     }
 
     private Action processDirtBlock(Query query) {
         // Check if there's a block above that would prevent grass growth
-        Block blockAbove = query.blockAt(0, 1, 0);
+        final Block blockAbove = query.blockAt(Direction.UP);
         if (blockAbove.isSolid()) return null;
 
         // Check if there's at least one adjacent grass block
-        boolean hasAdjacentGrass = false;
-        for (Point point : Neighbors.MOORE_2D) {
-            final Block neighborBlock = query.blockAt(point);
-            if (neighborBlock.compare(Block.GRASS_BLOCK)) {
-                hasAdjacentGrass = true;
-                break;
-            }
-        }
-
+        final boolean hasAdjacentGrass = query.any(0, Neighbors.MOORE_2D,
+                block -> Block.fromStateId((int) block).compare(Block.GRASS_BLOCK));
         if (!hasAdjacentGrass) return null;
         if (ThreadLocalRandom.current().nextInt(SPREAD_CHANCE) == 0) {
             return DIRT_TO_GRASS;

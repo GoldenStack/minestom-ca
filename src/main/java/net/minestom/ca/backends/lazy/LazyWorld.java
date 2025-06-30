@@ -653,6 +653,7 @@ public final class LazyWorld implements Automata.World {
         if (conditionProperties != null) {
             final int stateId = (int) currentStates[0];
             final Block block = Block.fromStateId(stateId);
+            assert block != null;
             for (Map.Entry<String, String> entry : conditionProperties.entrySet()) {
                 final String propertyName = entry.getKey();
                 final String expectedValue = entry.getValue();

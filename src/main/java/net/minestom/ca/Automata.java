@@ -7,6 +7,7 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.utils.Direction;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -209,6 +210,10 @@ public final class Automata {
             return blockAt(point.blockX(), point.blockY(), point.blockZ());
         }
 
+        default Block blockAt(Direction direction) {
+            return blockAt(direction.normalX(), direction.normalY(), direction.normalZ());
+        }
+
         long[] queryIndexes();
 
         default long stateAt(int x, int y, int z, Rule.State state) {
@@ -218,6 +223,10 @@ public final class Automata {
 
         default long stateAt(Point point, int index) {
             return stateAt(point.blockX(), point.blockY(), point.blockZ(), index);
+        }
+
+        default long stateAt(Direction direction, int index) {
+            return stateAt(direction.normalX(), direction.normalY(), direction.normalZ(), index);
         }
 
         long[] queryIndexes(int x, int y, int z);
@@ -244,6 +253,25 @@ public final class Automata {
                 if (predicate.test(state) && ++count >= limit) break;
             }
             return count;
+        }
+
+        default long gather(int index, List<Vec> points, Gatherer gatherer) {
+            long value = 0;
+            for (Vec point : points) {
+                final long state = stateAt(point, index);
+                value = gatherer.gather(value, state);
+            }
+            return value;
+        }
+
+        default long gatherPresent(int index, List<Vec> points, Gatherer gatherer) {
+            long value = 0;
+            for (Vec point : points) {
+                final long state = stateAt(point, index);
+                if (state == 0) continue; // Skip absent states
+                value = gatherer.gather(value, state);
+            }
+            return value;
         }
 
         default boolean any(int index, List<Vec> points, LongPredicate predicate) {
@@ -290,6 +318,11 @@ public final class Automata {
         @FunctionalInterface
         interface Finder<T> {
             T find(int x, int y, int z, long value);
+        }
+
+        @FunctionalInterface
+        interface Gatherer {
+            long gather(long v1, long v2);
         }
     }
 

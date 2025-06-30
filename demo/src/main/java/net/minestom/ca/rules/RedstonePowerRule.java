@@ -13,7 +13,6 @@ import net.minestom.server.instance.block.Block;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
 public final class RedstonePowerRule implements Rule {
     private static final Automata.Rule.Info INFO = new Automata.Rule.Info(
@@ -105,13 +104,7 @@ public final class RedstonePowerRule implements Rule {
     }
 
     private long computeHeads(Query query) {
-        AtomicLong result = new AtomicLong();
-        query.count(dataIndex, Neighbors.REDSTONE_CONNECT, value -> {
-            final long current = result.getPlain();
-            result.setPlain(current | value);
-            return true;
-        });
-        return result.getPlain();
+        return query.gatherPresent(dataIndex, Neighbors.REDSTONE_CONNECT, (v1, v2) -> v1 | v2);
     }
 
     @Override
