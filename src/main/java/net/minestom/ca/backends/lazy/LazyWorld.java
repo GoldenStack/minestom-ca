@@ -395,7 +395,7 @@ public final class LazyWorld implements Automata.World {
         for (RuleContext rule : ruleContexts) rule.rule.init(mapping);
     }
 
-    private record BlockChange(int sectionBlockIndex, Automata.Rule.Action action) {
+    private record BlockChange(int sectionBlockIndex, RuleContext rule, Automata.Rule.Action action) {
     }
 
     private record ScheduledChange(LSection section, BlockChange change) {
@@ -470,6 +470,26 @@ public final class LazyWorld implements Automata.World {
                 .toList();
     }
 
+    private void computeTimedChanges(Queue<SectionChange> changes) {
+        wheelTimer.tick(scheduledChange -> {
+            if (scheduledChange == null) return;
+            final BlockChange blockChange = scheduledChange.change;
+            LSection section = scheduledChange.section;
+            // Find section in changes
+            final long sectionIndex = section.index;
+            SectionChange sectionChange = changes.stream()
+                    .filter(change -> change.section().index == sectionIndex)
+                    .findFirst()
+                    .orElse(null);
+            if (sectionChange == null) {
+                final int sectionX = sectionIndexGetX(sectionIndex), sectionY = sectionIndexGetY(sectionIndex), sectionZ = sectionIndexGetZ(sectionIndex);
+                sectionChange = new SectionChange(section, paletteAtSection(sectionX, sectionY, sectionZ), new ArrayList<>());
+                changes.offer(sectionChange);
+            }
+            sectionChange.blockChanges.add(blockChange);
+        });
+    }
+
     private Automata.Metrics computeChangesForRule(Queue<SectionChange> changes, int ruleIndex, RuleContext ruleContext) {
         Set<LSection> trackedSections = ruleContext.trackedSections;
         final int processedSections = trackedSections.size();
@@ -502,7 +522,7 @@ public final class LazyWorld implements Automata.World {
                 final Automata.Rule.Action action = rule.process(query.context, query);
                 if (action != null) {
                     modifiedBlocks++;
-                    blockChanges.add(new BlockChange(blockIndex, action));
+                    blockChanges.add(new BlockChange(blockIndex, ruleContext, action));
                 }
             }
             if (!blockChanges.isEmpty()) {
@@ -511,28 +531,6 @@ public final class LazyWorld implements Automata.World {
         }
 
         return new Automata.Metrics(processedSections, processedBlocks, modifiedBlocks);
-    }
-
-    private void computeTimedChanges(Queue<SectionChange> changes) {
-        wheelTimer.tick(scheduledChange -> {
-            if (scheduledChange == null) return;
-            final BlockChange blockChange = scheduledChange.change;
-            LSection section = scheduledChange.section;
-            // Find section in changes
-            final long sectionIndex = section.index;
-            SectionChange sectionChange = changes.stream()
-                    .filter(change -> change.section().index == sectionIndex)
-                    .findFirst()
-                    .orElse(null);
-            if (sectionChange == null) {
-                final int sectionX = sectionIndexGetX(sectionIndex);
-                final int sectionY = sectionIndexGetY(sectionIndex);
-                final int sectionZ = sectionIndexGetZ(sectionIndex);
-                sectionChange = new SectionChange(section, paletteAtSection(sectionX, sectionY, sectionZ), new ArrayList<>());
-                changes.offer(sectionChange);
-            }
-            sectionChange.blockChanges.add(blockChange);
-        });
     }
 
     private void applyChanges(Queue<SectionChange> changes, Long2ObjectMap<LongList> tickBlockChanges) {
@@ -547,14 +545,16 @@ public final class LazyWorld implements Automata.World {
         Palette palette = sectionChange.palette();
         LongList blockChanges = tickBlockChanges.computeIfAbsent(section.index, _ -> new LongArrayList());
         for (BlockChange currentChange : sectionChange.blockChanges()) {
-            processSectionAction(section, palette, currentChange.sectionBlockIndex(), currentChange.action(), blockChanges);
+            processSectionAction(section, palette, currentChange, blockChanges);
         }
         trackSection(section);
     }
 
-    void processSectionAction(LSection section, Palette palette, int sectionBlockIndex, Automata.Rule.Action action, LongList blockChanges) {
+    void processSectionAction(LSection section, Palette palette, BlockChange currentChange, LongList blockChanges) {
+        final int sectionBlockIndex = currentChange.sectionBlockIndex();
+        final Automata.Rule.Action action = currentChange.action();
         if (action.scheduleTick() > 0) {
-            wheelTimer.schedule(() -> new ScheduledChange(section, new BlockChange(sectionBlockIndex, action.immediate())), action.scheduleTick());
+            wheelTimer.schedule(() -> new ScheduledChange(section, new BlockChange(sectionBlockIndex, currentChange.rule, action.immediate())), action.scheduleTick());
             return;
         }
         final int localX = sectionBlockIndexGetX(sectionBlockIndex);
@@ -576,7 +576,7 @@ public final class LazyWorld implements Automata.World {
             for (Trigger trigger : triggers) processTrigger(trigger, globalX, globalY, globalZ);
         }
         // Register the point for the next tick
-        registerInterested(globalX, globalY, globalZ, section, action.wakePoints(), changes);
+        registerInterested(globalX, globalY, globalZ, section, currentChange.rule, action.wakePoints(), changes);
     }
 
     Int2LongMap processStateChange(LSection section, Palette palette,
@@ -768,14 +768,17 @@ public final class LazyWorld implements Automata.World {
     }
 
     private void registerInterested(int x, int y, int z,
-                                    LSection startSection, List<Vec> wakePoints,
+                                    LSection startSection, RuleContext startRule,
+                                    List<Vec> wakePoints,
                                     Int2LongMap changes) {
-        if (changes == null || changes.isEmpty()) return;
         LSection sectionCache = null;
         final boolean boundary = globalSectionBoundary(x, y, z);
         for (int i = 0; i < ruleContexts.size(); i++) {
             final RuleContext ruleContext = ruleContexts.get(i);
-            if (!ruleContext.interested(changes)) continue;
+            if (changes == null || changes.isEmpty()) {
+                if (startRule != ruleContext)
+                    continue; // Action without changes should only register to the initiating rule
+            } else if (!ruleContext.interested(changes)) continue;
             for (Vec point : wakePoints) {
                 final int nX = x + point.blockX();
                 final int nY = y + point.blockY();
@@ -880,7 +883,7 @@ public final class LazyWorld implements Automata.World {
         for (Map.Entry<Integer, List<ScheduledChange>> entry : scheduledChanges.entrySet()) {
             final int remainingTicks = entry.getKey();
             for (ScheduledChange change : entry.getValue()) {
-                BlockChange oldChange = change.change();
+                final BlockChange oldChange = change.change();
                 final Automata.Rule.Action oldAction = oldChange.action();
                 final Int2LongMap updatedStates = remapStateIndices(oldAction.updatedStates(), oldToNewIndex);
                 final Int2LongMap conditionStates = remapStateIndices(oldAction.conditionStates(), oldToNewIndex);
@@ -888,7 +891,7 @@ public final class LazyWorld implements Automata.World {
                         oldAction.clear(), oldAction.copy(), oldAction.updatedProperties(), updatedStates, oldAction.triggers(),
                         oldAction.wakePoints(), oldAction.conditionProperties(), conditionStates, oldAction.scheduleTick()
                 );
-                BlockChange newBlockChange = new BlockChange(oldChange.sectionBlockIndex(), newAction);
+                BlockChange newBlockChange = new BlockChange(oldChange.sectionBlockIndex(), oldChange.rule, newAction);
                 wheelTimer.schedule(() -> new ScheduledChange(change.section(), newBlockChange), remainingTicks);
             }
         }
