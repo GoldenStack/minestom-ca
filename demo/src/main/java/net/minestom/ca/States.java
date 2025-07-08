@@ -7,5 +7,5 @@ public final class States {
     public static final Automata.Rule.State PUSH_STRENGTH = new Automata.Rule.State("push_strength", 8);
 
     // Data state - data stored inside a wire or source block
-    public static final Automata.Rule.State DATA = new Automata.Rule.State("data", 64, false, StateVisualizers.BINARY);
+    public static final Automata.Rule.State DATA = new Automata.Rule.State("data", 32, false, StateVisualizers.BINARY);
 }

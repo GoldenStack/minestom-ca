@@ -19,15 +19,13 @@ import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.network.packet.server.play.MultiBlockChangePacket;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import static net.minestom.ca.CoordConversionPro.*;
+import static net.minestom.ca.CoordConversionPro.globalSectionBoundary;
 import static net.minestom.ca.backends.lazy.LazyWorld.LSection.BLOCKS_PER_SECTION;
 import static net.minestom.server.coordinate.CoordConversion.*;
+import static net.minestom.server.instance.palette.Palette.BLOCK_DIMENSION;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class LazyWorld implements Automata.World {
@@ -88,29 +86,15 @@ public final class LazyWorld implements Automata.World {
 
     // Layout information for states
     private static final class StateLayout {
-        final int[] stateBitSizes;   // Bit size for each state
-        final long[] stateMasks;     // Bit mask for each state
-        final int[] bitsPerLong;     // How many values fit in one long for each state
-        final long[] segmentSizes;   // Size in bytes for each state's segment
+        final int[] stateBitSizes;   // Bit count for each state
 
         StateLayout(List<Automata.Rule.State> states) {
             final int stateCount = states.size();
             this.stateBitSizes = new int[stateCount];
-            this.stateMasks = new long[stateCount];
-            this.bitsPerLong = new int[stateCount];
-            this.segmentSizes = new long[stateCount];
-
             for (int i = 0; i < stateCount; i++) {
                 final Automata.Rule.State state = states.get(i);
                 final int bitSize = state.bitSize();
                 this.stateBitSizes[i] = bitSize;
-                this.stateMasks[i] = (1L << bitSize) - 1;
-                this.bitsPerLong[i] = 64 / bitSize; // How many values per long
-
-                // Calculate required longs and segment size
-                final long valuesPerLong = this.bitsPerLong[i];
-                final long requiredLongs = (BLOCKS_PER_SECTION + valuesPerLong - 1) / valuesPerLong;
-                this.segmentSizes[i] = requiredLongs * Long.BYTES;
             }
         }
     }
@@ -118,74 +102,36 @@ public final class LazyWorld implements Automata.World {
     final class LSection {
         static final long BLOCKS_PER_SECTION = 16 * 16 * 16;
         private final long index;
-        private MemorySegment[] stateSegments; // One segment per state
+        private Palette[] statePalettes; // One segment per state
         // Block indexes to track next tick, one per rule
         private BitSet[] trackedBlocks;
 
         LSection(final long index) {
             this.index = index;
             // Initialize with null segments - allocate lazily
-            this.stateSegments = new MemorySegment[stateLayout.segmentSizes.length];
+            this.statePalettes = new Palette[stateLayout.stateBitSizes.length];
             this.trackedBlocks = new BitSet[ruleContexts.size()];
         }
 
-        private MemorySegment ensureSegmentAllocated(int stateIndex) {
-            MemorySegment segment = stateSegments[stateIndex];
-            if (stateSegments[stateIndex] == null) {
-                segment = stateSegments[stateIndex] = Arena.ofAuto().allocate(stateLayout.segmentSizes[stateIndex]);
+        private Palette ensureAllocated(int stateIndex) {
+            Palette palette = statePalettes[stateIndex];
+            if (statePalettes[stateIndex] == null) {
+                palette = statePalettes[stateIndex] = Palette.empty(BLOCK_DIMENSION, 3, 8, stateLayout.stateBitSizes[stateIndex]);
             }
-            return segment;
+            return palette;
         }
 
         long getState(int x, int y, int z, int stateIndex) {
-            final MemorySegment segment = stateSegments[stateIndex];
-            if (segment == null) return 0; // Segment not allocated = all zeros
-
-            final int blockIndex = sectionBlockIndex(x, y, z);
-            final int bitSize = stateLayout.stateBitSizes[stateIndex];
-
-            if (bitSize == 64) {
-                // When using full 64 bits, simply read the entire long
-                final long offset = (long) blockIndex * Long.BYTES;
-                return segment.get(ValueLayout.JAVA_LONG, offset);
-            } else {
-                // For smaller bit sizes, use bit shifting
-                final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
-                final long mask = stateLayout.stateMasks[stateIndex];
-                final int longIndex = blockIndex / valuesPerLong;
-                final int bitOffset = (blockIndex % valuesPerLong) * bitSize;
-                final long offset = (long) longIndex * Long.BYTES;
-
-                final long packed = segment.get(ValueLayout.JAVA_LONG, offset);
-                return (packed >>> bitOffset) & mask;
-            }
+            final Palette palette = statePalettes[stateIndex];
+            if (palette == null) return 0; // Segment not allocated = all zeros
+            return palette.get(x, y, z);
         }
 
         void setState(int x, int y, int z, int stateIndex, long value) {
-            MemorySegment segment = stateSegments[stateIndex];
-            if (value == 0 && segment == null) return; // No need to allocate for zero values
-
-            segment = ensureSegmentAllocated(stateIndex);
-            final int blockIndex = sectionBlockIndex(x, y, z);
-            final int bitSize = stateLayout.stateBitSizes[stateIndex];
-
-            if (bitSize == 64) {
-                // When using full 64 bits, simply write the entire long
-                final long offset = (long) blockIndex * Long.BYTES;
-                segment.set(ValueLayout.JAVA_LONG, offset, value);
-            } else {
-                // For smaller bit sizes, use bit manipulation
-                final int valuesPerLong = stateLayout.bitsPerLong[stateIndex];
-                final long mask = stateLayout.stateMasks[stateIndex];
-                final int longIndex = blockIndex / valuesPerLong;
-                final int bitOffset = (blockIndex % valuesPerLong) * bitSize;
-                final long offset = (long) longIndex * Long.BYTES;
-
-                final long packed = segment.get(ValueLayout.JAVA_LONG, offset);
-                final long cleared = packed & ~(mask << bitOffset);
-                final long updated = cleared | ((value & mask) << bitOffset);
-                segment.set(ValueLayout.JAVA_LONG, offset, updated);
-            }
+            Palette palette = statePalettes[stateIndex];
+            if (value == 0 && palette == null) return; // No need to allocate for zero values
+            palette = ensureAllocated(stateIndex);
+            palette.set(x, y, z, (int) value);
         }
     }
 
@@ -871,7 +817,7 @@ public final class LazyWorld implements Automata.World {
         // Update section state buffers
         final StateLayout newStateLayout = new StateLayout(orderedStates);
         for (LSection section : new ArrayList<>(loadedSections.values())) {
-            section.stateSegments = migrateSection(section, oldToNewIndex, newStateLayout);
+            section.statePalettes = migrateSection(section, oldToNewIndex, newStateLayout);
             section.trackedBlocks = new BitSet[newRuleConfigs.size()];
         }
 
@@ -930,15 +876,15 @@ public final class LazyWorld implements Automata.World {
         return remapped;
     }
 
-    private static MemorySegment[] migrateSection(LSection section, Int2IntMap indexMapping, StateLayout newLayout) {
-        MemorySegment[] newStateSegments = new MemorySegment[newLayout.segmentSizes.length];
+    private static Palette[] migrateSection(LSection section, Int2IntMap indexMapping, StateLayout newLayout) {
+        Palette[] newStateSegments = new Palette[newLayout.stateBitSizes.length];
         // Reuse existing segments for states that exist in both old and new rules
         for (Int2IntMap.Entry entry : indexMapping.int2IntEntrySet()) {
             final int oldIndex = entry.getIntKey();
             final int newIndex = entry.getIntValue();
             // Only copy non-null segments
-            if (section.stateSegments[oldIndex] != null) {
-                newStateSegments[newIndex] = section.stateSegments[oldIndex];
+            if (section.statePalettes[oldIndex] != null) {
+                newStateSegments[newIndex] = section.statePalettes[oldIndex];
             }
         }
         // New states remain null - they will be allocated when first accessed

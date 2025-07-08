@@ -40,8 +40,8 @@ public final class Automata {
                      boolean transient_,
                      LongFunction<String> visualizer) {
             public State {
-                if (bitSize < 1 || bitSize > 64) {
-                    throw new IllegalArgumentException("State bit size must be between 1 and 64");
+                if (bitSize < 1 || bitSize > 32) {
+                    throw new IllegalArgumentException("State bit size must be between 1 and 32");
                 }
             }
 
