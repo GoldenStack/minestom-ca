@@ -13,7 +13,7 @@ java {
 }
 
 dependencies {
-    api("com.github.Minestom:Minestom:b39badc77b")
+    api("net.minestom:minestom:2025.07.04-1.21.5")
 
     // https://mvnrepository.com/artifact/it.unimi.dsi/fastutil
     implementation("it.unimi.dsi:fastutil:8.5.15")
