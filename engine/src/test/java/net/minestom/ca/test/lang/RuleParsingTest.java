@@ -1,5 +1,6 @@
 package net.minestom.ca.test.lang;
 
+import net.minestom.ca.Automata;
 import net.minestom.ca.lang.Rule;
 import net.minestom.ca.lang.Rule.Expression;
 import net.minestom.ca.lang.Rule.Result.SetState;
@@ -93,7 +94,7 @@ public final class RuleParsingTest {
                 new Rule(
                         new And(
                                 new Equal(Block.WHITE_WOOL),
-                                new Equal(new Expression.Index(1), new Expression.Literal(0))
+                                new Equal(new Expression.State("points"), new Expression.Literal(0))
                         ),
                         new SetState(Block.BLACK_WOOL)
                 ));
@@ -161,24 +162,24 @@ public final class RuleParsingTest {
     public void stateTests() {
         assertRule("points=1 -> #dirt",
                 new Rule(
-                        new Equal(new Expression.Index(1), new Expression.Literal(1)),
+                        new Equal(new Expression.State("points"), new Expression.Literal(1)),
                         new SetState(Block.DIRT)
                 ));
         assertRule("points=0 -> points=1",
                 new Rule(
-                        new Equal(new Expression.Index(1), new Expression.Literal(0)),
-                        new SetState(1, new Expression.Literal(1))
+                        new Equal(new Expression.State("points"), new Expression.Literal(0)),
+                        new SetState("points", new Expression.Literal(1))
                 ));
         assertRule("points=1 -> #dirt points=2",
                 new Rule(
-                        new Equal(new Expression.Index(1), new Expression.Literal(1)),
-                        new SetState(0, new Expression.Literal(Block.DIRT)),
-                        new SetState(1, new Expression.Literal(2))
+                        new Equal(new Expression.State("points"), new Expression.Literal(1)),
+                        new SetState(Automata.Rule.BLOCK_STATE.name(), new Expression.Literal(Block.DIRT)),
+                        new SetState("points", new Expression.Literal(2))
                 ));
         assertRule("#dirt -> points=up@points",
                 new Rule(
                         new Equal(Block.DIRT),
-                        new SetState(1, new Expression.NeighborIndex(0, 1, 0, 1))
+                        new SetState("points", new Expression.NeighborState(0, 1, 0, "points"))
                 ));
     }
 
@@ -186,19 +187,19 @@ public final class RuleParsingTest {
     public void blockStateTests() {
         assertRule("#redstone_wire[power=15] -> #dirt",
                 new Rule(
-                        new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE.withProperty("power", "15"))),
+                        new Equal(new Expression.State(Automata.Rule.BLOCK_STATE.name()), new Expression.Literal(Block.REDSTONE_WIRE.withProperty("power", "15"))),
                         new SetState(Block.DIRT)
                 ));
         assertRule("#redstone_wire[power=15, south=side] -> #dirt",
                 new Rule(
-                        new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE
+                        new Equal(new Expression.State(Automata.Rule.BLOCK_STATE.name()), new Expression.Literal(Block.REDSTONE_WIRE
                                 .withProperty("power", "15")
                                 .withProperty("south", "side"))),
                         new SetState(Block.DIRT)
                 ));
         assertRule("#redstone_wire[power=15] -> #redstone_wire[power=7]",
                 new Rule(
-                        new Equal(new Expression.Index(0), new Expression.Literal(Block.REDSTONE_WIRE.withProperty("power", "15"))),
+                        new Equal(new Expression.State(Automata.Rule.BLOCK_STATE.name()), new Expression.Literal(Block.REDSTONE_WIRE.withProperty("power", "15"))),
                         new SetState(Block.REDSTONE_WIRE.withProperty("power", "7"))
                 ));
     }
@@ -221,16 +222,16 @@ public final class RuleParsingTest {
     public void math() {
         assertRule("points!0 -> points=points+1",
                 new Rule(
-                        new Not(new Equal(new Expression.Index(1), new Expression.Literal(0))),
-                        new SetState(1, new Expression.Operation(
-                                new Expression.Index(1), new Expression.Literal(1),
+                        new Not(new Equal(new Expression.State("points"), new Expression.Literal(0))),
+                        new SetState("points", new Expression.Operation(
+                                new Expression.State("points"), new Expression.Literal(1),
                                 Expression.Operation.Type.ADD))
                 ));
         assertRule("points!0 -> points=points-1",
                 new Rule(
-                        new Not(new Equal(new Expression.Index(1), new Expression.Literal(0))),
-                        new SetState(1, new Expression.Operation(
-                                new Expression.Index(1), new Expression.Literal(1),
+                        new Not(new Equal(new Expression.State("points"), new Expression.Literal(0))),
+                        new SetState("points", new Expression.Operation(
+                                new Expression.State("points"), new Expression.Literal(1),
                                 Expression.Operation.Type.SUBTRACT))
                 ));
     }

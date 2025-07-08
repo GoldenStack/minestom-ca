@@ -17,7 +17,7 @@ dependencyResolutionManagement {
     }
 }
 
-include("demo")
+include("demo", "engine")
 
 gradle.allprojects {
     plugins.withId("java") {

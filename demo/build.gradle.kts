@@ -11,7 +11,7 @@ java {
 }
 
 dependencies {
-    implementation(rootProject)
+    implementation(project(":engine"))
     implementation(files("artefacts/Terra.jar"))
 
     implementation("org.everbuild.blocksandstuff:blocksandstuff-blocks:1.2.0-SNAPSHOT")
