@@ -623,9 +623,9 @@ public final class LazyWorld implements Automata.World {
             final int sectionX = sectionIndexGetX(sectionIndex);
             final int sectionY = sectionIndexGetY(sectionIndex);
             final int sectionZ = sectionIndexGetZ(sectionIndex);
+            instance.invalidateSection(sectionX, sectionY, sectionZ);
             final Chunk chunk = instance.getChunk(sectionX, sectionZ);
             if (chunk != null) {
-                chunk.invalidate();
                 final long[] blocksArray = blockChanges.toLongArray();
                 chunk.sendPacketToViewers(new MultiBlockChangePacket(sectionX, sectionY, sectionZ, blocksArray));
             }
