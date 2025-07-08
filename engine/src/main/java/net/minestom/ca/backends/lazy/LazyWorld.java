@@ -23,7 +23,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static net.minestom.ca.CoordConversionPro.globalSectionBoundary;
-import static net.minestom.ca.backends.lazy.LazyWorld.LSection.BLOCKS_PER_SECTION;
 import static net.minestom.server.coordinate.CoordConversion.*;
 import static net.minestom.server.instance.palette.Palette.BLOCK_DIMENSION;
 
@@ -100,7 +99,6 @@ public final class LazyWorld implements Automata.World {
     }
 
     final class LSection {
-        static final long BLOCKS_PER_SECTION = 16 * 16 * 16;
         private final long index;
         private Palette[] statePalettes; // One segment per state
         // Block indexes to track next tick, one per rule
@@ -737,7 +735,7 @@ public final class LazyWorld implements Automata.World {
                 final int blockIndex = sectionBlockIndex(localX, localY, localZ);
                 BitSet trackedBlocks = section.trackedBlocks[i];
                 if (trackedBlocks == null)
-                    trackedBlocks = section.trackedBlocks[i] = new BitSet((int) BLOCKS_PER_SECTION);
+                    trackedBlocks = section.trackedBlocks[i] = new BitSet(SECTION_BLOCK_COUNT);
                 trackedBlocks.set(blockIndex);
             }
         }
@@ -759,7 +757,7 @@ public final class LazyWorld implements Automata.World {
             for (int i = 0; i < ruleContexts.size(); i++) {
                 BitSet trackedBlocks = section.trackedBlocks[i];
                 if (trackedBlocks == null)
-                    trackedBlocks = section.trackedBlocks[i] = new BitSet((int) BLOCKS_PER_SECTION);
+                    trackedBlocks = section.trackedBlocks[i] = new BitSet(SECTION_BLOCK_COUNT);
                 trackedBlocks.set(blockIndex);
             }
         }
