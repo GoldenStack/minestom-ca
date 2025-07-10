@@ -643,9 +643,7 @@ public final class LazyWorld implements Automata.World {
     @Override
     public void clearAt(int x, int y, int z) {
         final LSection section = sectionGlobalCompute(x, y, z);
-        final int localX = globalToSectionRelative(x);
-        final int localY = globalToSectionRelative(y);
-        final int localZ = globalToSectionRelative(z);
+        final int localX = globalToSectionRelative(x), localY = globalToSectionRelative(y), localZ = globalToSectionRelative(z);
         for (int i = 0; i < orderedStates.size(); i++) {
             section.setState(localX, localY, localZ, i, 0);
         }
@@ -656,9 +654,7 @@ public final class LazyWorld implements Automata.World {
     @Override
     public void setAt(int x, int y, int z, Map<Automata.Rule.State, Long> properties) {
         final LSection section = sectionGlobalCompute(x, y, z);
-        final int localX = globalToSectionRelative(x);
-        final int localY = globalToSectionRelative(y);
-        final int localZ = globalToSectionRelative(z);
+        final int localX = globalToSectionRelative(x), localY = globalToSectionRelative(y), localZ = globalToSectionRelative(z);
         for (Automata.Rule.State state : orderedStates) {
             final int index = rulesMapping.get(state);
             if (index == 0) continue; // Skip block state
@@ -672,9 +668,7 @@ public final class LazyWorld implements Automata.World {
     @Override
     public void updateAt(int x, int y, int z, Map<Automata.Rule.State, Long> properties) {
         final LSection section = sectionGlobalCompute(x, y, z);
-        final int localX = globalToSectionRelative(x);
-        final int localY = globalToSectionRelative(y);
-        final int localZ = globalToSectionRelative(z);
+        final int localX = globalToSectionRelative(x), localY = globalToSectionRelative(y), localZ = globalToSectionRelative(z);
         for (Map.Entry<Automata.Rule.State, Long> entry : properties.entrySet()) {
             final Automata.Rule.State state = entry.getKey();
             final long value = entry.getValue();
@@ -692,30 +686,19 @@ public final class LazyWorld implements Automata.World {
             return paletteAtSection(globalToChunk(x), globalToChunk(y), globalToChunk(z));
         }
         final Integer index = rulesMapping.get(state);
-        if (index == null) {
-            throw new IllegalArgumentException("Unknown state: " + state);
-        }
+        if (index == null) throw new IllegalArgumentException("Unknown state: " + state);
         final LSection section = sectionGlobalCompute(x, y, z);
         return section.ensurePalette(index - 1); // -1 because index 0 is block state
     }
 
     @Override
     public void invalidateStatePalette(int x, int y, int z, Automata.Rule.State state) {
-        final LSection section = sectionGlobalCompute(x, y, z);
         final Integer index = rulesMapping.get(state);
-        if (index == null) {
-            throw new IllegalArgumentException("Unknown state: " + state);
-        }
-        trackSection(section);
-        section.trackedBlocks.set(0, SECTION_BLOCK_COUNT);
-        final int sectionX = globalToChunk(x);
-        final int sectionY = globalToChunk(y);
-        final int sectionZ = globalToChunk(z);
-        if (index == 0) {
-            instance.invalidateSection(sectionX, sectionY, sectionZ);
-        } else {
-            registerSection(section, sectionAt(sectionX, sectionY, sectionZ));
-        }
+        if (index == null) throw new IllegalArgumentException("Unknown state: " + state);
+        final LSection section = sectionGlobalCompute(x, y, z);
+        final int sectionX = globalToChunk(x), sectionY = globalToChunk(y), sectionZ = globalToChunk(z);
+        if (index == 0) instance.invalidateSection(sectionX, sectionY, sectionZ);
+        registerSection(section, sectionAt(sectionX, sectionY, sectionZ));
     }
 
     private LSection sectionCache(LSection startSection, LSection sectionCache, int x, int y, int z) {
@@ -751,9 +734,8 @@ public final class LazyWorld implements Automata.World {
 
     private void registerSection(LSection startSection, Section section) {
         if (section == null) return;
-        final int sectionX = sectionIndexGetX(startSection.index),
-                sectionY = sectionIndexGetY(startSection.index),
-                sectionZ = sectionIndexGetZ(startSection.index);
+        final long index = startSection.index;
+        final int sectionX = sectionIndexGetX(index), sectionY = sectionIndexGetY(index), sectionZ = sectionIndexGetZ(index);
         section.blockPalette().getAllPresent((x, y, z, _) -> {
             final int blockX = sectionX * 16 + x;
             final int blockY = sectionY * 16 + y;
