@@ -3,7 +3,6 @@ package net.minestom.ca;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.minestom.ca.event.CellularTickEvent;
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Player;
@@ -89,7 +88,7 @@ public final class AutomataImpl {
         final Metrics metrics = world.tick();
         final long duration = System.nanoTime() - start;
         final double mspt = duration / 1.0e6;
-        EventDispatcher.call(new CellularTickEvent(world, metrics, mspt));
+        EventDispatcher.call(new AutomataEvent.Tick(world, metrics, mspt));
     }
 
     private static Map<Rule.State, Long> itemStates(World world, ItemStack item, Block block) {

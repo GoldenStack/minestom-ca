@@ -3,7 +3,6 @@ package net.minestom.ca;
 import net.kyori.adventure.text.Component;
 import net.minestom.ca.Automata.RuleConfig;
 import net.minestom.ca.backends.lazy.LazyWorld;
-import net.minestom.ca.event.CellularTickEvent;
 import net.minestom.ca.rules.*;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
@@ -96,7 +95,7 @@ public final class Main {
                 .addListener(ServerListPingEvent.class, event -> event.setStatus(Status.builder()
                         .description(Component.text("Minestom CA Demo"))
                         .build()))
-                .addListener(CellularTickEvent.class, event -> {
+                .addListener(AutomataEvent.Tick.class, event -> {
                     final Instance instance = event.world().instance();
                     final Automata.Metrics metrics = event.metrics();
                     final double ms = event.ms();
