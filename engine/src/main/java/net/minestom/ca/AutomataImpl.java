@@ -36,9 +36,9 @@ import static net.minestom.ca.Automata.*;
 
 public final class AutomataImpl {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
-    public static final Tag<Boolean> AUTOMATA_DEBUG = Tag.Boolean("automata_debug").defaultValue(false);
-    public static final Tag<Boolean> AUTOMATA_STOPWATCH = Tag.Boolean("automata_stopwatch").defaultValue(false);
-    public static final EventNode<InstanceEvent> AUTOMATA_EVENT_NODE = EventNode.type("automata", EventFilter.INSTANCE)
+    public static final Tag<Boolean> AUTOMATA_DEBUG = Tag.Boolean("ca:debug").defaultValue(false);
+    public static final Tag<Boolean> AUTOMATA_STOPWATCH = Tag.Boolean("ca:stopwatch").defaultValue(false);
+    public static final EventNode<InstanceEvent> AUTOMATA_EVENT_NODE = EventNode.type("ca:node", EventFilter.INSTANCE)
             .addListener(PlayerBlockPlaceEvent.class, event -> {
                 final Point point = event.getBlockPosition();
                 final Block block = event.getBlock();
@@ -211,9 +211,9 @@ public final class AutomataImpl {
     ) {
     }
 
-    static final CellActionSerializer CELL_ACTION_SERIALIZER = new CellActionSerializer();
+    private static final TagSerializer<CellAction> CELL_ACTION_SERIALIZER = new CellActionSerializer();
 
-    static final class CellActionSerializer implements TagSerializer<CellAction> {
+    private static final class CellActionSerializer implements TagSerializer<CellAction> {
         private static final Tag<String> EVENT_TAG = Tag.String("event");
         private static final Tag<String> EXPRESSION_TAG = Tag.String("expression");
         private static final Tag<Boolean> CONSUME_TAG = Tag.Boolean("consume").defaultValue(false);

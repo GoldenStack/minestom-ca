@@ -46,7 +46,7 @@ public final class Automata {
             }
 
             public State(String name, int bitSize) {
-                this(name, bitSize, false, String::valueOf);
+                this(name, bitSize, false, StateVisualizers.DECIMAL);
             }
         }
 
