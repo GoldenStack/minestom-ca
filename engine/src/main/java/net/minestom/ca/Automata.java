@@ -165,7 +165,7 @@ public final class Automata {
                     this.scheduleTick = scheduleTick;
                 }
 
-                Action build() {
+                private Action build() {
                     return new Action(clear, copy, updatedProperties, updatedStates, triggers,
                             wakePoints, conditionProperties, conditionStates, scheduleTick
                     );
@@ -236,6 +236,10 @@ public final class Automata {
         }
 
         Map<Rule.State, Long> queryNames(int x, int y, int z);
+
+        default Map<Rule.State, Long> queryNames(Point point) {
+            return queryNames(point.blockX(), point.blockY(), point.blockZ());
+        }
 
         default int count(int index, List<Vec> points, LongPredicate predicate) {
             int count = 0;
@@ -372,6 +376,10 @@ public final class Automata {
          */
         void handlePlacement(int x, int y, int z, Map<Rule.State, Long> properties);
 
+        default void handlePlacement(Point point, Map<Rule.State, Long> properties) {
+            handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
+        }
+
         default void handlePlacement(Point point, Block block) {
             handlePlacement(point.blockX(), point.blockY(), point.blockZ(),
                     Map.of(Rule.BLOCK_STATE, (long) block.stateId()));
@@ -383,7 +391,15 @@ public final class Automata {
 
         void clearAt(int x, int y, int z);
 
+        default void clearAt(Point point) {
+            clearAt(point.blockX(), point.blockY(), point.blockZ());
+        }
+
         void updateAt(int x, int y, int z, Map<Rule.State, Long> properties);
+
+        default void updateAt(Point point, Map<Rule.State, Long> properties) {
+            updateAt(point.blockX(), point.blockY(), point.blockZ(), properties);
+        }
 
         /**
          * Gets the instance that is being ticked

@@ -45,7 +45,7 @@ public final class AutomataImpl {
                 World world = World.get(event.getPlayer().getInstance());
                 final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
                 final Map<Rule.State, Long> properties = itemStates(world, item, block);
-                world.handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
+                world.handlePlacement(point, properties);
             })
             .addListener(PlayerBlockBreakEvent.class, event -> {
                 final Point point = event.getBlockPosition();
@@ -126,7 +126,7 @@ public final class AutomataImpl {
         final Instance instance = player.getInstance();
         final World world = World.get(instance);
         if (world == null) return;
-        final Map<Rule.State, Long> indexes = world.query().queryNames(point.blockX(), point.blockY(), point.blockZ());
+        final Map<Rule.State, Long> indexes = world.query().queryNames(point);
         player.sendMessage(Component.text()
                 .append(Component.text("Block States").color(NamedTextColor.GRAY)
                         .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD))
@@ -187,7 +187,7 @@ public final class AutomataImpl {
             }
         }
         if (properties.isEmpty()) return null;
-        world.updateAt(point.blockX(), point.blockY(), point.blockZ(), properties);
+        world.updateAt(point, properties);
         player.sendMessage(Component.text("Applied " + event.name().toLowerCase() + " action at " +
                         point.blockX() + "," + point.blockY() + "," + point.blockZ())
                 .color(NamedTextColor.GREEN));

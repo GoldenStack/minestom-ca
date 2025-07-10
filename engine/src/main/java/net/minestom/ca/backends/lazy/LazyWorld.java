@@ -816,7 +816,6 @@ public final class LazyWorld implements Automata.World {
         final StateLayout newStateLayout = new StateLayout(orderedStates);
         for (LSection section : new ArrayList<>(loadedSections.values())) {
             section.statePalettes = migrateSection(section, oldToNewIndex, newStateLayout);
-            section.trackedBlocks = new BitSet[newRuleConfigs.size()];
         }
 
         // Initialize new rules
