@@ -3,9 +3,11 @@ package net.minestom.ca;
 import net.kyori.adventure.nbt.CompoundBinaryTag;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.minestom.ca.event.CellularTickEvent;
 import net.minestom.server.component.DataComponents;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.entity.Player;
+import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.instance.InstanceChunkLoadEvent;
@@ -83,31 +85,11 @@ public final class AutomataImpl {
     private static void worldTick(Instance instance) {
         World world = World.get(instance);
         if (world == null) return;
-
         final long start = System.nanoTime();
         final Metrics metrics = world.tick();
-
         final long duration = System.nanoTime() - start;
         final double mspt = duration / 1.0e6;
-
-        // Calculate modification ratio (percentage of processed blocks that were modified)
-        String ratio = "0%";
-        if (metrics.processedBlocks() > 0) {
-            final int modRatio = (metrics.modifiedBlocks() * 100) / metrics.processedBlocks();
-            ratio = modRatio + "%";
-        }
-
-        Component header = Component.text()
-                .append(Component.text("§b■ §fMSPT: §a" + String.format("%.2f", mspt) + "ms"))
-                .append(Component.newline())
-                .append(Component.text("§b■ §fProcessed Sections: §a" + String.format("%,d", metrics.processedSections())))
-                .append(Component.newline())
-                .append(Component.text("§b■ §fProcessed Blocks: §a" + String.format("%,d", metrics.processedBlocks())))
-                .append(Component.newline())
-                .append(Component.text("§b■ §fModified Blocks: §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a" + ratio + "§f)"))
-                .build();
-
-        instance.sendPlayerListHeader(header);
+        EventDispatcher.call(new CellularTickEvent(world, metrics, mspt));
     }
 
     private static Map<Rule.State, Long> itemStates(World world, ItemStack item, Block block) {

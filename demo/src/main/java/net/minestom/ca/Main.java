@@ -3,19 +3,22 @@ package net.minestom.ca;
 import net.kyori.adventure.text.Component;
 import net.minestom.ca.Automata.RuleConfig;
 import net.minestom.ca.backends.lazy.LazyWorld;
+import net.minestom.ca.event.CellularTickEvent;
 import net.minestom.ca.rules.*;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
-import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
+import net.minestom.server.event.server.ServerListPingEvent;
+import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import net.minestom.server.ping.Status;
 import org.everbuild.blocksandstuff.blocks.BlockBehaviorRuleRegistrations;
 import org.everbuild.blocksandstuff.blocks.BlockPlacementRuleRegistrations;
 
@@ -46,9 +49,9 @@ public final class Main {
         );
 
         // Create an instance
-        InstanceContainer instance = MinecraftServer.getInstanceManager().createInstanceContainer();
-        instance.setChunkSupplier(LightingChunk::new);
-        instance.setGenerator(unit -> unit.modifier().fillHeight(0, 85, Block.STONE));
+        InstanceContainer spawnInstance = MinecraftServer.getInstanceManager().createInstanceContainer();
+        spawnInstance.setChunkSupplier(LightingChunk::new);
+        spawnInstance.setGenerator(unit -> unit.modifier().fillHeight(0, 85, Block.STONE));
         //TerraMinestomWorld terraWorld = platform.worldBuilder(instance).defaultPack().attach();
 
         final List<RuleConfig> rules = List.of(
@@ -60,36 +63,61 @@ public final class Main {
                 new RuleConfig(new BlockPusher()),
                 new RuleConfig(new GrassSpreadingRule())
         );
-        World world = new LazyWorld(instance, rules);
+        World world = new LazyWorld(spawnInstance, rules);
         World.register(world);
         System.out.println("Variables: " + world.states().stream().map(Rule.State::name).toList());
 
-        GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
-        globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {
-            Player player = event.getPlayer();
-            PlayerInventory inventory = player.getInventory();
-            player.setPermissionLevel(2);
-            player.setGameMode(GameMode.CREATIVE);
+        MinecraftServer.getGlobalEventHandler()
+                .addListener(AsyncPlayerConfigurationEvent.class, event -> {
+                    Player player = event.getPlayer();
+                    PlayerInventory inventory = player.getInventory();
+                    player.setPermissionLevel(2);
+                    player.setGameMode(GameMode.CREATIVE);
 
-            inventory.addItemStack(ItemStack.of(Material.WHITE_WOOL));
-            inventory.addItemStack(ItemStack.of(Material.DIRT));
-            inventory.addItemStack(ItemStack.of(Material.REDSTONE_BLOCK));
-            inventory.addItemStack(ItemStack.of(Material.REDSTONE));
-            inventory.addItemStack(ItemStack.of(Material.OAK_LOG));
-            inventory.addItemStack(ItemStack.of(Material.OAK_SAPLING));
-            inventory.addItemStack(ItemStack.of(Material.PISTON));
-            inventory.addItemStack(ItemStack.builder(Material.STICK)
-                    .set(AutomataImpl.AUTOMATA_DEBUG, true)
-                    .customName(Component.text("Automata Debug"))
-                    .build());
-            inventory.addItemStack(ItemStack.builder(Material.COMPASS)
-                    .set(AutomataImpl.AUTOMATA_STOPWATCH, true)
-                    .customName(Component.text("Stopwatch"))
-                    .build());
+                    inventory.addItemStack(ItemStack.of(Material.WHITE_WOOL));
+                    inventory.addItemStack(ItemStack.of(Material.DIRT));
+                    inventory.addItemStack(ItemStack.of(Material.REDSTONE_BLOCK));
+                    inventory.addItemStack(ItemStack.of(Material.REDSTONE));
+                    inventory.addItemStack(ItemStack.of(Material.OAK_LOG));
+                    inventory.addItemStack(ItemStack.of(Material.OAK_SAPLING));
+                    inventory.addItemStack(ItemStack.of(Material.PISTON));
+                    inventory.addItemStack(ItemStack.builder(Material.STICK)
+                            .set(AutomataImpl.AUTOMATA_DEBUG, true)
+                            .customName(Component.text("Automata Debug"))
+                            .build());
+                    inventory.addItemStack(ItemStack.builder(Material.COMPASS)
+                            .set(AutomataImpl.AUTOMATA_STOPWATCH, true)
+                            .customName(Component.text("Stopwatch"))
+                            .build());
 
-            event.setSpawningInstance(instance);
-            player.setRespawnPoint(new Pos(0, 100, 0));
-        });
+                    event.setSpawningInstance(spawnInstance);
+                    player.setRespawnPoint(new Pos(0, 100, 0));
+                })
+                .addListener(ServerListPingEvent.class, event -> event.setStatus(Status.builder()
+                        .description(Component.text("Minestom CA Demo"))
+                        .build()))
+                .addListener(CellularTickEvent.class, event -> {
+                    final Instance instance = event.world().instance();
+                    final Automata.Metrics metrics = event.metrics();
+                    final double ms = event.ms();
+                    // Calculate modification ratio (percentage of processed blocks that were modified)
+                    String ratio = "0%";
+                    if (metrics.processedBlocks() > 0) {
+                        final int modRatio = (metrics.modifiedBlocks() * 100) / metrics.processedBlocks();
+                        ratio = modRatio + "%";
+                    }
+
+                    Component header = Component.text()
+                            .append(Component.text("§b■ §fMSPT: §a" + String.format("%.2f", ms) + "ms"))
+                            .append(Component.newline())
+                            .append(Component.text("§b■ §fProcessed Sections: §a" + String.format("%,d", metrics.processedSections())))
+                            .append(Component.newline())
+                            .append(Component.text("§b■ §fProcessed Blocks: §a" + String.format("%,d", metrics.processedBlocks())))
+                            .append(Component.newline())
+                            .append(Component.text("§b■ §fModified Blocks: §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a" + ratio + "§f)"))
+                            .build();
+                    instance.sendPlayerListHeader(header);
+                });
 
         minecraftServer.start("0.0.0.0", 25565);
     }
