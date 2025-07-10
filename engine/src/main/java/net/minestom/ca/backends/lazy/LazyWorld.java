@@ -111,12 +111,22 @@ public final class LazyWorld implements Automata.World {
             this.trackedBlocks = new BitSet[ruleContexts.size()];
         }
 
-        private Palette ensureAllocated(int stateIndex) {
+        private Palette ensurePalette(int stateIndex) {
             Palette palette = statePalettes[stateIndex];
             if (statePalettes[stateIndex] == null) {
-                palette = statePalettes[stateIndex] = Palette.empty(BLOCK_DIMENSION, 3, 8, stateLayout.stateBitSizes[stateIndex]);
+                final int directBits = stateLayout.stateBitSizes[stateIndex];
+                final int maxBitsPalette = Math.min(8, directBits);
+                palette = statePalettes[stateIndex] = Palette.empty(BLOCK_DIMENSION, 1, maxBitsPalette, directBits);
             }
             return palette;
+        }
+
+        private BitSet ensureTrackedBlocks(int ruleIndex) {
+            BitSet tracked = trackedBlocks[ruleIndex];
+            if (tracked == null) {
+                tracked = trackedBlocks[ruleIndex] = new BitSet(SECTION_BLOCK_COUNT);
+            }
+            return tracked;
         }
 
         long getState(int x, int y, int z, int stateIndex) {
@@ -127,8 +137,10 @@ public final class LazyWorld implements Automata.World {
 
         void setState(int x, int y, int z, int stateIndex, long value) {
             Palette palette = statePalettes[stateIndex];
-            if (value == 0 && palette == null) return; // No need to allocate for zero values
-            palette = ensureAllocated(stateIndex);
+            if (palette == null) {
+                if (value == 0) return; // No need to allocate for zero values
+                palette = ensurePalette(stateIndex);
+            }
             palette.set(x, y, z, (int) value);
         }
     }
@@ -635,7 +647,7 @@ public final class LazyWorld implements Automata.World {
     @Override
     public void handlePlacement(int x, int y, int z, Map<Automata.Rule.State, Long> properties) {
         clearAt(x, y, z);
-        updateAt(x, y, z, properties);
+        setAt(x, y, z, properties);
     }
 
     private final Queue<Vec> chunksToLoad = new ConcurrentLinkedQueue<>();
@@ -686,7 +698,7 @@ public final class LazyWorld implements Automata.World {
     }
 
     @Override
-    public void updateAt(int x, int y, int z, Map<Automata.Rule.State, Long> properties) {
+    public void setAt(int x, int y, int z, Map<Automata.Rule.State, Long> properties) {
         final LSection section = sectionGlobalCompute(x, y, z);
         final int localX = globalToSectionRelative(x);
         final int localY = globalToSectionRelative(y);
@@ -699,6 +711,58 @@ public final class LazyWorld implements Automata.World {
         }
         trackSection(section);
         register(x, y, z, section, Neighbors.MOORE_3D_SELF);
+    }
+
+    @Override
+    public void updateAt(int x, int y, int z, Map<Automata.Rule.State, Long> properties) {
+        final LSection section = sectionGlobalCompute(x, y, z);
+        final int localX = globalToSectionRelative(x);
+        final int localY = globalToSectionRelative(y);
+        final int localZ = globalToSectionRelative(z);
+        for (Map.Entry<Automata.Rule.State, Long> entry : properties.entrySet()) {
+            final Automata.Rule.State state = entry.getKey();
+            final long value = entry.getValue();
+            final Integer index = rulesMapping.get(state);
+            if (index == null || index == 0) continue; // Skip invalid/block state
+            section.setState(localX, localY, localZ, index - 1, value);
+        }
+        trackSection(section);
+        register(x, y, z, section, Neighbors.MOORE_3D_SELF);
+    }
+
+    @Override
+    public Palette statePalette(int x, int y, int z, Automata.Rule.State state) {
+        if (state == Automata.Rule.BLOCK_STATE) {
+            return paletteAtSection(globalToChunk(x), globalToChunk(y), globalToChunk(z));
+        }
+        final Integer index = rulesMapping.get(state);
+        if (index == null) {
+            throw new IllegalArgumentException("Unknown state: " + state);
+        }
+        final LSection section = sectionGlobalCompute(x, y, z);
+        return section.ensurePalette(index - 1); // -1 because index 0 is block state
+    }
+
+    @Override
+    public void invalidateStatePalette(int x, int y, int z, Automata.Rule.State state) {
+        final LSection section = sectionGlobalCompute(x, y, z);
+        final Integer index = rulesMapping.get(state);
+        if (index == null) {
+            throw new IllegalArgumentException("Unknown state: " + state);
+        }
+        trackSection(section);
+        for (int i = 0; i < section.trackedBlocks.length; i++) {
+            BitSet trackedBlocks = section.ensureTrackedBlocks(i);
+            trackedBlocks.set(0, SECTION_BLOCK_COUNT);
+        }
+        final int sectionX = globalToChunk(x);
+        final int sectionY = globalToChunk(y);
+        final int sectionZ = globalToChunk(z);
+        if (index == 0) {
+            instance.invalidateSection(sectionX, sectionY, sectionZ);
+        } else {
+            registerSection(section, sectionAt(sectionX, sectionY, sectionZ));
+        }
     }
 
     private LSection sectionCache(LSection startSection, LSection sectionCache, int x, int y, int z) {
@@ -733,9 +797,7 @@ public final class LazyWorld implements Automata.World {
                 final int localY = globalToSectionRelative(nY);
                 final int localZ = globalToSectionRelative(nZ);
                 final int blockIndex = sectionBlockIndex(localX, localY, localZ);
-                BitSet trackedBlocks = section.trackedBlocks[i];
-                if (trackedBlocks == null)
-                    trackedBlocks = section.trackedBlocks[i] = new BitSet(SECTION_BLOCK_COUNT);
+                BitSet trackedBlocks = section.ensureTrackedBlocks(i);
                 trackedBlocks.set(blockIndex);
             }
         }
@@ -755,9 +817,7 @@ public final class LazyWorld implements Automata.World {
             final int localZ = globalToSectionRelative(nZ);
             final int blockIndex = sectionBlockIndex(localX, localY, localZ);
             for (int i = 0; i < ruleContexts.size(); i++) {
-                BitSet trackedBlocks = section.trackedBlocks[i];
-                if (trackedBlocks == null)
-                    trackedBlocks = section.trackedBlocks[i] = new BitSet(SECTION_BLOCK_COUNT);
+                BitSet trackedBlocks = section.ensureTrackedBlocks(i);
                 trackedBlocks.set(blockIndex);
             }
         }

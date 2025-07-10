@@ -7,6 +7,7 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.utils.Direction;
 import org.jetbrains.annotations.Nullable;
 
@@ -395,10 +396,28 @@ public final class Automata {
             clearAt(point.blockX(), point.blockY(), point.blockZ());
         }
 
+        void setAt(int x, int y, int z, Map<Rule.State, Long> properties);
+
+        default void setAt(Point point, Map<Rule.State, Long> properties) {
+            setAt(point.blockX(), point.blockY(), point.blockZ(), properties);
+        }
+
         void updateAt(int x, int y, int z, Map<Rule.State, Long> properties);
 
         default void updateAt(Point point, Map<Rule.State, Long> properties) {
             updateAt(point.blockX(), point.blockY(), point.blockZ(), properties);
+        }
+
+        Palette statePalette(int x, int y, int z, Rule.State state);
+
+        default Palette statePalette(Point point, Rule.State state) {
+            return statePalette(point.blockX(), point.blockY(), point.blockZ(), state);
+        }
+
+        void invalidateStatePalette(int x, int y, int z, Rule.State state);
+
+        default void invalidateStatePalette(Point point, Rule.State state) {
+            invalidateStatePalette(point.blockX(), point.blockY(), point.blockZ(), state);
         }
 
         /**

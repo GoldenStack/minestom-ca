@@ -102,10 +102,15 @@ public final class CACommands {
         public Action() {
             super("action");
             setCondition(Conditions::playerOnly);
-            var loop = Loop("actions", Group("action",
-                    Word("state_name"),
-                    Enum("state_event", AutomataImpl.CellEvent.class).setFormat(ArgumentEnum.Format.LOWER_CASED),
-                    String("state_expression")));
+            var loop = Loop("actions",
+                    Group("action",
+                            Word("state_name"),
+                            Enum("state_event", AutomataImpl.CellEvent.class).setFormat(ArgumentEnum.Format.LOWER_CASED),
+                            String("state_expression"),
+                            Integer("state_range"),
+                            Boolean("state_section")
+                    )
+            );
 
             addSyntax((sender, context) -> {
                 Player player = ((Player) sender);
@@ -121,9 +126,11 @@ public final class CACommands {
                     if (state == null) continue;
                     final AutomataImpl.CellEvent event = states.get("state_event");
                     final String stateExpression = states.get("state_expression");
+                    final int range = states.get("state_range");
+                    final boolean section = states.get("state_section");
                     player.sendMessage(Component.text(" * Applying: " + stateName + " = '" + stateExpression + "' on " + event));
                     final Tag<AutomataImpl.CellAction> tag = AutomataImpl.CellActionTag(state);
-                    final AutomataImpl.CellAction action = new AutomataImpl.CellAction(event, stateExpression, false, 0);
+                    final AutomataImpl.CellAction action = new AutomataImpl.CellAction(event, stateExpression, false, 0, range, section);
                     itemStack.set(tag, action);
                 }
                 player.setItemInMainHand(itemStack.build());

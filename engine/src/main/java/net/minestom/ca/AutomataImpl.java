@@ -18,6 +18,7 @@ import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.instance.palette.Palette;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.component.CustomData;
 import net.minestom.server.tag.Tag;
@@ -168,7 +169,6 @@ public final class AutomataImpl {
         if (actions.isEmpty()) return null;
 
         ItemStack updatedItem = null;
-        Map<Rule.State, Long> properties = new HashMap<>();
         for (String key : actions.keySet()) {
             final Rule.State state = world.state(key);
             if (state == null) continue;
@@ -176,18 +176,32 @@ public final class AutomataImpl {
             final CellAction action = item.getTag(tag);
             if (action == null || !action.event().equals(event)) continue;
             // Run action
-            final long value = actionValue(action.expression()); // TODO: operation support
-            properties.put(state, value);
+            final long value = actionValue(action.expression());
+            // Update world
+            final int range = action.range();
+            if (range > 0) {
+                // Loop through the range
+                for (int dx = -range; dx <= range; dx++) {
+                    for (int dy = -range; dy <= range; dy++) {
+                        for (int dz = -range; dz <= range; dz++) {
+                            final Point offsetPoint = point.add(dx, dy, dz);
+                            world.updateAt(offsetPoint, Map.of(state, value));
+                        }
+                    }
+                }
+            } else if (action.section()) {
+                Palette palette = world.statePalette(point, state);
+                palette.fill((int) value);
+                world.invalidateStatePalette(point, state);
+            } else {
+                // Single point
+                world.updateAt(point, Map.of(state, value));
+            }
             // Item update
-            if (action.consume()) {
-                updatedItem = Objects.requireNonNullElse(updatedItem, item).consume(1);
-            }
-            if (action.damage() > 0) {
-                updatedItem = Objects.requireNonNullElse(updatedItem, item).damage(action.damage());
-            }
+            if (action.consume()) updatedItem = Objects.requireNonNullElse(updatedItem, item).consume(1);
+            final int damage = action.damage();
+            if (damage > 0) updatedItem = Objects.requireNonNullElse(updatedItem, item).damage(damage);
         }
-        if (properties.isEmpty()) return null;
-        world.updateAt(point, properties);
         player.sendMessage(Component.text("Applied " + event.name().toLowerCase() + " action at " +
                         point.blockX() + "," + point.blockY() + "," + point.blockZ())
                 .color(NamedTextColor.GREEN));
@@ -207,8 +221,13 @@ public final class AutomataImpl {
 
     public record CellAction(
             CellEvent event, String expression,
-            boolean consume, int damage
+            boolean consume, int damage,
+            // Range
+            int range, boolean section
     ) {
+        public CellAction(CellEvent event, String expression, boolean consume, int damage) {
+            this(event, expression, consume, damage, 0, false);
+        }
     }
 
     private static final TagSerializer<CellAction> CELL_ACTION_SERIALIZER = new CellActionSerializer();
@@ -219,15 +238,20 @@ public final class AutomataImpl {
         private static final Tag<Boolean> CONSUME_TAG = Tag.Boolean("consume").defaultValue(false);
         private static final Tag<Integer> DAMAGE_TAG = Tag.Integer("damage").defaultValue(0);
 
+        private static final Tag<Integer> RANGE_TAG = Tag.Integer("range").defaultValue(0);
+        private static final Tag<Boolean> SECTION_TAG = Tag.Boolean("section").defaultValue(false);
+
         @Override
         public @Nullable CellAction read(@NotNull TagReadable reader) {
             final String eventStr = reader.getTag(EVENT_TAG);
             final String expression = reader.getTag(EXPRESSION_TAG);
             final boolean consume = reader.getTag(CONSUME_TAG);
             final int damage = reader.getTag(DAMAGE_TAG);
+            final int range = reader.getTag(RANGE_TAG);
+            final boolean section = reader.getTag(SECTION_TAG);
             if (eventStr == null || expression == null) return null;
             final CellEvent event = CellEvent.valueOf(eventStr);
-            return new CellAction(event, expression, consume, damage);
+            return new CellAction(event, expression, consume, damage, range, section);
         }
 
         @Override
@@ -236,6 +260,8 @@ public final class AutomataImpl {
             writer.setTag(EXPRESSION_TAG, value.expression());
             if (value.consume()) writer.setTag(CONSUME_TAG, true);
             if (value.damage() > 0) writer.setTag(DAMAGE_TAG, value.damage());
+            if (value.range() > 0) writer.setTag(RANGE_TAG, value.range());
+            if (value.section()) writer.setTag(SECTION_TAG, true);
         }
     }
 
