@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
+import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
@@ -361,6 +362,7 @@ public final class Automata {
             System.out.println("Registering loaded chunks...");
             for (Chunk c : instance.getChunks()) world.handleChunkLoad(c.getChunkX(), c.getChunkZ());
             System.out.println("Loaded chunks registered");
+            EventDispatcher.call(new AutomataEvent.Attach(world));
         }
 
         static World get(Instance instance) {

@@ -11,4 +11,11 @@ public final class AutomataEvent {
             return world.instance();
         }
     }
+
+    public record Attach(Automata.World world) implements InstanceEvent {
+        @Override
+        public @NotNull Instance getInstance() {
+            return world.instance();
+        }
+    }
 }

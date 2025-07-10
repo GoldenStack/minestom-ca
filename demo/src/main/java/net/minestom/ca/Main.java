@@ -1,5 +1,6 @@
 package net.minestom.ca;
 
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.minestom.ca.Automata.RuleConfig;
 import net.minestom.ca.backends.lazy.LazyWorld;
@@ -8,9 +9,10 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
+import net.minestom.server.event.instance.AddEntityToInstanceEvent;
+import net.minestom.server.event.instance.RemoveEntityFromInstanceEvent;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.server.ServerListPingEvent;
-import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
 import net.minestom.server.instance.block.Block;
@@ -66,6 +68,36 @@ public final class Main {
         World.register(world);
         System.out.println("Variables: " + world.states().stream().map(Rule.State::name).toList());
 
+        BossBar bossBar = BossBar.bossBar(Component.empty(), 0.0f, BossBar.Color.GREEN, BossBar.Overlay.PROGRESS);
+        spawnInstance.eventNode()
+                .addListener(AutomataEvent.Attach.class, event -> event.world().instance().showBossBar(bossBar))
+                .addListener(AddEntityToInstanceEvent.class, event -> {
+                    if (event.getEntity() instanceof Player player) player.showBossBar(bossBar);
+                })
+                .addListener(RemoveEntityFromInstanceEvent.class, event -> {
+                    if (event.getEntity() instanceof Player player) player.hideBossBar(bossBar);
+                })
+                .addListener(AutomataEvent.Tick.class, event -> {
+                    final Automata.Metrics metrics = event.metrics();
+                    final double ms = event.ms();
+                    // Calculate modification ratio (percentage of processed blocks that were modified)
+                    String ratio = "0%";
+                    if (metrics.processedBlocks() > 0) {
+                        final int modRatio = (metrics.modifiedBlocks() * 100) / metrics.processedBlocks();
+                        ratio = modRatio + "%";
+                    }
+
+                    bossBar.name(Component.text()
+                                    .append(Component.text("§b■ §fMSPT: §a" + String.format("%.2f", ms) + "ms"))
+                                    .append(Component.text(" §b■ §fSections: §a" + String.format("%,d", metrics.processedSections())))
+                                    .append(Component.text(" §b■ §fBlocks: §a" + String.format("%,d", metrics.processedBlocks())))
+                                    .append(Component.text(" §b■ §fUpdated: §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a" + ratio + "§f)"))
+                                    .build()
+                            )
+                            .progress(Math.min(1.0f, (float) (ms / 50.0)))
+                            .color(ms >= 50 ? BossBar.Color.RED : (ms >= 25 ? BossBar.Color.YELLOW : BossBar.Color.GREEN));
+                });
+
         MinecraftServer.getGlobalEventHandler()
                 .addListener(AsyncPlayerConfigurationEvent.class, event -> {
                     Player player = event.getPlayer();
@@ -94,29 +126,7 @@ public final class Main {
                 })
                 .addListener(ServerListPingEvent.class, event -> event.setStatus(Status.builder()
                         .description(Component.text("Minestom CA Demo"))
-                        .build()))
-                .addListener(AutomataEvent.Tick.class, event -> {
-                    final Instance instance = event.world().instance();
-                    final Automata.Metrics metrics = event.metrics();
-                    final double ms = event.ms();
-                    // Calculate modification ratio (percentage of processed blocks that were modified)
-                    String ratio = "0%";
-                    if (metrics.processedBlocks() > 0) {
-                        final int modRatio = (metrics.modifiedBlocks() * 100) / metrics.processedBlocks();
-                        ratio = modRatio + "%";
-                    }
-
-                    Component header = Component.text()
-                            .append(Component.text("§b■ §fMSPT: §a" + String.format("%.2f", ms) + "ms"))
-                            .append(Component.newline())
-                            .append(Component.text("§b■ §fProcessed Sections: §a" + String.format("%,d", metrics.processedSections())))
-                            .append(Component.newline())
-                            .append(Component.text("§b■ §fProcessed Blocks: §a" + String.format("%,d", metrics.processedBlocks())))
-                            .append(Component.newline())
-                            .append(Component.text("§b■ §fModified Blocks: §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a" + ratio + "§f)"))
-                            .build();
-                    instance.sendPlayerListHeader(header);
-                });
+                        .build()));
 
         minecraftServer.start("0.0.0.0", 25565);
     }
