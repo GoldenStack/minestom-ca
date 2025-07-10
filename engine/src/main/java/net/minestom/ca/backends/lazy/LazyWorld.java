@@ -44,42 +44,17 @@ public final class LazyWorld implements Automata.World {
 
     private final HashedWheelTimer<ScheduledChange> wheelTimer = new HashedWheelTimer<>(255);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
+    private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
 
-    private final class RuleContext {
-        private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
+    private static final class RuleContext {
         private final Automata.Rule rule;
-        private final List<Automata.Rule.Interest>[] interests;
         private final int tickInterval;
         private final int executionsPerTick;
 
         RuleContext(Automata.RuleConfig ruleConfig) {
             this.rule = ruleConfig.rule();
-            List<Automata.Rule.Interest>[] result = new List[orderedStates.size() + 1];
-            for (Automata.Rule.Interest interest : rule.info().interests()) {
-                final int index = query.stateIndex(interest.state());
-                List<Automata.Rule.Interest> interests = result[index];
-                if (interests == null) interests = result[index] = new ArrayList<>();
-                interests.add(interest);
-            }
-            this.interests = result;
             this.tickInterval = ruleConfig.tickInterval();
             this.executionsPerTick = ruleConfig.executionsPerTick();
-        }
-
-        boolean interested(Int2LongMap indexes) {
-            for (Int2LongMap.Entry entry : indexes.int2LongEntrySet()) {
-                if (interested(entry.getIntKey(), entry.getLongValue())) return true;
-            }
-            return false;
-        }
-
-        boolean interested(int index, long value) {
-            final List<Automata.Rule.Interest> interests = this.interests[index];
-            if (interests == null || interests.isEmpty()) return false;
-            for (Automata.Rule.Interest interest : interests) {
-                if (interest.predicate().test(value)) return true;
-            }
-            return false;
         }
     }
 
@@ -101,14 +76,13 @@ public final class LazyWorld implements Automata.World {
     final class LSection {
         private final long index;
         private Palette[] statePalettes; // One segment per state
-        // Block indexes to track next tick, one per rule
-        private BitSet[] trackedBlocks;
+        // Block indexes to track next tick
+        private final BitSet trackedBlocks = new BitSet(SECTION_BLOCK_COUNT);
 
         LSection(final long index) {
             this.index = index;
             // Initialize with null segments - allocate lazily
             this.statePalettes = new Palette[stateLayout.stateBitSizes.length];
-            this.trackedBlocks = new BitSet[ruleContexts.size()];
         }
 
         private Palette ensurePalette(int stateIndex) {
@@ -119,14 +93,6 @@ public final class LazyWorld implements Automata.World {
                 palette = statePalettes[stateIndex] = Palette.empty(BLOCK_DIMENSION, 1, maxBitsPalette, directBits);
             }
             return palette;
-        }
-
-        private BitSet ensureTrackedBlocks(int ruleIndex) {
-            BitSet tracked = trackedBlocks[ruleIndex];
-            if (tracked == null) {
-                tracked = trackedBlocks[ruleIndex] = new BitSet(SECTION_BLOCK_COUNT);
-            }
-            return tracked;
         }
 
         long getState(int x, int y, int z, int stateIndex) {
@@ -397,21 +363,14 @@ public final class LazyWorld implements Automata.World {
             return Automata.Metrics.EMPTY;
         }
         Long2ObjectMap<LongList> tickBlockChanges = new Long2ObjectOpenHashMap<>();
-        Automata.Metrics metrics = Automata.Metrics.EMPTY;
 
         Queue<SectionChange> changes = new ArrayDeque<>();
         // Process timed changes first to ensure they're available for this tick
         computeTimedChanges(changes);
         // Process rules according to their configurations
-        for (int i = 0; i < rulesToTick.size(); i++) {
-            RuleContext ruleContext = rulesToTick.get(i);
-            final int tickCount = ruleContext.executionsPerTick;
-            for (int execution = 0; execution < tickCount; execution++) {
-                Automata.Metrics ruleMetrics = computeChangesForRule(changes, i, ruleContext);
-                metrics = metrics.add(ruleMetrics);
-            }
-            ruleContext.trackedSections.clear();
-        }
+        final Automata.Metrics metrics = computeChanges(changes, rulesToTick);
+        for (LSection section : trackedSections) section.trackedBlocks.clear();
+        this.trackedSections.clear();
         applyChanges(changes, tickBlockChanges);
         sendBlockUpdatePackets(tickBlockChanges);
         this.query.context.updateTick();
@@ -422,7 +381,7 @@ public final class LazyWorld implements Automata.World {
     private List<RuleContext> rulesToTick() {
         final long tick = this.query.context.tick();
         return ruleContexts.stream()
-                .filter(context -> !context.trackedSections.isEmpty() && tick % context.tickInterval == 0)
+                .filter(context -> !this.trackedSections.isEmpty() && tick % context.tickInterval == 0)
                 .toList();
     }
 
@@ -446,39 +405,37 @@ public final class LazyWorld implements Automata.World {
         });
     }
 
-    private Automata.Metrics computeChangesForRule(Queue<SectionChange> changes, int ruleIndex, RuleContext ruleContext) {
-        Set<LSection> trackedSections = ruleContext.trackedSections;
+    private Automata.Metrics computeChanges(Queue<SectionChange> changes, List<RuleContext> rules) {
+        Set<LSection> trackedSections = this.trackedSections;
         final int processedSections = trackedSections.size();
         int processedBlocks = 0;
         int modifiedBlocks = 0;
-
-        Automata.Rule rule = ruleContext.rule;
         for (LSection section : trackedSections) {
             final long sectionIndex = section.index;
             final int sectionX = sectionIndexGetX(sectionIndex);
             final int sectionY = sectionIndexGetY(sectionIndex);
             final int sectionZ = sectionIndexGetZ(sectionIndex);
             Palette palette = paletteAtSection(sectionX, sectionY, sectionZ);
-            BitSet trackedBlocks = section.trackedBlocks[ruleIndex];
-            if (trackedBlocks == null || palette == null) continue;
-
-            // Process the rule for tracked blocks
-            BitSet processedBlocksCopy = (BitSet) trackedBlocks.clone(); // Clone to avoid modification issues
-            trackedBlocks.clear(); // Clear for next tick
-
+            if (palette == null) continue;
+            BitSet trackedBlocks = section.trackedBlocks;
             List<BlockChange> blockChanges = new ArrayList<>();
-            for (int blockIndex = processedBlocksCopy.nextSetBit(0);
+            for (int blockIndex = trackedBlocks.nextSetBit(0);
                  blockIndex >= 0;
-                 blockIndex = processedBlocksCopy.nextSetBit(blockIndex + 1)) {
+                 blockIndex = trackedBlocks.nextSetBit(blockIndex + 1)) {
                 processedBlocks++;
                 final int x = sectionBlockIndexGetX(blockIndex) + sectionX * 16;
                 final int y = sectionBlockIndexGetY(blockIndex) + sectionY * 16;
                 final int z = sectionBlockIndexGetZ(blockIndex) + sectionZ * 16;
                 query.context.updateLocal(section, palette, x, y, z);
-                final Automata.Rule.Action action = rule.process(query.context, query);
-                if (action != null) {
-                    modifiedBlocks++;
-                    blockChanges.add(new BlockChange(blockIndex, ruleContext, action));
+                for (RuleContext ruleContext : rules) {
+                    final int tickCount = ruleContext.executionsPerTick;
+                    for (int execution = 0; execution < tickCount; execution++) {
+                        final Automata.Rule.Action action = ruleContext.rule.process(query.context, query);
+                        if (action != null) {
+                            modifiedBlocks++;
+                            blockChanges.add(new BlockChange(blockIndex, ruleContext, action));
+                        }
+                    }
                 }
             }
             if (!blockChanges.isEmpty()) {
@@ -522,9 +479,8 @@ public final class LazyWorld implements Automata.World {
         final int globalZ = sectionIndexGetZ(sectionIndex) * 16 + localZ;
         if (!actionPredicate(section, palette, globalX, globalY, globalZ, action)) return;
         // Update cell
-        Int2LongMap changes = null;
         if (action.anyUpdate()) {
-            changes = processStateChange(section, palette, sectionBlockIndex, localX, localY, localZ, action, blockChanges);
+            processStateChange(section, palette, sectionBlockIndex, localX, localY, localZ, action, blockChanges);
         }
         // Run triggers
         final List<Trigger> triggers = action.triggers();
@@ -532,7 +488,7 @@ public final class LazyWorld implements Automata.World {
             for (Trigger trigger : triggers) processTrigger(trigger, globalX, globalY, globalZ);
         }
         // Register the point for the next tick
-        registerInterested(globalX, globalY, globalZ, section, currentChange.rule, action.wakePoints(), changes);
+        register(globalX, globalY, globalZ, section, action.wakePoints());
     }
 
     Int2LongMap processStateChange(LSection section, Palette palette,
@@ -751,10 +707,7 @@ public final class LazyWorld implements Automata.World {
             throw new IllegalArgumentException("Unknown state: " + state);
         }
         trackSection(section);
-        for (int i = 0; i < section.trackedBlocks.length; i++) {
-            BitSet trackedBlocks = section.ensureTrackedBlocks(i);
-            trackedBlocks.set(0, SECTION_BLOCK_COUNT);
-        }
+        section.trackedBlocks.set(0, SECTION_BLOCK_COUNT);
         final int sectionX = globalToChunk(x);
         final int sectionY = globalToChunk(y);
         final int sectionZ = globalToChunk(z);
@@ -775,34 +728,6 @@ public final class LazyWorld implements Automata.World {
         return sectionCache;
     }
 
-    private void registerInterested(int x, int y, int z,
-                                    LSection startSection, RuleContext startRule,
-                                    List<Vec> wakePoints,
-                                    Int2LongMap changes) {
-        LSection sectionCache = null;
-        final boolean boundary = globalSectionBoundary(x, y, z);
-        for (int i = 0; i < ruleContexts.size(); i++) {
-            final RuleContext ruleContext = ruleContexts.get(i);
-            if (changes == null || changes.isEmpty()) {
-                if (startRule != ruleContext)
-                    continue; // Action without changes should only register to the initiating rule
-            } else if (!ruleContext.interested(changes)) continue;
-            for (Vec point : wakePoints) {
-                final int nX = x + point.blockX();
-                final int nY = y + point.blockY();
-                final int nZ = z + point.blockZ();
-                LSection section = startSection;
-                if (boundary) section = sectionCache = sectionCache(startSection, sectionCache, nX, nY, nZ);
-                final int localX = globalToSectionRelative(nX);
-                final int localY = globalToSectionRelative(nY);
-                final int localZ = globalToSectionRelative(nZ);
-                final int blockIndex = sectionBlockIndex(localX, localY, localZ);
-                BitSet trackedBlocks = section.ensureTrackedBlocks(i);
-                trackedBlocks.set(blockIndex);
-            }
-        }
-    }
-
     private void register(int x, int y, int z, LSection startSection, List<Vec> wakePoints) {
         LSection sectionCache = null;
         final boolean boundary = globalSectionBoundary(x, y, z);
@@ -816,15 +741,12 @@ public final class LazyWorld implements Automata.World {
             final int localY = globalToSectionRelative(nY);
             final int localZ = globalToSectionRelative(nZ);
             final int blockIndex = sectionBlockIndex(localX, localY, localZ);
-            for (int i = 0; i < ruleContexts.size(); i++) {
-                BitSet trackedBlocks = section.ensureTrackedBlocks(i);
-                trackedBlocks.set(blockIndex);
-            }
+            section.trackedBlocks.set(blockIndex);
         }
     }
 
     void trackSection(LSection section) {
-        for (RuleContext ruleContext : ruleContexts) ruleContext.trackedSections.add(section);
+        this.trackedSections.add(section);
     }
 
     private void registerSection(LSection startSection, Section section) {
@@ -832,14 +754,11 @@ public final class LazyWorld implements Automata.World {
         final int sectionX = sectionIndexGetX(startSection.index),
                 sectionY = sectionIndexGetY(startSection.index),
                 sectionZ = sectionIndexGetZ(startSection.index);
-        section.blockPalette().getAllPresent((x, y, z, value) -> {
+        section.blockPalette().getAllPresent((x, y, z, _) -> {
             final int blockX = sectionX * 16 + x;
             final int blockY = sectionY * 16 + y;
             final int blockZ = sectionZ * 16 + z;
-            for (RuleContext rule : ruleContexts) {
-                if (!rule.interested(0, value)) return;
-                register(blockX, blockY, blockZ, startSection, Neighbors.MOORE_3D_SELF);
-            }
+            register(blockX, blockY, blockZ, startSection, Neighbors.MOORE_3D_SELF);
         });
         trackSection(startSection);
     }
@@ -898,7 +817,7 @@ public final class LazyWorld implements Automata.World {
                 wheelTimer.schedule(() -> new ScheduledChange(change.section(), newBlockChange), remainingTicks);
             }
         }
-        for (RuleContext ruleContext : ruleContexts) ruleContext.trackedSections.clear();
+        this.trackedSections.clear();
         for (LSection section : loadedSections.values()) {
             final int sectionX = sectionIndexGetX(section.index);
             final int sectionY = sectionIndexGetY(section.index);
