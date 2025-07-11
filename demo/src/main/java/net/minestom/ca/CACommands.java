@@ -63,7 +63,7 @@ public final class CACommands {
 
             addSyntax((sender, context) -> {
                 Player player = ((Player) sender);
-                final Automata.World world = Automata.World.get(player.getInstance());
+                final Automata.World world = AutomataImpl.world(player.getInstance());
                 if (world == null) {
                     player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
                     return;
@@ -87,7 +87,7 @@ public final class CACommands {
             // FIXME: seem to be a problem inside minestom
             return (sender, context, suggestion) -> {
                 if (!(sender instanceof Player player)) return;
-                final Automata.World world = Automata.World.get(player.getInstance());
+                final Automata.World world = AutomataImpl.world(player.getInstance());
                 for (Automata.Rule.State state : world.states()) {
                     suggestion.addEntry(new SuggestionEntry(state.name(), Component.empty()));
                 }
@@ -114,7 +114,7 @@ public final class CACommands {
 
             addSyntax((sender, context) -> {
                 Player player = ((Player) sender);
-                final Automata.World world = Automata.World.get(player.getInstance());
+                final Automata.World world = AutomataImpl.world(player.getInstance());
                 if (world == null) {
                     player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
                     return;
@@ -151,7 +151,7 @@ public final class CACommands {
 
         private void execute(CommandSender sender, CommandContext context) {
             Player player = (Player) sender;
-            final Automata.World world = Automata.World.get(player.getInstance());
+            final Automata.World world = AutomataImpl.world(player.getInstance());
             if (world == null) {
                 player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
                 return;
@@ -183,7 +183,7 @@ public final class CACommands {
                 Instance instance = player.getInstance();
                 instance.setBlock(point, blockToPlace);
 
-                final Automata.World world = Automata.World.get(instance);
+                final Automata.World world = AutomataImpl.world(instance);
                 if (world != null) {
                     final Map<Automata.Rule.State, Long> properties = Map.of(Automata.Rule.BLOCK_STATE, (long) blockToPlace.stateId());
                     world.handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
@@ -200,12 +200,11 @@ public final class CACommands {
 
             addSyntax((sender, context) -> {
                 Player player = (Player) sender;
-                final Automata.World world = Automata.World.get(player.getInstance());
+                final Automata.World world = AutomataImpl.world(player.getInstance());
                 if (world == null) {
                     player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
                     return;
                 }
-
                 final int lightSpeed = context.get(speed);
                 world.updateLightSpeed(lightSpeed);
                 player.sendMessage(Component.text("Light speed updated to: " + lightSpeed).color(NamedTextColor.GREEN));
@@ -221,12 +220,11 @@ public final class CACommands {
 
             addSyntax((sender, context) -> {
                 Player player = (Player) sender;
-                final Automata.World world = Automata.World.get(player.getInstance());
+                final Automata.World world = AutomataImpl.world(player.getInstance());
                 if (world == null) {
                     player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
                     return;
                 }
-
                 final int tickInterval = context.get(interval);
                 world.updateTickInterval(tickInterval);
                 player.sendMessage(Component.text("Tick interval updated to: " + tickInterval).color(NamedTextColor.GREEN));
@@ -243,18 +241,16 @@ public final class CACommands {
 
         private void execute(CommandSender sender, CommandContext context) {
             Player player = (Player) sender;
-            final Automata.World world = Automata.World.get(player.getInstance());
+            final Automata.World world = AutomataImpl.world(player.getInstance());
             if (world == null) {
                 player.sendMessage(Component.text("No automata world found in this instance.").color(NamedTextColor.RED));
                 return;
             }
-
             final List<Automata.Rule> rules = world.rules();
             if (rules.isEmpty()) {
                 player.sendMessage(Component.text("No rules defined in this automata world.").color(NamedTextColor.YELLOW));
                 return;
             }
-
             player.sendMessage(Component.text("Registered Rules:").color(NamedTextColor.GOLD));
 
             for (Automata.Rule rule : rules) {

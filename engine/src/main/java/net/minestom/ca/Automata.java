@@ -4,8 +4,6 @@ import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
-import net.minestom.server.event.EventDispatcher;
-import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.palette.Palette;
@@ -349,26 +347,6 @@ public final class Automata {
     }
 
     public interface World {
-        Map<UUID, World> WORLDS = new HashMap<>();
-
-        static void register(World world) {
-            final Instance instance = world.instance();
-            final World prev = WORLDS.put(instance.getUuid(), world);
-            if (prev != null) {
-                throw new IllegalStateException("An AutomataWorld is already registered for the instance " + instance);
-            }
-            instance.eventNode().addChild(AutomataImpl.AUTOMATA_EVENT_NODE);
-            // Register loaded chunks
-            System.out.println("Registering loaded chunks...");
-            for (Chunk c : instance.getChunks()) world.handleChunkLoad(c.getChunkX(), c.getChunkZ());
-            System.out.println("Loaded chunks registered");
-            EventDispatcher.call(new AutomataEvent.Attach(world));
-        }
-
-        static World get(Instance instance) {
-            return WORLDS.get(instance.getUuid());
-        }
-
         /**
          * Simulates one tick of progress for the world.
          */

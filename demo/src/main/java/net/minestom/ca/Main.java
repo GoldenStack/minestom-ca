@@ -65,7 +65,7 @@ public final class Main {
                 new RuleConfig(new GrassSpreadingRule())
         );
         World world = new LazyWorld(spawnInstance, rules);
-        World.register(world);
+        AutomataImpl.register(world);
         System.out.println("Variables: " + world.states().stream().map(Rule.State::name).toList());
 
         BossBar bossBar = BossBar.bossBar(Component.empty(), 0.0f, BossBar.Color.GREEN, BossBar.Overlay.PROGRESS);

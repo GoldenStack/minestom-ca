@@ -17,6 +17,7 @@ import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.player.PlayerUseItemEvent;
 import net.minestom.server.event.trait.InstanceEvent;
+import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.palette.Palette;
@@ -32,6 +33,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static net.minestom.ca.Automata.*;
@@ -40,18 +42,41 @@ public final class AutomataImpl {
     public static final AtomicBoolean RUNNING = new AtomicBoolean(true);
     public static final Tag<Boolean> AUTOMATA_DEBUG = Tag.Boolean("ca:debug").defaultValue(false);
     public static final Tag<Boolean> AUTOMATA_STOPWATCH = Tag.Boolean("ca:stopwatch").defaultValue(false);
+
+    public static final Map<UUID, World> WORLDS = new HashMap<>();
+
+    static synchronized void register(World world) {
+        final Instance instance = world.instance();
+        final World prev = WORLDS.put(instance.getUuid(), world);
+        if (prev != null) {
+            throw new IllegalStateException("An AutomataWorld is already registered for the instance " + instance);
+        }
+        instance.eventNode().addChild(AutomataImpl.AUTOMATA_EVENT_NODE);
+        // Register loaded chunks
+        System.out.println("Registering loaded chunks...");
+        for (Chunk c : instance.getChunks()) world.handleChunkLoad(c.getChunkX(), c.getChunkZ());
+        System.out.println("Loaded chunks registered");
+        EventDispatcher.call(new AutomataEvent.Attach(world));
+    }
+
+    static synchronized World world(Instance instance) {
+        return WORLDS.get(instance.getUuid());
+    }
+
     public static final EventNode<InstanceEvent> AUTOMATA_EVENT_NODE = EventNode.type("ca:node", EventFilter.INSTANCE)
             .addListener(PlayerBlockPlaceEvent.class, event -> {
+                World world = world(event.getPlayer().getInstance());
+                if (world == null) return;
                 final Point point = event.getBlockPosition();
                 final Block block = event.getBlock();
-                World world = World.get(event.getPlayer().getInstance());
                 final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
                 final Map<Rule.State, Long> properties = itemStates(world, item, block);
                 world.handlePlacement(point, properties);
             })
             .addListener(PlayerBlockBreakEvent.class, event -> {
+                World world = world(event.getPlayer().getInstance());
+                if (world == null) return;
                 final Point point = event.getBlockPosition();
-                World world = World.get(event.getPlayer().getInstance());
                 world.handlePlacement(point, Block.AIR);
             })
             .addListener(PlayerBlockInteractEvent.class, event -> {
@@ -68,11 +93,13 @@ public final class AutomataImpl {
                 if (item.getTag(AUTOMATA_STOPWATCH)) useStopwatch(player);
             })
             .addListener(InstanceChunkLoadEvent.class, event -> {
-                World world = World.get(event.getInstance());
+                World world = world(event.getInstance());
+                if (world == null) return;
                 world.handleChunkLoad(event.getChunkX(), event.getChunkZ());
             })
             .addListener(InstanceChunkUnloadEvent.class, event -> {
-                World world = World.get(event.getInstance());
+                World world = world(event.getInstance());
+                if (world == null) return;
                 world.handleChunkUnload(event.getChunkX(), event.getChunkZ());
             })
             .addListener(InstanceTickEvent.class, event -> {
@@ -82,7 +109,7 @@ public final class AutomataImpl {
             });
 
     private static void worldTick(Instance instance) {
-        World world = World.get(instance);
+        World world = world(instance);
         if (world == null) return;
         final long start = System.nanoTime();
         final Metrics metrics = world.tick();
@@ -106,7 +133,7 @@ public final class AutomataImpl {
 
     private static void showBlockInfo(Player player, Point point) {
         final Instance instance = player.getInstance();
-        final World world = World.get(instance);
+        final World world = world(instance);
         if (world == null) return;
         final Map<Rule.State, Long> indexes = world.query().queryNames(point);
         player.sendMessage(Component.text()
@@ -142,7 +169,7 @@ public final class AutomataImpl {
     }
 
     private static ItemStack applyAction(Player player, Point point, ItemStack item, CellEvent event) {
-        World world = World.get(player.getInstance());
+        World world = world(player.getInstance());
         if (world == null) return null;
         final CustomData data = item.get(DataComponents.CUSTOM_DATA);
         if (data == null) return null;
