@@ -26,6 +26,7 @@ import org.everbuild.blocksandstuff.blocks.BlockPlacementRuleRegistrations;
 import java.util.ArrayList;
 import java.util.List;
 
+import static net.kyori.adventure.text.format.TextColor.color;
 import static net.minestom.ca.Automata.Rule;
 import static net.minestom.ca.Automata.World;
 
@@ -138,18 +139,20 @@ public final class Main {
                     performanceTracker.addMspt(ms);
 
                     // Calculate modification ratio (percentage of processed blocks that were modified)
-                    String ratio = "0%";
-                    if (metrics.processedBlocks() > 0) {
-                        final int modRatio = (metrics.modifiedBlocks() * 100) / metrics.processedBlocks();
-                        ratio = modRatio + "%";
-                    }
+                    final int modRatio = metrics.processedBlocks() > 0 ? (metrics.modifiedBlocks() * 100) / metrics.processedBlocks() : 100;
+                    final float ratioValue = modRatio / 100.0f;
+                    final int red = (int) (255 * (1 - ratioValue));
+                    final int green = (int) (255 * ratioValue);
+                    final int color = (red << 16) | (green << 8);
+                    final Component ratioComponent = Component.text(modRatio + "%").color(color(color));
 
-                    // Update real-time boss bar
                     realtimeBossBar.name(Component.text()
                                     .append(Component.text("§6⚡ §a" + String.format("%.2f", ms) + "ms"))
                                     .append(Component.text(" §6◆ §f" + String.format("%,d", metrics.processedSections()) + " §7section"))
                                     .append(Component.text(" §6◆ §f" + String.format("%,d", metrics.processedBlocks()) + " §7block"))
-                                    .append(Component.text(" §6◆ §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a" + ratio + "§f)"))
+                                    .append(Component.text(" §6◆ §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a"))
+                                    .append(ratioComponent)
+                                    .append(Component.text("§f)"))
                                     .build()
                             )
                             .progress(Math.min(1.0f, (float) (ms / 50.0)))
