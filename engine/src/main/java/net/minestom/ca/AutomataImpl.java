@@ -111,10 +111,17 @@ public final class AutomataImpl {
     private static void worldTick(Instance instance) {
         World world = world(instance);
         if (world == null) return;
+        AutomataJFR.Tick jfrEvent = new AutomataJFR.Tick();
+        jfrEvent.uuid = instance.getUuid().toString();
+        jfrEvent.begin();
         final long start = System.nanoTime();
         final Metrics metrics = world.tick();
         final long duration = System.nanoTime() - start;
         final double mspt = duration / 1.0e6;
+        jfrEvent.processedSections = metrics.processedSections();
+        jfrEvent.processedBlocks = metrics.processedBlocks();
+        jfrEvent.updatedBlocks = metrics.modifiedBlocks();
+        jfrEvent.commit();
         EventDispatcher.call(new AutomataEvent.Tick(world, metrics, mspt));
     }
 
