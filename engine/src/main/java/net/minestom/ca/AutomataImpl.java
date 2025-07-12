@@ -12,6 +12,7 @@ import net.minestom.server.event.EventNode;
 import net.minestom.server.event.instance.InstanceChunkLoadEvent;
 import net.minestom.server.event.instance.InstanceChunkUnloadEvent;
 import net.minestom.server.event.instance.InstanceTickEvent;
+import net.minestom.server.event.instance.InstanceUnregisterEvent;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
@@ -51,7 +52,7 @@ public final class AutomataImpl {
         if (prev != null) {
             throw new IllegalStateException("An AutomataWorld is already registered for the instance " + instance);
         }
-        instance.eventNode().addChild(AutomataImpl.AUTOMATA_EVENT_NODE);
+        instance.eventNode().addChild(AutomataImpl.eventNode());
         // Register loaded chunks
         System.out.println("Registering loaded chunks...");
         for (Chunk c : instance.getChunks()) world.handleChunkLoad(c.getChunkX(), c.getChunkZ());
@@ -63,50 +64,60 @@ public final class AutomataImpl {
         return WORLDS.get(instance.getUuid());
     }
 
-    public static final EventNode<InstanceEvent> AUTOMATA_EVENT_NODE = EventNode.type("ca:node", EventFilter.INSTANCE)
-            .addListener(PlayerBlockPlaceEvent.class, event -> {
-                World world = world(event.getPlayer().getInstance());
-                if (world == null) return;
-                final Point point = event.getBlockPosition();
-                final Block block = event.getBlock();
-                final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
-                final Map<Rule.State, Long> properties = itemStates(world, item, block);
-                world.handlePlacement(point, properties);
-            })
-            .addListener(PlayerBlockBreakEvent.class, event -> {
-                World world = world(event.getPlayer().getInstance());
-                if (world == null) return;
-                final Point point = event.getBlockPosition();
-                world.handlePlacement(point, Block.AIR);
-            })
-            .addListener(PlayerBlockInteractEvent.class, event -> {
-                final Player player = event.getPlayer();
-                final Point point = event.getBlockPosition();
-                final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
-                if (item.getTag(AUTOMATA_DEBUG)) showBlockInfo(player, point);
-                final ItemStack update = applyAction(player, point, item, CellEvent.INTERACT);
-                if (update != null) player.setItemInHand(event.getHand(), update);
-            })
-            .addListener(PlayerUseItemEvent.class, event -> {
-                final Player player = event.getPlayer();
-                final ItemStack item = event.getItemStack();
-                if (item.getTag(AUTOMATA_STOPWATCH)) useStopwatch(player);
-            })
-            .addListener(InstanceChunkLoadEvent.class, event -> {
-                World world = world(event.getInstance());
-                if (world == null) return;
-                world.handleChunkLoad(event.getChunkX(), event.getChunkZ());
-            })
-            .addListener(InstanceChunkUnloadEvent.class, event -> {
-                World world = world(event.getInstance());
-                if (world == null) return;
-                world.handleChunkUnload(event.getChunkX(), event.getChunkZ());
-            })
-            .addListener(InstanceTickEvent.class, event -> {
-                if (!RUNNING.get()) return;
-                final Instance eventInstance = event.getInstance();
-                worldTick(eventInstance);
-            });
+    public static EventNode<InstanceEvent> eventNode() {
+        return EventNode.type("ca:node", EventFilter.INSTANCE)
+                .addListener(InstanceUnregisterEvent.class, event -> {
+                    final UUID instanceId = event.getInstance().getUuid();
+                    final World world = WORLDS.remove(instanceId);
+                    if (world != null) {
+                        EventDispatcher.call(new AutomataEvent.Detach(world));
+                        // TODO: save world state if needed
+                    }
+                })
+                .addListener(PlayerBlockPlaceEvent.class, event -> {
+                    World world = world(event.getPlayer().getInstance());
+                    if (world == null) return;
+                    final Point point = event.getBlockPosition();
+                    final Block block = event.getBlock();
+                    final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
+                    final Map<Rule.State, Long> properties = itemStates(world, item, block);
+                    world.handlePlacement(point, properties);
+                })
+                .addListener(PlayerBlockBreakEvent.class, event -> {
+                    World world = world(event.getPlayer().getInstance());
+                    if (world == null) return;
+                    final Point point = event.getBlockPosition();
+                    world.handlePlacement(point, Block.AIR);
+                })
+                .addListener(PlayerBlockInteractEvent.class, event -> {
+                    final Player player = event.getPlayer();
+                    final Point point = event.getBlockPosition();
+                    final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
+                    if (item.getTag(AUTOMATA_DEBUG)) showBlockInfo(player, point);
+                    final ItemStack update = applyAction(player, point, item, CellEvent.INTERACT);
+                    if (update != null) player.setItemInHand(event.getHand(), update);
+                })
+                .addListener(PlayerUseItemEvent.class, event -> {
+                    final Player player = event.getPlayer();
+                    final ItemStack item = event.getItemStack();
+                    if (item.getTag(AUTOMATA_STOPWATCH)) useStopwatch(player);
+                })
+                .addListener(InstanceChunkLoadEvent.class, event -> {
+                    World world = world(event.getInstance());
+                    if (world == null) return;
+                    world.handleChunkLoad(event.getChunkX(), event.getChunkZ());
+                })
+                .addListener(InstanceChunkUnloadEvent.class, event -> {
+                    World world = world(event.getInstance());
+                    if (world == null) return;
+                    world.handleChunkUnload(event.getChunkX(), event.getChunkZ());
+                })
+                .addListener(InstanceTickEvent.class, event -> {
+                    if (!RUNNING.get()) return;
+                    final Instance eventInstance = event.getInstance();
+                    worldTick(eventInstance);
+                });
+    }
 
     private static void worldTick(Instance instance) {
         World world = world(instance);

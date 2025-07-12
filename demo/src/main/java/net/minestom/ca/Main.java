@@ -1,6 +1,5 @@
 package net.minestom.ca;
 
-import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.minestom.ca.Automata.RuleConfig;
 import net.minestom.ca.backends.lazy.LazyWorld;
@@ -9,8 +8,6 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.coordinate.Pos;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
-import net.minestom.server.event.instance.AddEntityToInstanceEvent;
-import net.minestom.server.event.instance.RemoveEntityFromInstanceEvent;
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent;
 import net.minestom.server.event.server.ServerListPingEvent;
 import net.minestom.server.instance.InstanceContainer;
@@ -23,48 +20,12 @@ import net.minestom.server.ping.Status;
 import org.everbuild.blocksandstuff.blocks.BlockBehaviorRuleRegistrations;
 import org.everbuild.blocksandstuff.blocks.BlockPlacementRuleRegistrations;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static net.kyori.adventure.text.format.TextColor.color;
 import static net.minestom.ca.Automata.Rule;
 import static net.minestom.ca.Automata.World;
 
 public final class Main {
-
-    // Performance tracking class for MSPT statistics
-    private static final class PerformanceTracker {
-        private final List<Double> msptHistory = new ArrayList<>();
-        private final int maxHistorySize;
-
-        public PerformanceTracker(int maxHistorySize) {
-            this.maxHistorySize = maxHistorySize;
-        }
-
-        public void addMspt(double mspt) {
-            msptHistory.add(mspt);
-            if (msptHistory.size() > maxHistorySize) {
-                msptHistory.removeFirst();
-            }
-        }
-
-        public double getAverage() {
-            if (msptHistory.isEmpty()) return 0.0;
-            return msptHistory.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-        }
-
-        public double getPercentile(int percentile) {
-            if (msptHistory.isEmpty()) return 0.0;
-            double[] sorted = msptHistory.stream().mapToDouble(Double::doubleValue).sorted().toArray();
-            int index = (int) Math.ceil((percentile / 100.0) * sorted.length) - 1;
-            index = Math.max(0, Math.min(index, sorted.length - 1));
-            return sorted[index];
-        }
-
-        public int getSampleCount() {
-            return msptHistory.size();
-        }
-    }
 
     public static void main(String[] args) {
         MinecraftServer minecraftServer = MinecraftServer.init();
@@ -102,80 +63,9 @@ public final class Main {
                 new RuleConfig(new GrassSpreadingRule())
         );
         World world = new LazyWorld(spawnInstance, rules);
+        spawnInstance.eventNode().addChild(AutomataDebugImpl.eventNodeDebug());
         AutomataImpl.register(world);
         System.out.println("Variables: " + world.states().stream().map(Rule.State::name).toList());
-
-        // Performance tracker for this instance (keep last 200 ticks)
-        PerformanceTracker performanceTracker = new PerformanceTracker(200);
-        // First boss bar - Real-time metrics (existing)
-        BossBar realtimeBossBar = BossBar.bossBar(Component.empty(), 0.0f, BossBar.Color.GREEN, BossBar.Overlay.PROGRESS);
-        // Second boss bar - Performance statistics
-        BossBar statsBossBar = BossBar.bossBar(Component.empty(), 0.0f, BossBar.Color.BLUE, BossBar.Overlay.NOTCHED_10);
-
-        spawnInstance.eventNode()
-                .addListener(AutomataEvent.Attach.class, event -> {
-                    event.world().instance().showBossBar(realtimeBossBar);
-                    event.world().instance().showBossBar(statsBossBar);
-                })
-                .addListener(AddEntityToInstanceEvent.class, event -> {
-                    // Only show boss bars to players in this specific instance
-                    if (event.getEntity() instanceof Player player) {
-                        player.showBossBar(realtimeBossBar);
-                        player.showBossBar(statsBossBar);
-                    }
-                })
-                .addListener(RemoveEntityFromInstanceEvent.class, event -> {
-                    // Only hide boss bars from players leaving this specific instance
-                    if (event.getEntity() instanceof Player player) {
-                        player.hideBossBar(realtimeBossBar);
-                        player.hideBossBar(statsBossBar);
-                    }
-                })
-                .addListener(AutomataEvent.Tick.class, event -> {
-                    final Automata.Metrics metrics = event.metrics();
-                    final double ms = event.ms();
-
-                    // Add to performance tracker
-                    performanceTracker.addMspt(ms);
-
-                    // Calculate modification ratio (percentage of processed blocks that were modified)
-                    final int modRatio = metrics.processedBlocks() > 0 ? (metrics.modifiedBlocks() * 100) / metrics.processedBlocks() : 100;
-                    final float ratioValue = modRatio / 100.0f;
-                    final int red = (int) (255 * (1 - ratioValue));
-                    final int green = (int) (255 * ratioValue);
-                    final int color = (red << 16) | (green << 8);
-                    final Component ratioComponent = Component.text(modRatio + "%").color(color(color));
-
-                    realtimeBossBar.name(Component.text()
-                                    .append(Component.text("§6⚡ §a" + String.format("%.2f", ms) + "ms"))
-                                    .append(Component.text(" §6◆ §f" + String.format("%,d", metrics.processedSections()) + " §7section"))
-                                    .append(Component.text(" §6◆ §f" + String.format("%,d", metrics.processedBlocks()) + " §7block"))
-                                    .append(Component.text(" §6◆ §a" + String.format("%,d", metrics.modifiedBlocks()) + " §f(§a"))
-                                    .append(ratioComponent)
-                                    .append(Component.text("§f)"))
-                                    .build()
-                            )
-                            .progress(Math.min(1.0f, (float) (ms / 50.0)))
-                            .color(ms >= 50 ? BossBar.Color.RED : (ms >= 25 ? BossBar.Color.YELLOW : BossBar.Color.GREEN));
-
-                    // Update statistics boss bar
-                    final double avgMspt = performanceTracker.getAverage();
-                    final double p90 = performanceTracker.getPercentile(90);
-                    final double p95 = performanceTracker.getPercentile(95);
-                    final double p99 = performanceTracker.getPercentile(99);
-                    final int samples = performanceTracker.getSampleCount();
-
-                    statsBossBar.name(Component.text()
-                                    .append(Component.text("§3📊 §fAvg: §b" + String.format("%.2f", avgMspt) + "ms"))
-                                    .append(Component.text(" §3◈ §f90th: §b" + String.format("%.1f", p90)))
-                                    .append(Component.text(" §3◈ §f95th: §b" + String.format("%.1f", p95)))
-                                    .append(Component.text(" §3◈ §f99th: §b" + String.format("%.1f", p99)))
-                                    .append(Component.text(" §7(§b" + samples + "§7)"))
-                                    .build()
-                            )
-                            .progress(Math.min(1.0f, (float) (avgMspt / 50.0)))
-                            .color(avgMspt >= 50 ? BossBar.Color.RED : (avgMspt >= 25 ? BossBar.Color.YELLOW : BossBar.Color.BLUE));
-                });
 
         MinecraftServer.getGlobalEventHandler()
                 .addListener(AsyncPlayerConfigurationEvent.class, event -> {
