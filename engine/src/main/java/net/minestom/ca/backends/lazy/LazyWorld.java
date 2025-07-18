@@ -9,9 +9,13 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
 import net.minestom.ca.Automata;
+import net.minestom.ca.AutomataEvent;
 import net.minestom.ca.Neighbors;
 import net.minestom.ca.Trigger;
+import net.minestom.server.coordinate.BlockVec;
+import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
+import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.instance.Chunk;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.instance.Section;
@@ -42,7 +46,7 @@ public final class LazyWorld implements Automata.World {
     private int tickInterval = 1; // Controls how frequently ticks happen (slowdown)
     private int tickCounter = 0; // Tracks progress toward next tick
 
-    private final HashedWheelTimer<ScheduledChange> wheelTimer = new HashedWheelTimer<>(255);
+    private final HashedWheelTimer<ScheduledChange> wheelTimer = new HashedWheelTimer<>(1024);
     private final Long2ObjectMap<LSection> loadedSections = new Long2ObjectOpenHashMap<>();
     private final Set<LSection> trackedSections = Collections.newSetFromMap(new IdentityHashMap<>());
 
@@ -150,6 +154,11 @@ public final class LazyWorld implements Automata.World {
             this.localY = 0;
             this.localZ = 0;
             this.localStates = null;
+        }
+
+        @Override
+        public Point point() {
+            return new Vec(localX, localY, localZ);
         }
 
         @Override
@@ -357,20 +366,22 @@ public final class LazyWorld implements Automata.World {
     }
 
     private Automata.Metrics singleTick() {
-        final List<RuleContext> rulesToTick = rulesToTick();
-        if (rulesToTick.isEmpty() && wheelTimer.isEmpty()) {
-            this.query.context.updateTick();
-            return Automata.Metrics.EMPTY;
-        }
-        Long2ObjectMap<LongList> tickBlockChanges = new Long2ObjectOpenHashMap<>();
-
         Queue<SectionChange> changes = new ArrayDeque<>();
         // Process timed changes first to ensure they're available for this tick
         computeTimedChanges(changes);
+
+        final List<RuleContext> rulesToTick = rulesToTick();
+        if (rulesToTick.isEmpty()) {
+            this.query.context.updateTick();
+            return Automata.Metrics.EMPTY;
+        }
+
         // Process rules according to their configurations
         final Automata.Metrics metrics = computeChanges(changes, rulesToTick);
         for (LSection section : trackedSections) section.trackedBlocks.clear();
         this.trackedSections.clear();
+
+        Long2ObjectMap<LongList> tickBlockChanges = new Long2ObjectOpenHashMap<>();
         applyChanges(changes, tickBlockChanges);
         sendBlockUpdatePackets(tickBlockChanges);
         this.query.context.updateTick();
@@ -400,7 +411,9 @@ public final class LazyWorld implements Automata.World {
                 final int sectionX = sectionIndexGetX(sectionIndex), sectionY = sectionIndexGetY(sectionIndex), sectionZ = sectionIndexGetZ(sectionIndex);
                 sectionChange = new SectionChange(section, paletteAtSection(sectionX, sectionY, sectionZ), new ArrayList<>());
                 changes.offer(sectionChange);
+                trackedSections.add(section);
             }
+            section.trackedBlocks.set(blockChange.sectionBlockIndex);
             sectionChange.blockChanges.add(blockChange);
         });
     }
@@ -552,6 +565,7 @@ public final class LazyWorld implements Automata.World {
                 final Chunk chunk = instance.getChunkAt(x, z);
                 if (chunk != null) chunk.sendPacketToViewers(proximityPacket.packet());
             }
+            case Trigger.Custom custom -> EventDispatcher.call(new AutomataEvent.CustomTrigger(this, new BlockVec(x, y, z), custom));
         }
     }
 
@@ -600,12 +614,6 @@ public final class LazyWorld implements Automata.World {
         }
     }
 
-    @Override
-    public void handlePlacement(int x, int y, int z, Map<Automata.Rule.State, Long> properties) {
-        clearAt(x, y, z);
-        setAt(x, y, z, properties);
-    }
-
     private final Queue<Vec> chunksToLoad = new ConcurrentLinkedQueue<>();
     private final Queue<Vec> chunksToUnload = new ConcurrentLinkedQueue<>();
 
@@ -638,6 +646,13 @@ public final class LazyWorld implements Automata.World {
             final long sectionIndex = sectionIndex(chunkX, sectionY, chunkZ);
             this.loadedSections.remove(sectionIndex);
         }
+    }
+
+    @Override
+    public void invalidateAt(int x, int y, int z) {
+        final LSection section = sectionGlobalCompute(x, y, z);
+        trackSection(section);
+        register(x, y, z, section, Neighbors.MOORE_3D_SELF);
     }
 
     @Override

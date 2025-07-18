@@ -186,7 +186,7 @@ public final class CACommands {
                 final Automata.World world = AutomataImpl.world(instance);
                 if (world != null) {
                     final Map<Automata.Rule.State, Long> properties = Map.of(Automata.Rule.BLOCK_STATE, (long) blockToPlace.stateId());
-                    world.handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
+                    world.setAt(point.blockX(), point.blockY(), point.blockZ(), properties);
                 }
             }, position, block);
         }

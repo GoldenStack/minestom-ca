@@ -1,5 +1,6 @@
 package net.minestom.ca;
 
+import net.minestom.server.coordinate.Point;
 import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.instance.Instance;
 import org.jetbrains.annotations.NotNull;
@@ -20,6 +21,13 @@ public final class AutomataEvent {
     }
 
     public record Detach(Automata.World world) implements InstanceEvent {
+        @Override
+        public @NotNull Instance getInstance() {
+            return world.instance();
+        }
+    }
+
+    public record CustomTrigger(Automata.World world, Point point, Trigger.Custom trigger) implements InstanceEvent {
         @Override
         public @NotNull Instance getInstance() {
             return world.instance();

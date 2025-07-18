@@ -92,6 +92,8 @@ public final class Automata {
                 // Number of ticks to wait before applying the action (including interpreting the conditions)
                 int scheduleTick
         ) {
+            public static final Action SELF_WAKE_UP = Action.action(action -> action.wakeup(Vec.ZERO));
+
             public static Action action(Consumer<Builder> builder) {
                 Builder b = new Builder();
                 builder.accept(b);
@@ -156,6 +158,10 @@ public final class Automata {
                     this.wakePoints = List.of(wakePoint);
                 }
 
+                public void wakeup() {
+                    wakeup(Vec.ZERO);
+                }
+
                 public void condition(int state, long value) {
                     if (conditionStates == null) conditionStates = new Int2LongOpenHashMap();
                     conditionStates.put(state, value);
@@ -175,6 +181,8 @@ public final class Automata {
     }
 
     public interface Context {
+        Point point();
+
         long tick();
     }
 
@@ -352,23 +360,15 @@ public final class Automata {
          */
         Metrics tick();
 
-        /**
-         * Handles an external block change (e.g. block place or break)
-         */
-        void handlePlacement(int x, int y, int z, Map<Rule.State, Long> properties);
-
-        default void handlePlacement(Point point, Map<Rule.State, Long> properties) {
-            handlePlacement(point.blockX(), point.blockY(), point.blockZ(), properties);
-        }
-
-        default void handlePlacement(Point point, Block block) {
-            handlePlacement(point.blockX(), point.blockY(), point.blockZ(),
-                    Map.of(Rule.BLOCK_STATE, (long) block.stateId()));
-        }
-
         void handleChunkLoad(int chunkX, int chunkZ);
 
         void handleChunkUnload(int chunkX, int chunkZ);
+
+        void invalidateAt(int x, int y, int z);
+
+        default void invalidateAt(Point point) {
+            invalidateAt(point.blockX(), point.blockY(), point.blockZ());
+        }
 
         void clearAt(int x, int y, int z);
 
@@ -386,6 +386,19 @@ public final class Automata {
 
         default void updateAt(Point point, Map<Rule.State, Long> properties) {
             updateAt(point.blockX(), point.blockY(), point.blockZ(), properties);
+        }
+
+        default void updateAt(Point point, Rule.State state, long value) {
+            updateAt(point.blockX(), point.blockY(), point.blockZ(), Map.of(state, value));
+        }
+
+        default long stateAt(int x, int y, int z, Rule.State state) {
+            final int index = query().stateIndex(state);
+            return query().stateAt(x, y, z, index);
+        }
+
+        default long stateAt(Point point, Rule.State state) {
+            return stateAt(point.blockX(), point.blockY(), point.blockZ(), state);
         }
 
         Palette statePalette(int x, int y, int z, Rule.State state);

@@ -62,33 +62,16 @@ public final class AutomataDebugImpl {
     private static final WeakHashMap<Instance, AutomataWorldDebugState> DEBUG_STATES = new WeakHashMap<>();
 
     private static AutomataWorldDebugState state(Instance instance) {
-        return DEBUG_STATES.computeIfAbsent(instance, _ -> new AutomataWorldDebugState());
+        return DEBUG_STATES.computeIfAbsent(instance, inst -> {
+          AutomataWorldDebugState debugState = new AutomataWorldDebugState();
+          inst.showBossBar(debugState.realtimeBossBar);
+          inst.showBossBar(debugState.statsBossBar);
+          return debugState;
+        });
     }
 
     public static EventNode<InstanceEvent> eventNodeDebug() {
         return EventNode.type("ca:node", EventFilter.INSTANCE)
-                .addListener(AutomataEvent.Attach.class, event -> {
-                    Instance instance = event.world().instance();
-                    AutomataWorldDebugState debugState = state(instance);
-                    instance.showBossBar(debugState.realtimeBossBar);
-                    instance.showBossBar(debugState.statsBossBar);
-                })
-                .addListener(AddEntityToInstanceEvent.class, event -> {
-                    // Only show boss bars to players in this specific instance
-                    if (event.getEntity() instanceof Player player) {
-                        AutomataWorldDebugState debugState = state(event.getInstance());
-                        player.showBossBar(debugState.realtimeBossBar);
-                        player.showBossBar(debugState.statsBossBar);
-                    }
-                })
-                .addListener(RemoveEntityFromInstanceEvent.class, event -> {
-                    // Only hide boss bars from players leaving this specific instance
-                    if (event.getEntity() instanceof Player player) {
-                        AutomataWorldDebugState debugState = state(event.getInstance());
-                        player.hideBossBar(debugState.realtimeBossBar);
-                        player.hideBossBar(debugState.statsBossBar);
-                    }
-                })
                 .addListener(AutomataEvent.Tick.class, event -> {
                     final Automata.Metrics metrics = event.metrics();
                     final double ms = event.ms();

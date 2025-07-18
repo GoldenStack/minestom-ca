@@ -9,10 +9,7 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
-import net.minestom.server.event.instance.InstanceChunkLoadEvent;
-import net.minestom.server.event.instance.InstanceChunkUnloadEvent;
-import net.minestom.server.event.instance.InstanceTickEvent;
-import net.minestom.server.event.instance.InstanceUnregisterEvent;
+import net.minestom.server.event.instance.*;
 import net.minestom.server.event.player.PlayerBlockBreakEvent;
 import net.minestom.server.event.player.PlayerBlockInteractEvent;
 import net.minestom.server.event.player.PlayerBlockPlaceEvent;
@@ -60,7 +57,7 @@ public final class AutomataImpl {
         EventDispatcher.call(new AutomataEvent.Attach(world));
     }
 
-    static synchronized World world(Instance instance) {
+    public static synchronized World world(Instance instance) {
         return WORLDS.get(instance.getUuid());
     }
 
@@ -74,6 +71,12 @@ public final class AutomataImpl {
                         // TODO: save world state if needed
                     }
                 })
+                .addListener(InstanceBlockUpdateEvent.class, event -> {
+                    World world = world(event.getInstance());
+                    if (world == null) return;
+                    final Point point = event.getBlockPosition();
+                    world.invalidateAt(point);
+                })
                 .addListener(PlayerBlockPlaceEvent.class, event -> {
                     World world = world(event.getPlayer().getInstance());
                     if (world == null) return;
@@ -81,13 +84,13 @@ public final class AutomataImpl {
                     final Block block = event.getBlock();
                     final ItemStack item = event.getPlayer().getItemInHand(event.getHand());
                     final Map<Rule.State, Long> properties = itemStates(world, item, block);
-                    world.handlePlacement(point, properties);
+                    if (!properties.isEmpty()) world.updateAt(point, properties);
                 })
                 .addListener(PlayerBlockBreakEvent.class, event -> {
                     World world = world(event.getPlayer().getInstance());
                     if (world == null) return;
                     final Point point = event.getBlockPosition();
-                    world.handlePlacement(point, Block.AIR);
+                    world.clearAt(point);
                 })
                 .addListener(PlayerBlockInteractEvent.class, event -> {
                     final Player player = event.getPlayer();
