@@ -13,7 +13,6 @@ import net.minestom.ca.AutomataEvent;
 import net.minestom.ca.Neighbors;
 import net.minestom.ca.Trigger;
 import net.minestom.server.coordinate.BlockVec;
-import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.instance.Chunk;
@@ -157,8 +156,8 @@ public final class LazyWorld implements Automata.World {
         }
 
         @Override
-        public Point point() {
-            return new Vec(localX, localY, localZ);
+        public BlockVec point() {
+            return new BlockVec(localX, localY, localZ);
         }
 
         @Override

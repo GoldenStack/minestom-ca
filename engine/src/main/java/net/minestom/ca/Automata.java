@@ -2,6 +2,7 @@ package net.minestom.ca;
 
 import it.unimi.dsi.fastutil.ints.Int2LongMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.Instance;
@@ -181,7 +182,7 @@ public final class Automata {
     }
 
     public interface Context {
-        Point point();
+        BlockVec point();
 
         long tick();
     }
