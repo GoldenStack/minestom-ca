@@ -14,7 +14,7 @@ dependencies {
     implementation(project(":engine"))
     implementation(files("artefacts/Terra.jar"))
 
-    implementation("org.everbuild.blocksandstuff:blocksandstuff-blocks:1.4.0-SNAPSHOT")
+    implementation("org.everbuild.blocksandstuff:blocksandstuff-blocks:1.6.0-SNAPSHOT")
 }
 
 tasks.test {

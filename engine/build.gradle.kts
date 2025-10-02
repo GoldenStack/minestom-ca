@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    api("net.minestom:minestom:2025.07.17-1.21.8")
+    api("net.minestom:minestom:2025.09.13-1.21.8")
 
     // https://mvnrepository.com/artifact/it.unimi.dsi/fastutil
     implementation("it.unimi.dsi:fastutil:8.5.16")
